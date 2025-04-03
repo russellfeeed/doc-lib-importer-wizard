@@ -286,6 +286,7 @@ export async function processCircularLetterWithAI(
     const extractedText = await extractTextFromDocument(file);
     
     // 2. Use AI to extract specific fields from the circular letter
+    console.log("Extracting data from circular letter with AI...");
     const { 
       referenceNumber, 
       correspondenceRef,
@@ -298,14 +299,16 @@ export async function processCircularLetterWithAI(
       appendices
     } = await extractCircularLetterDataWithOpenAI(extractedText, file.name, options);
     
+    console.log(`Extracted ${appendices.length} appendices from circular letter`);
+    
     return {
-      content: extractedText,
+      content: extractedText, // This is the raw, full content for reference
       referenceNumber,
       correspondenceRef,
       date,
       audience,
       title,
-      details,
+      details, // This should now exclude appendix content
       author,
       tags,
       appendices

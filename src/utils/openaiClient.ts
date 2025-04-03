@@ -362,10 +362,10 @@ export async function extractCircularLetterDataWithOpenAI(
 3. Date: The date when the circular letter was issued, in YYYY-MM-DD format
 4. Audience: The intended recipients or departments that should read this circular
 5. Title: The main title or subject of the circular letter
-6. Details: The full content of the circular letter, excluding headers, footers, salutations, and signatures. This should be the complete text of the main body of the document.
+6. Details: The full content of the circular letter's main body, excluding headers, footers, salutations, signatures, and any appendices. This should only include the main text of the document.
 7. Author/Sender: The person, department, or authority who issued the circular letter
 8. Tags: Generate 1-5 relevant keywords or tags that describe the main topics of this circular letter, separated by commas
-9. Appendices: If the document contains appendices, identify each one as a separate item with a title and content.
+9. Appendices: If the document contains appendices, identify each one as a separate item with a title and content. Make sure the appendix content is NOT included in the main details field.
 
 Format your response as a JSON object with these fields. If you cannot find a specific field, use an empty string as value. For appendices, return an array of objects, each with 'title' and 'content' fields. If there are no appendices, use an empty array.`;
   
@@ -374,7 +374,8 @@ Format your response as a JSON object with these fields. If you cannot find a sp
 Here is the document content:
 ${content}
 
-Return a JSON object with the fields: referenceNumber, correspondenceRef, date, audience, title, details, author, tags, and appendices.`;
+Return a JSON object with the fields: referenceNumber, correspondenceRef, date, audience, title, details, author, tags, and appendices.
+Make sure the appendices content is NOT included in the details field.`;
 
   const messages: OpenAIMessage[] = [
     {
