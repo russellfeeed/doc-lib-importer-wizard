@@ -4,6 +4,10 @@ import { hasOpenAIKey, summarizeWithOpenAI, categorizeWithOpenAI } from "./opena
 import { AiProcessingOptions } from "@/types/document";
 import { CategoryNode } from "@/types/categories";
 import { loadCategories } from "./categoryUtils";
+import * as pdfjs from 'pdfjs-dist';
+
+// Set worker path for pdf.js
+pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
 // Real AI service for document summarization using OpenAI
 export async function generateDocumentSummary(
@@ -74,27 +78,84 @@ export async function generateDocumentCategory(
 
 // Extract text from various document types
 export async function extractTextFromDocument(file: File): Promise<string> {
-  // For demo purposes, we'll return a placeholder text
-  // In production, this would use libraries like pdf.js for PDFs,
-  // mammoth for .docx, etc.
-  
   console.log(`Extracting text from document: ${file.name}, type: ${file.type}, size: ${file.size} bytes`);
   
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      // This is a simplified mock implementation
-      // In a real app, we would actually extract text from the document
+  try {
+    // Handle different file types
+    if (file.type === 'application/pdf') {
+      return await extractTextFromPDF(file);
+    } 
+    else if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || 
+             file.type === 'application/msword') {
+      // For now, we'll use a placeholder for Word documents
+      // In a production app, you'd use mammoth.js or similar
+      return `Content extracted from Word document: ${file.name}`;
+    }
+    else if (file.type === 'text/plain') {
+      return await extractTextFromTxt(file);
+    }
+    else {
+      // For other file types, return a placeholder
+      return `Content from ${file.name} (${file.type})`;
+    }
+  } catch (error) {
+    console.error(`Error extracting text from ${file.name}:`, error);
+    return `Failed to extract content from ${file.name}. Error: ${error instanceof Error ? error.message : String(error)}`;
+  }
+}
+
+// Extract text from PDF files using pdf.js
+async function extractTextFromPDF(file: File): Promise<string> {
+  try {
+    // Convert the file to an ArrayBuffer
+    const arrayBuffer = await file.arrayBuffer();
+    
+    // Load the PDF file
+    const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
+    console.log(`PDF loaded: ${file.name}, pages: ${pdf.numPages}`);
+    
+    let extractedText = '';
+    
+    // Process each page of the PDF
+    for (let i = 1; i <= pdf.numPages; i++) {
+      // Get the page
+      const page = await pdf.getPage(i);
       
-      const mockContent = `This is extracted content from ${file.name}. 
-In a real implementation, we would use libraries specific to each file type to extract the actual text content.
-For PDFs, we might use pdf.js.
-For Word documents, we might use mammoth.js.
-For plain text files, we would simply read the file contents.
-This extracted text would then be sent to an AI service for summarization.`;
+      // Extract text content from the page
+      const textContent = await page.getTextContent();
       
-      console.log(`Text extraction completed for: ${file.name}`);
-      resolve(mockContent);
-    }, 1000);
+      // Extract the text items
+      const pageText = textContent.items
+        .map(item => 'str' in item ? item.str : '')
+        .join(' ');
+      
+      extractedText += pageText + ' ';
+      
+      // Clean up to prevent memory leaks
+      page.cleanup();
+    }
+    
+    console.log(`PDF text extraction completed for: ${file.name}`);
+    return extractedText.trim();
+  } catch (error) {
+    console.error(`Error extracting PDF text from ${file.name}:`, error);
+    throw new Error(`Failed to extract PDF text: ${error instanceof Error ? error.message : String(error)}`);
+  }
+}
+
+// Extract text from plain text files
+async function extractTextFromTxt(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      if (e.target?.result) {
+        resolve(e.target.result as string);
+      } else {
+        reject(new Error('Failed to read text file'));
+      }
+    };
+    reader.onerror = () => reject(new Error('Error reading text file'));
+    reader.readAsText(file);
   });
 }
 
