@@ -10,14 +10,15 @@ export function useDocumentState({
   setCurrentDocIndex: React.Dispatch<React.SetStateAction<number>>;
   setIsEditingAll: React.Dispatch<React.SetStateAction<boolean>>;
   setIsGeneratingAI: React.Dispatch<React.SetStateAction<boolean>>;
-  currentDocument: DocumentFile;
+  currentDocument: DocumentFile | undefined;
 } {
-  const [editedDocuments, setEditedDocuments] = useState<DocumentFile[]>(initialDocuments);
+  const [editedDocuments, setEditedDocuments] = useState<DocumentFile[]>(initialDocuments || []);
   const [currentDocIndex, setCurrentDocIndex] = useState(0);
   const [isEditingAll, setIsEditingAll] = useState(false);
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   
-  const currentDocument = editedDocuments[currentDocIndex];
+  // Make sure we have a valid document at the current index
+  const currentDocument = editedDocuments.length > 0 ? editedDocuments[currentDocIndex] : undefined;
 
   return {
     editedDocuments,

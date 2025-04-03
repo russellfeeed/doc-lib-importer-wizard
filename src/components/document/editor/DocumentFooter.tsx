@@ -32,7 +32,7 @@ const DocumentFooter: React.FC<DocumentFooterProps> = ({
         <Button
           variant="outline"
           onClick={onPrevious}
-          disabled={currentDocIndex === 0}
+          disabled={currentDocIndex === 0 || totalDocuments === 0}
         >
           <ChevronLeft className="mr-2 h-4 w-4" />
           Previous
@@ -40,12 +40,12 @@ const DocumentFooter: React.FC<DocumentFooterProps> = ({
         <Button
           variant="outline"
           onClick={onNext}
-          disabled={currentDocIndex === totalDocuments - 1}
+          disabled={currentDocIndex === totalDocuments - 1 || totalDocuments === 0}
         >
           Next
           <ChevronRight className="ml-2 h-4 w-4" />
         </Button>
-        <Button onClick={onSave}>
+        <Button onClick={onSave} disabled={totalDocuments === 0}>
           <Check className="mr-2 h-4 w-4" />
           Generate CSV
         </Button>
