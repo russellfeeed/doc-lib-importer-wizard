@@ -1,10 +1,11 @@
 
 import React, { useState, useCallback, useRef } from 'react';
-import { Upload, X, FileText, AlertCircle } from 'lucide-react';
+import { Upload, X, FileText, AlertCircle, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DocumentFile } from '@/types/document';
 import { generateUniqueId, formatFileSize, extractFileType } from '@/utils/fileUtils';
 import { toast } from 'sonner';
+import { extractTextFromDocument, generateDocumentSummary } from '@/utils/aiUtils';
 
 interface FileUploaderProps {
   onFilesUploaded: (files: DocumentFile[]) => void;
@@ -14,6 +15,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onFilesUploaded }) => {
   const [files, setFiles] = useState<DocumentFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [aiEnabled, setAiEnabled] = useState(true);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelection = useCallback(async (selectedFiles: FileList | null) => {
@@ -38,31 +40,68 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onFilesUploaded }) => {
       published: false,
       customFields: {},
       customTaxonomies: {},
-      isProcessing: true
+      isProcessing: true,
+      aiProcessing: {
+        status: aiEnabled ? 'processing' : 'idle'
+      }
     }));
     
     setFiles(prevFiles => [...prevFiles, ...newFiles]);
     
-    // Simulate document processing (in a real implementation, we would extract content, summarize with AI, etc.)
-    setTimeout(() => {
-      const processedFiles = newFiles.map(file => ({
-        ...file,
-        isProcessing: false,
-        excerpt: `Auto-generated excerpt for ${file.name}`,
-      }));
-      
-      setFiles(prevFiles => 
-        prevFiles.map(f => 
-          newFiles.find(nf => nf.id === f.id) 
-            ? processedFiles.find(pf => pf.id === f.id) || f 
-            : f
-        )
-      );
-      
-      setIsLoading(false);
-      toast.success(`${newFiles.length} files added successfully`);
-    }, 1500);
-  }, []);
+    // Process each file
+    const processedFiles = await Promise.all(
+      newFiles.map(async (fileObj) => {
+        try {
+          let updatedFile = { ...fileObj, isProcessing: false };
+          
+          // If AI is enabled, extract text and generate a summary
+          if (aiEnabled) {
+            try {
+              const extractedText = await extractTextFromDocument(fileObj.file);
+              const summary = await generateDocumentSummary(extractedText, fileObj.file.name);
+              
+              updatedFile = {
+                ...updatedFile,
+                excerpt: summary,
+                content: extractedText,
+                aiProcessing: {
+                  status: 'completed'
+                }
+              };
+              
+            } catch (error) {
+              console.error("AI processing error:", error);
+              updatedFile = {
+                ...updatedFile,
+                aiProcessing: {
+                  status: 'error',
+                  error: 'Failed to generate AI summary'
+                }
+              };
+            }
+          }
+          
+          return updatedFile;
+        } catch (error) {
+          console.error("Error processing file:", error);
+          return {
+            ...fileObj,
+            isProcessing: false,
+            processingError: 'Failed to process file'
+          };
+        }
+      })
+    );
+    
+    setFiles(prevFiles => 
+      prevFiles.map(f => 
+        processedFiles.find(pf => pf.id === f.id) || f
+      )
+    );
+    
+    setIsLoading(false);
+    toast.success(`${newFiles.length} files added successfully`);
+  }, [aiEnabled]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -109,10 +148,33 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onFilesUploaded }) => {
     onFilesUploaded(files);
   }, [files, onFilesUploaded]);
 
+  const toggleAI = useCallback(() => {
+    setAiEnabled(prev => !prev);
+    toast.info(aiEnabled ? "AI summarization disabled" : "AI summarization enabled");
+  }, [aiEnabled]);
+
   return (
     <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h3 className="text-lg font-medium text-gray-700">Upload Settings</h3>
+        <div className="flex items-center space-x-2">
+          <span className="text-sm text-gray-600">AI Summarization</span>
+          <Button 
+            variant={aiEnabled ? "default" : "outline"} 
+            size="sm"
+            onClick={toggleAI}
+            className={aiEnabled ? "bg-blue-600" : ""}
+          >
+            <Zap className={`h-4 w-4 mr-1 ${aiEnabled ? "text-white" : "text-gray-500"}`} />
+            {aiEnabled ? "Enabled" : "Disabled"}
+          </Button>
+        </div>
+      </div>
+
       <div
-        className={`file-drop-area ${isDragging ? 'active' : ''}`}
+        className={`file-drop-area border-2 border-dashed rounded-lg p-8 transition-all ${
+          isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-blue-400'
+        }`}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
@@ -163,6 +225,21 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onFilesUploaded }) => {
                     <div className="flex items-center text-red-500">
                       <AlertCircle className="h-4 w-4 mr-1" />
                       <span>Error</span>
+                    </div>
+                  ) : file.aiProcessing?.status === 'processing' ? (
+                    <div className="flex items-center text-blue-500">
+                      <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full mr-2" />
+                      <span>AI Summarizing...</span>
+                    </div>
+                  ) : file.aiProcessing?.status === 'error' ? (
+                    <div className="flex items-center text-red-500">
+                      <AlertCircle className="h-4 w-4 mr-1" />
+                      <span>AI Error</span>
+                    </div>
+                  ) : file.aiProcessing?.status === 'completed' ? (
+                    <div className="flex items-center text-green-500">
+                      <Zap className="h-4 w-4 mr-1" />
+                      <span>AI Summary Ready</span>
                     </div>
                   ) : null}
                   <Button

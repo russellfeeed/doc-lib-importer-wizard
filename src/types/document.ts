@@ -18,6 +18,10 @@ export interface DocumentFile {
   customTaxonomies: Record<string, string>;
   isProcessing?: boolean;
   processingError?: string;
+  aiProcessing?: {
+    status: 'idle' | 'processing' | 'completed' | 'error';
+    error?: string;
+  };
 }
 
 export interface CSVData {
