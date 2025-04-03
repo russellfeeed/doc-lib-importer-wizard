@@ -6,6 +6,7 @@ import { Switch } from '@/components/ui/switch';
 import { FileTextIcon, PlusCircleIcon, UploadIcon } from 'lucide-react';
 import DropZone from '@/components/file-uploader/DropZone';
 import { Card } from '@/components/ui/card';
+import CircularLetterList from './CircularLetterList';
 
 interface CircularLetterUploaderProps {
   onLettersUploaded: (letters: any[]) => void;
@@ -59,53 +60,11 @@ const CircularLetterUploader: React.FC<CircularLetterUploaderProps> = ({ onLette
         </div>
       </DropZone>
 
-      {/* Letter List */}
-      {letters.length > 0 && (
-        <div className="space-y-4">
-          <h4 className="font-medium">Uploaded Circular Letters ({letters.length})</h4>
-          <div className="grid grid-cols-1 gap-4">
-            {letters.map((letter) => (
-              <Card key={letter.id} className="p-4 flex justify-between items-center">
-                <div className="flex items-center">
-                  <div className="mr-3 p-2 bg-blue-50 rounded-full">
-                    <FileTextIcon className="h-5 w-5 text-blue-500" />
-                  </div>
-                  <div>
-                    <p className="font-medium">{letter.name}</p>
-                    <p className="text-sm text-gray-500">{letter.fileSize} • {letter.fileType}</p>
-                  </div>
-                </div>
-                
-                <div className="flex items-center">
-                  {letter.isProcessing ? (
-                    <div className="text-sm text-blue-500 flex items-center">
-                      <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full mr-2"></div>
-                      Processing...
-                    </div>
-                  ) : letter.processingError ? (
-                    <div className="text-sm text-red-500">{letter.processingError}</div>
-                  ) : letter.aiProcessing?.status === 'error' ? (
-                    <div className="text-sm text-red-500">{letter.aiProcessing.error}</div>
-                  ) : letter.aiProcessing?.status === 'completed' ? (
-                    <div className="text-sm text-green-500">Processed</div>
-                  ) : (
-                    <div className="text-sm text-gray-500">Ready</div>
-                  )}
-                  
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="ml-2 text-gray-500 hover:text-red-500"
-                    onClick={() => handleRemoveLetter(letter.id)}
-                  >
-                    Remove
-                  </Button>
-                </div>
-              </Card>
-            ))}
-          </div>
-        </div>
-      )}
+      {/* Use the dedicated CircularLetterList component */}
+      <CircularLetterList 
+        letters={letters} 
+        onRemoveLetter={handleRemoveLetter} 
+      />
 
       <div className="flex justify-between pt-4">
         <Button

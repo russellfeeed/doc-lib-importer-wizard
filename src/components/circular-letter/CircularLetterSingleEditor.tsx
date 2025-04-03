@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { CircularLetter, AppendixItem } from '@/types/circular-letter';
 import { Input } from '@/components/ui/input';
@@ -73,10 +72,8 @@ const CircularLetterSingleEditor: React.FC<CircularLetterSingleEditorProps> = ({
   };
 
   const getMarkdownContent = () => {
-    // Combine title, details and appendices into a single markdown document
     let markdown = `# ${currentLetter.title || 'Circular Letter'}\n\n`;
     
-    // Add metadata section
     markdown += `## Metadata\n\n`;
     markdown += `- **Reference Number**: ${currentLetter.referenceNumber || 'N/A'}\n`;
     markdown += `- **Correspondence Reference**: ${currentLetter.correspondenceRef || 'N/A'}\n`;
@@ -84,11 +81,9 @@ const CircularLetterSingleEditor: React.FC<CircularLetterSingleEditorProps> = ({
     markdown += `- **Audience**: ${currentLetter.audience || 'N/A'}\n`;
     markdown += `- **Author**: ${currentLetter.author || 'N/A'}\n\n`;
     
-    // Add main content
     markdown += `## Content\n\n`;
     markdown += convertToMarkdown(currentLetter.details) + '\n\n';
     
-    // Add appendices
     if (currentLetter.appendices && currentLetter.appendices.length > 0) {
       markdown += `## Appendices\n\n`;
       
@@ -254,7 +249,6 @@ const CircularLetterSingleEditor: React.FC<CircularLetterSingleEditorProps> = ({
           />
         </div>
         
-        {/* Appendices Section */}
         <div className="mt-6">
           <div className="flex justify-between items-center mb-2">
             <label className="block text-sm font-medium">Appendices</label>
@@ -319,17 +313,6 @@ const CircularLetterSingleEditor: React.FC<CircularLetterSingleEditorProps> = ({
               No appendices found. Add an appendix using the button above.
             </div>
           )}
-        </div>
-        
-        <div className="mt-6">
-          <label className="block text-sm font-medium mb-1">Document Content Preview</label>
-          <div className="border rounded-md p-3 bg-gray-50 text-gray-700 h-32 overflow-y-auto text-sm">
-            {currentLetter.content ? (
-              <div className="whitespace-pre-wrap font-mono">{currentLetter.content.substring(0, 500)}...</div>
-            ) : (
-              <div className="text-gray-400 italic">No content extracted</div>
-            )}
-          </div>
         </div>
       </Card>
       
