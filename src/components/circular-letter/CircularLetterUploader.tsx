@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { useCircularLetterUpload } from '@/hooks/useCircularLetterUpload';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
@@ -13,6 +13,8 @@ interface CircularLetterUploaderProps {
 }
 
 const CircularLetterUploader: React.FC<CircularLetterUploaderProps> = ({ onLettersUploaded }) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
   const {
     letters,
     isDragging,
@@ -28,6 +30,13 @@ const CircularLetterUploader: React.FC<CircularLetterUploaderProps> = ({ onLette
     toggleAI
   } = useCircularLetterUpload({ onLettersUploaded });
 
+  // Function to trigger the file input click
+  const triggerFileInput = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -38,13 +47,22 @@ const CircularLetterUploader: React.FC<CircularLetterUploaderProps> = ({ onLette
         </div>
       </div>
 
+      <input
+        type="file"
+        multiple
+        className="hidden"
+        ref={fileInputRef}
+        onChange={handleFileInputChange}
+        accept=".pdf,.doc,.docx,.txt,.rtf,.odt"
+      />
+
       <DropZone
         isDragging={isDragging}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
         onFileInputChange={handleFileInputChange}
-        onBrowseClick={handleBrowseClick}
+        onBrowseClick={triggerFileInput}
       >
         <div className="text-center">
           <p className="mb-4 text-sm text-gray-500">
@@ -52,7 +70,7 @@ const CircularLetterUploader: React.FC<CircularLetterUploaderProps> = ({ onLette
           </p>
           <Button 
             variant="outline" 
-            onClick={handleBrowseClick} 
+            onClick={triggerFileInput} 
             className="mt-2"
           >
             Browse Files
@@ -69,7 +87,7 @@ const CircularLetterUploader: React.FC<CircularLetterUploaderProps> = ({ onLette
       <div className="flex justify-between pt-4">
         <Button
           variant="outline"
-          onClick={handleBrowseClick}
+          onClick={triggerFileInput}
           disabled={isLoading}
         >
           <PlusCircleIcon className="h-4 w-4 mr-2" />
