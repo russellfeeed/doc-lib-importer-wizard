@@ -78,6 +78,8 @@ export async function extractTextFromDocument(file: File): Promise<string> {
   // In production, this would use libraries like pdf.js for PDFs,
   // mammoth for .docx, etc.
   
+  console.log(`Extracting text from document: ${file.name}, type: ${file.type}, size: ${file.size} bytes`);
+  
   return new Promise((resolve) => {
     setTimeout(() => {
       // This is a simplified mock implementation
@@ -90,6 +92,7 @@ For Word documents, we might use mammoth.js.
 For plain text files, we would simply read the file contents.
 This extracted text would then be sent to an AI service for summarization.`;
       
+      console.log(`Text extraction completed for: ${file.name}`);
       resolve(mockContent);
     }, 1000);
   });

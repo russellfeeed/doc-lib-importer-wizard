@@ -114,6 +114,8 @@ ${content}`;
   };
 
   try {
+    console.log(`Sending OpenAI request for document: ${fileName}`);
+    
     const response = await fetch(OPENAI_API_URL, {
       method: "POST",
       headers: {
@@ -132,6 +134,11 @@ ${content}`;
     }
 
     const data = await response.json() as OpenAIResponse;
+    console.log(`Received OpenAI response for document: ${fileName}`, {
+      model: data.model,
+      usage: data.usage,
+    });
+    
     const summary = data.choices[0]?.message.content.trim();
 
     if (!summary) {

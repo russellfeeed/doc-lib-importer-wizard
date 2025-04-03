@@ -2,6 +2,7 @@
 import { toast } from 'sonner';
 import { DocumentFile } from '@/types/document';
 import { generateDocumentSummary, generateDocumentCategory } from '@/utils/aiUtils';
+import { hasOpenAIKey } from '@/utils/openaiClient';
 
 interface UseAiGenerationProps {
   editedDocuments: DocumentFile[];
@@ -19,8 +20,13 @@ export function useAiGeneration({
   
   const handleGenerateExcerpt = async () => {
     const currentDocument = editedDocuments[currentDocIndex];
-    if (!currentDocument.file) {
-      toast.error("Cannot generate excerpt: No file attached");
+    if (!currentDocument) {
+      toast.error("No document selected");
+      return;
+    }
+    
+    if (!hasOpenAIKey()) {
+      toast.error("OpenAI API key is required. Please set it in the API Key Manager");
       return;
     }
     
@@ -35,10 +41,14 @@ export function useAiGeneration({
         } : doc
       ));
       
+      // Get the content to summarize
+      const contentToSummarize = currentDocument.content || 
+        (currentDocument.file ? `Document: ${currentDocument.file.name}` : 'No content available');
+      
       // Generate the summary using OpenAI
       const summary = await generateDocumentSummary(
-        currentDocument.content || 'No content available', 
-        currentDocument.file.name
+        contentToSummarize, 
+        currentDocument.file?.name || currentDocument.name
       );
       
       // Update document with the new summary
