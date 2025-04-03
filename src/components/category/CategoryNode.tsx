@@ -9,7 +9,7 @@ import { toast } from "@/components/ui/use-toast";
 
 interface CategoryNodeProps {
   node: CategoryNodeType;
-  onAddChild: (parentId: string) => void;
+  onAddChild: (parentId: string, name: string) => void;
   onDelete: (categoryId: string) => void;
   onDragStart: (e: React.DragEvent, nodeId: string) => void;
   onDrop: (e: React.DragEvent, nodeId: string | null) => void;
@@ -41,7 +41,7 @@ const CategoryNode: React.FC<CategoryNodeProps> = ({
   const handleSubmitNewChild = (e: React.FormEvent) => {
     e.preventDefault();
     if (newChildName.trim()) {
-      onAddChild(node.id);
+      onAddChild(node.id, newChildName);
       setNewChildName("");
       setIsAdding(false);
     }

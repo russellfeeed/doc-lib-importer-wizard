@@ -128,7 +128,7 @@ const CategoryManager: React.FC = () => {
               <CategoryNode
                 key={category.id}
                 node={category}
-                onAddChild={(parentId) => addNewCategory(parentId, "New Category")}
+                onAddChild={(parentId, name) => addNewCategory(parentId, name)}
                 onDelete={deleteCategory}
                 onDragStart={handleDragStart}
                 onDrop={handleDrop}
