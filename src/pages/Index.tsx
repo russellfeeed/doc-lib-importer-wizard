@@ -1,49 +1,60 @@
 
 import React from 'react';
 import { Link } from 'react-router-dom';
-import DocumentImporter from '@/components/DocumentImporter';
-import { Button } from '@/components/ui/button';
+import { Card } from '@/components/ui/card';
+import { FileText, FileSignature, BarChart3 } from 'lucide-react';
 
-const Index = () => {
+const Index: React.FC = () => {
   return (
-    <div className="min-h-screen bg-gradient-to-b from-white to-blue-50">
-      <header className="container mx-auto py-6">
-        <h1 className="text-3xl md:text-4xl font-bold text-blue-700">Document Library Importer</h1>
-        <p className="text-gray-600 mt-2">
-          Upload your documents to generate a CSV file for Barn2's Document Library WordPress plugin
-        </p>
-        <div className="flex items-center mt-2 bg-blue-50 p-3 rounded-md border border-blue-100">
-          <span className="text-blue-600 font-semibold flex items-center">
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 mr-2">
-              <path d="M12 2v8a2 2 0 0 0 2 2h8" />
-              <path d="M2 8v13a1 1 0 0 0 1 1h18a1 1 0 0 0 1-1V19" />
-              <path d="M9 18v-9" />
-              <path d="M9 9h11.5a2.5 2.5 0 0 1 0 5h-7" />
-              <path d="M13 14h5.5a2.5 2.5 0 0 1 0 5H13" />
-              <path d="M9 14h1" />
-            </svg>
-            OpenAI-powered document summarization with professional, concise excerpts!
-          </span>
-        </div>
-        <div className="mt-4 flex justify-end">
-          <Button asChild variant="outline" className="gap-2">
-            <Link to="/categories">
-              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-folder">
-                <path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"></path>
-              </svg>
-              Manage Categories
-            </Link>
-          </Button>
-        </div>
-      </header>
-      
-      <main className="container mx-auto py-6">
-        <DocumentImporter />
-      </main>
-      
-      <footer className="container mx-auto py-6 mt-10 border-t border-blue-100 text-center text-gray-500 text-sm">
-        &copy; {new Date().getFullYear()} Document Library Importer for Barn2's WordPress plugin
-      </footer>
+    <div className="container mx-auto px-4 py-8">
+      <h1 className="text-3xl font-bold mb-4">Document Management System</h1>
+      <p className="text-gray-600 mb-8">
+        Upload, categorize, and manage your documents with AI-powered information extraction.
+      </p>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <Link to="/documents" className="hover:no-underline">
+          <Card className="p-6 hover:shadow-md transition-shadow">
+            <div className="flex flex-col items-center text-center">
+              <div className="bg-blue-100 p-4 rounded-full mb-4">
+                <FileText className="h-8 w-8 text-blue-600" />
+              </div>
+              <h2 className="text-xl font-semibold mb-2">Document Library</h2>
+              <p className="text-gray-600">
+                Upload and manage documents. AI will help categorize and tag documents automatically.
+              </p>
+            </div>
+          </Card>
+        </Link>
+
+        <Link to="/circular-letters" className="hover:no-underline">
+          <Card className="p-6 hover:shadow-md transition-shadow">
+            <div className="flex flex-col items-center text-center">
+              <div className="bg-green-100 p-4 rounded-full mb-4">
+                <FileSignature className="h-8 w-8 text-green-600" />
+              </div>
+              <h2 className="text-xl font-semibold mb-2">Circular Letters</h2>
+              <p className="text-gray-600">
+                Manage circular letters and announcements with AI-powered information extraction.
+              </p>
+            </div>
+          </Card>
+        </Link>
+
+        <Link to="/categories" className="hover:no-underline">
+          <Card className="p-6 hover:shadow-md transition-shadow">
+            <div className="flex flex-col items-center text-center">
+              <div className="bg-purple-100 p-4 rounded-full mb-4">
+                <BarChart3 className="h-8 w-8 text-purple-600" />
+              </div>
+              <h2 className="text-xl font-semibold mb-2">Category Manager</h2>
+              <p className="text-gray-600">
+                Create and manage document categories to keep your library organized.
+              </p>
+            </div>
+          </Card>
+        </Link>
+      </div>
     </div>
   );
 };

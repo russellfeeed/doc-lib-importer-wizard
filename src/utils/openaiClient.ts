@@ -328,3 +328,125 @@ ${content.substring(0, 8000)} // Limit content to avoid token limits
     throw error;
   }
 }
+
+/**
+ * Extract specific data from circular letters using OpenAI
+ */
+export async function extractCircularLetterDataWithOpenAI(
+  content: string,
+  fileName: string,
+  options: AiProcessingOptions = {}
+): Promise<{
+  referenceNumber: string;
+  date: string;
+  audience: string;
+  title: string;
+  details: string;
+  author: string;
+}> {
+  if (!hasOpenAIKey()) {
+    throw new Error("OpenAI API key not set");
+  }
+
+  const model = options.model || DEFAULT_MODEL;
+  const maxTokens = options.maxTokens || 500;
+  const temperature = options.temperature || 0.3;
+
+  const systemPrompt = `You are a data extraction specialist that analyzes circular letters and extracts specific information from them. Your task is to extract the following information from the document:
+1. Reference Number: The document's unique identifier or reference code
+2. Date: The date when the circular letter was issued, in YYYY-MM-DD format
+3. Audience: The intended recipients or departments that should read this circular
+4. Title: The main title or subject of the circular letter
+5. Details: A brief summary (2-3 sentences) of the main points or announcements
+6. Author/Sender: The person, department, or authority who issued the circular letter
+
+Format your response as a JSON object with these fields. If you cannot find a specific field, use an empty string as value.`;
+  
+  const userPrompt = `Extract information from this circular letter titled "${fileName}".
+
+Here is the document content:
+${content}
+
+Return a JSON object with the fields: referenceNumber, date, audience, title, details, and author.`;
+
+  const messages: OpenAIMessage[] = [
+    {
+      role: "system",
+      content: systemPrompt,
+    },
+    {
+      role: "user",
+      content: userPrompt,
+    },
+  ];
+
+  const requestBody: OpenAIRequestBody = {
+    model,
+    messages,
+    max_tokens: maxTokens,
+    temperature,
+  };
+
+  try {
+    console.log(`Sending OpenAI request for circular letter: ${fileName}`);
+    
+    const response = await fetch(OPENAI_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error("OpenAI API error:", errorData);
+      throw new Error(
+        `OpenAI API error: ${errorData.error?.message || response.statusText}`
+      );
+    }
+
+    const data = await response.json() as OpenAIResponse;
+    console.log(`Received OpenAI response for circular letter: ${fileName}`, {
+      model: data.model,
+      usage: data.usage,
+    });
+    
+    const resultText = data.choices[0]?.message.content.trim();
+
+    if (!resultText) {
+      throw new Error("OpenAI returned an empty response");
+    }
+
+    try {
+      // Parse the JSON response
+      const jsonMatch = resultText.match(/\{[\s\S]*\}/);
+      const jsonStr = jsonMatch ? jsonMatch[0] : resultText;
+      const extractedData = JSON.parse(jsonStr);
+      
+      return {
+        referenceNumber: extractedData.referenceNumber || '',
+        date: extractedData.date || '',
+        audience: extractedData.audience || '',
+        title: extractedData.title || '',
+        details: extractedData.details || '',
+        author: extractedData.author || ''
+      };
+    } catch (error) {
+      console.error("Error parsing OpenAI response:", error);
+      // Fallback to empty values if parsing fails
+      return {
+        referenceNumber: '',
+        date: '',
+        audience: '',
+        title: '',
+        details: '',
+        author: ''
+      };
+    }
+  } catch (error) {
+    console.error("Error calling OpenAI API:", error);
+    throw error;
+  }
+}

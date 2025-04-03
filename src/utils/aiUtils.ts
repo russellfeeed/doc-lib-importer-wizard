@@ -1,5 +1,6 @@
+
 import { toast } from "sonner";
-import { hasOpenAIKey, summarizeWithOpenAI, categorizeWithOpenAI, generateTagsWithOpenAI } from "./openaiClient";
+import { hasOpenAIKey, summarizeWithOpenAI, categorizeWithOpenAI, generateTagsWithOpenAI, extractCircularLetterDataWithOpenAI } from "./openaiClient";
 import { AiProcessingOptions } from "@/types/document";
 import { CategoryNode } from "@/types/categories";
 import { loadCategories } from "./categoryUtils";
@@ -214,6 +215,49 @@ export async function processDocumentWithAI(
   } catch (error) {
     console.error("Error processing document with AI:", error);
     toast.error("Failed to process document with AI");
+    throw error;
+  }
+}
+
+// Process a circular letter with AI to extract specific fields
+export async function processCircularLetterWithAI(
+  file: File,
+  options?: AiProcessingOptions
+): Promise<{ 
+  content: string, 
+  referenceNumber: string, 
+  date: string,
+  audience: string,
+  title: string,
+  details: string,
+  author: string
+}> {
+  try {
+    // 1. Extract text from document
+    const extractedText = await extractTextFromDocument(file);
+    
+    // 2. Use AI to extract specific fields from the circular letter
+    const { 
+      referenceNumber, 
+      date, 
+      audience, 
+      title, 
+      details, 
+      author 
+    } = await extractCircularLetterDataWithOpenAI(extractedText, file.name, options);
+    
+    return {
+      content: extractedText,
+      referenceNumber,
+      date,
+      audience,
+      title,
+      details,
+      author
+    };
+  } catch (error) {
+    console.error("Error processing circular letter with AI:", error);
+    toast.error("Failed to process circular letter with AI");
     throw error;
   }
 }
