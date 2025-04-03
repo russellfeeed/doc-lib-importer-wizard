@@ -45,9 +45,18 @@ const CircularLetterUploader: React.FC<CircularLetterUploaderProps> = ({ onLette
         onFileInputChange={handleFileInputChange}
         onBrowseClick={handleBrowseClick}
       >
-        <p className="mb-2 text-sm text-gray-500">
-          Drop PDF files here. Circular Letters will be analyzed to extract reference numbers, dates, audiences, titles, details, and authors.
-        </p>
+        <div className="text-center">
+          <p className="mb-4 text-sm text-gray-500">
+            Drop PDF files here. Circular Letters will be analyzed to extract reference numbers, dates, audiences, titles, details, and authors.
+          </p>
+          <Button 
+            variant="outline" 
+            onClick={handleBrowseClick} 
+            className="mt-2"
+          >
+            Browse Files
+          </Button>
+        </div>
       </DropZone>
 
       {/* Letter List */}
