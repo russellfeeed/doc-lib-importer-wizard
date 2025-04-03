@@ -1,6 +1,8 @@
 
 import React from 'react';
+import { Link } from 'react-router-dom';
 import DocumentImporter from '@/components/DocumentImporter';
+import { Button } from '@/components/ui/button';
 
 const Index = () => {
   return (
@@ -22,6 +24,16 @@ const Index = () => {
             </svg>
             OpenAI-powered document summarization with professional, concise excerpts!
           </span>
+        </div>
+        <div className="mt-4 flex justify-end">
+          <Button asChild variant="outline" className="gap-2">
+            <Link to="/categories">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-folder">
+                <path d="M4 20h16a2 2 0 0 0 2-2V8a2 2 0 0 0-2-2h-7.93a2 2 0 0 1-1.66-.9l-.82-1.2A2 2 0 0 0 7.93 3H4a2 2 0 0 0-2 2v13c0 1.1.9 2 2 2Z"></path>
+              </svg>
+              Manage Categories
+            </Link>
+          </Button>
         </div>
       </header>
       
