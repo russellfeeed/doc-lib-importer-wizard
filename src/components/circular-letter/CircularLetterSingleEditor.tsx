@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { CircularLetter, AppendixItem } from '@/types/circular-letter';
 import { Input } from '@/components/ui/input';
@@ -78,6 +79,7 @@ const CircularLetterSingleEditor: React.FC<CircularLetterSingleEditorProps> = ({
     // Add metadata section
     markdown += `## Metadata\n\n`;
     markdown += `- **Reference Number**: ${currentLetter.referenceNumber || 'N/A'}\n`;
+    markdown += `- **Correspondence Reference**: ${currentLetter.correspondenceRef || 'N/A'}\n`;
     markdown += `- **Date**: ${currentLetter.date || 'N/A'}\n`;
     markdown += `- **Audience**: ${currentLetter.audience || 'N/A'}\n`;
     markdown += `- **Author**: ${currentLetter.author || 'N/A'}\n\n`;
