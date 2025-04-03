@@ -10,6 +10,7 @@ interface DocumentHeaderProps {
   isGeneratingAI: boolean;
   onGenerateAllExcerpts: () => void;
   onGenerateAllCategories?: () => void;
+  onGenerateAllTags?: () => void;
   onToggleView: () => void;
 }
 
@@ -19,6 +20,7 @@ const DocumentHeader: React.FC<DocumentHeaderProps> = ({
   isGeneratingAI,
   onGenerateAllExcerpts,
   onGenerateAllCategories,
+  onGenerateAllTags,
   onToggleView
 }) => {
   return (
@@ -46,6 +48,17 @@ const DocumentHeader: React.FC<DocumentHeaderProps> = ({
           >
             <Tag className="mr-2 h-4 w-4" />
             Categorize All
+          </Button>
+        )}
+        {onGenerateAllTags && (
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={onGenerateAllTags}
+            disabled={isGeneratingAI}
+          >
+            <Tag className="mr-2 h-4 w-4" />
+            Tag All
           </Button>
         )}
         <Button 

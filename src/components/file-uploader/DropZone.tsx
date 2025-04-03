@@ -10,6 +10,7 @@ interface DropZoneProps {
   onDrop: (e: React.DragEvent) => void;
   onFileInputChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   onBrowseClick: () => void;
+  children?: React.ReactNode;
 }
 
 const DropZone: React.FC<DropZoneProps> = ({
@@ -19,6 +20,7 @@ const DropZone: React.FC<DropZoneProps> = ({
   onDrop,
   onFileInputChange,
   onBrowseClick,
+  children
 }) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -47,18 +49,20 @@ const DropZone: React.FC<DropZoneProps> = ({
         accept=".pdf,.doc,.docx,.txt,.rtf,.odt,.xls,.xlsx,.ppt,.pptx"
       />
       
-      <div className="text-center">
-        <Upload className="mx-auto h-12 w-12 text-gray-400" />
-        <h3 className="mt-2 text-lg font-medium text-gray-700">Drag & drop your files here</h3>
-        <p className="mt-1 text-sm text-gray-500">Supports PDF, Word, Excel, PowerPoint and text files</p>
-        <Button 
-          variant="outline" 
-          onClick={handleBrowseClick} 
-          className="mt-4"
-        >
-          Browse Files
-        </Button>
-      </div>
+      {children || (
+        <div className="text-center">
+          <Upload className="mx-auto h-12 w-12 text-gray-400" />
+          <h3 className="mt-2 text-lg font-medium text-gray-700">Drag & drop your files here</h3>
+          <p className="mt-1 text-sm text-gray-500">Supports PDF, Word, Excel, PowerPoint and text files</p>
+          <Button 
+            variant="outline" 
+            onClick={handleBrowseClick} 
+            className="mt-4"
+          >
+            Browse Files
+          </Button>
+        </div>
+      )}
     </div>
   );
 };

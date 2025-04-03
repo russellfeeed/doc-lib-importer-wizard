@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import CategoryNode from "./CategoryNode";
 import { useCategories } from "@/context/CategoryContext";
+import { CategoryNode as CategoryNodeType } from "@/types/categories";
 
 const CategoryManager: React.FC = () => {
   const { hierarchy, addNewCategory, deleteCategory, moveNode } = useCategories();
@@ -40,9 +41,9 @@ const CategoryManager: React.FC = () => {
 
   // Helper function to find a category by ID
   const findCategoryById = (
-    categories: CategoryNode[],
+    categories: CategoryNodeType[],
     id: string
-  ): CategoryNode | null => {
+  ): CategoryNodeType | null => {
     for (const category of categories) {
       if (category.id === id) {
         return category;
