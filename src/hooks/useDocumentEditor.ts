@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { DocumentFile } from '@/types/document';
 import { toast } from 'sonner';
-import { generateDocumentSummary } from '@/utils/aiUtils';
+import { generateDocumentSummary, generateDocumentCategory } from '@/utils/aiUtils';
 
 export function useDocumentEditor(initialDocuments: DocumentFile[], onSave: (documents: DocumentFile[]) => void) {
   const [editedDocuments, setEditedDocuments] = useState<DocumentFile[]>(initialDocuments);
@@ -92,6 +92,66 @@ export function useDocumentEditor(initialDocuments: DocumentFile[], onSave: (doc
     }
   };
 
+  const handleGenerateCategory = async () => {
+    if (!currentDocument.file) {
+      toast.error("Cannot determine category: No file attached");
+      return;
+    }
+    
+    setIsGeneratingAI(true);
+    
+    try {
+      // Update document to show processing state
+      setEditedDocuments(prev => prev.map((doc, index) =>
+        index === currentDocIndex ? { 
+          ...doc, 
+          aiProcessing: { status: 'processing' } 
+        } : doc
+      ));
+      
+      // Generate the category using OpenAI
+      const category = await generateDocumentCategory(
+        currentDocument.content || 'No content available', 
+        currentDocument.file.name
+      );
+      
+      if (category) {
+        // Update document with the new category
+        setEditedDocuments(prev => prev.map((doc, index) =>
+          index === currentDocIndex ? { 
+            ...doc, 
+            categories: category,
+            aiProcessing: { 
+              status: 'completed',
+              model: 'gpt-4o-mini' // Default model
+            } 
+          } : doc
+        ));
+        
+        toast.success(`Document categorized as: ${category}`);
+      } else {
+        toast.warning("AI couldn't determine a category for this document");
+      }
+    } catch (error) {
+      console.error("Error generating AI category:", error);
+      
+      // Update document to show error state
+      setEditedDocuments(prev => prev.map((doc, index) =>
+        index === currentDocIndex ? { 
+          ...doc, 
+          aiProcessing: { 
+            status: 'error',
+            error: error instanceof Error ? error.message : 'Failed to determine category'
+          } 
+        } : doc
+      ));
+      
+      toast.error("Failed to determine document category");
+    } finally {
+      setIsGeneratingAI(false);
+    }
+  };
+
   const handleSaveAll = () => {
     if (editedDocuments.some(doc => !doc.name)) {
       toast.error("All documents must have a name");
@@ -175,6 +235,77 @@ export function useDocumentEditor(initialDocuments: DocumentFile[], onSave: (doc
     toast.success("Finished generating AI excerpts");
   };
 
+  const handleGenerateAllCategories = async () => {
+    setIsGeneratingAI(true);
+    
+    const hasFilesToProcess = editedDocuments.some(doc => 
+      doc.file && (!doc.categories || doc.categories.trim() === '')
+    );
+    
+    if (!hasFilesToProcess) {
+      toast.info("No documents need AI category detection");
+      setIsGeneratingAI(false);
+      return;
+    }
+    
+    toast.info("Determining categories for all documents...");
+    
+    // Create a copy of documents to update
+    const docsInProgress = [...editedDocuments];
+    
+    // Process each document that needs a category
+    for (let i = 0; i < docsInProgress.length; i++) {
+      const doc = docsInProgress[i];
+      
+      // Skip documents that already have categories
+      if (!doc.file || (doc.categories && doc.categories.trim() !== '')) continue;
+      
+      try {
+        // Update status to processing
+        docsInProgress[i] = {
+          ...doc,
+          aiProcessing: { status: 'processing' }
+        };
+        setEditedDocuments([...docsInProgress]);
+        
+        // Generate category using OpenAI
+        const category = await generateDocumentCategory(
+          doc.content || 'No content available',
+          doc.file.name
+        );
+        
+        // Update with new category
+        if (category) {
+          docsInProgress[i] = {
+            ...doc,
+            categories: category,
+            aiProcessing: { 
+              status: 'completed',
+              model: 'gpt-4o-mini' // Default model
+            }
+          };
+          setEditedDocuments([...docsInProgress]);
+        }
+        
+      } catch (error) {
+        console.error(`Error determining category for document ${i}:`, error);
+        
+        // Update with error status
+        docsInProgress[i] = {
+          ...doc,
+          aiProcessing: {
+            status: 'error',
+            error: error instanceof Error ? error.message : 'Failed to determine category'
+          }
+        };
+        setEditedDocuments([...docsInProgress]);
+      }
+    }
+    
+    setIsGeneratingAI(false);
+    toast.success("Finished determining document categories");
+  };
+
   return {
     editedDocuments,
     currentDocIndex,
@@ -186,8 +317,10 @@ export function useDocumentEditor(initialDocuments: DocumentFile[], onSave: (doc
     handleNext,
     handlePrevious,
     handleGenerateExcerpt,
+    handleGenerateCategory,
     handleSaveAll,
     toggleEditAll,
     handleGenerateAllExcerpts,
+    handleGenerateAllCategories,
   };
 }

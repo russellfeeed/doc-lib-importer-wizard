@@ -1,6 +1,7 @@
 
 import { toast } from "sonner";
 import { AiProcessingOptions } from "@/types/document";
+import { CategoryNode } from "@/types/categories";
 
 const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
 
@@ -140,6 +141,103 @@ ${content}`;
     return summary;
   } catch (error) {
     console.error("Error calling OpenAI API:", error);
+    throw error;
+  }
+}
+
+/**
+ * Determine the most appropriate category for a document based on its content
+ */
+export async function categorizeWithOpenAI(
+  content: string,
+  fileName: string,
+  categories: CategoryNode[],
+  options: AiProcessingOptions = {}
+): Promise<string> {
+  if (!hasOpenAIKey()) {
+    throw new Error("OpenAI API key not set");
+  }
+
+  if (!categories || categories.length === 0) {
+    throw new Error("No categories provided for categorization");
+  }
+
+  // Format category hierarchy into a readable format for the AI
+  const formatCategories = (nodes: CategoryNode[], indent = 0): string => {
+    return nodes.map(cat => {
+      const prefix = ' '.repeat(indent);
+      const children = cat.children.length > 0 
+        ? `\n${formatCategories(cat.children, indent + 2)}` 
+        : '';
+      return `${prefix}- ${cat.name}${children}`;
+    }).join('\n');
+  };
+
+  const categoryHierarchy = formatCategories(categories);
+  
+  const model = options.model || DEFAULT_MODEL;
+  const maxTokens = options.maxTokens || 300;
+  const temperature = options.temperature || 0.3;
+
+  const systemPrompt = `You are a document categorization assistant. Your task is to analyze document content and assign it to the most appropriate category from a predefined hierarchy.`;
+  
+  const userPrompt = `Analyze this document titled "${fileName}" and determine the most appropriate category from the following hierarchy. 
+  
+Return the full category path using " > " as a separator (e.g., "Main Category > Subcategory"). If the document doesn't fit any category well, choose the closest match. Only return the category path, nothing else.
+
+Available categories:
+${categoryHierarchy}
+
+Document content:
+${content.substring(0, 8000)} // Limit content to avoid token limits
+`;
+
+  const messages: OpenAIMessage[] = [
+    {
+      role: "system",
+      content: systemPrompt,
+    },
+    {
+      role: "user",
+      content: userPrompt,
+    },
+  ];
+
+  const requestBody: OpenAIRequestBody = {
+    model,
+    messages,
+    max_tokens: maxTokens,
+    temperature,
+  };
+
+  try {
+    const response = await fetch(OPENAI_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error("OpenAI API error:", errorData);
+      throw new Error(
+        `OpenAI API error: ${errorData.error?.message || response.statusText}`
+      );
+    }
+
+    const data = await response.json() as OpenAIResponse;
+    const categoryPath = data.choices[0]?.message.content.trim();
+
+    if (!categoryPath) {
+      throw new Error("OpenAI returned an empty category");
+    }
+
+    return categoryPath;
+  } catch (error) {
+    console.error("Error calling OpenAI API for categorization:", error);
     throw error;
   }
 }

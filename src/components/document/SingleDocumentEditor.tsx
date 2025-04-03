@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
-import { ChevronRight, ChevronLeft, FileText, Edit, Check, Zap } from 'lucide-react';
+import { ChevronRight, ChevronLeft, FileText, Edit, Check, Zap, Tag } from 'lucide-react';
 import { DocumentFile } from '@/types/document';
 
 interface SingleDocumentEditorProps {
@@ -16,7 +16,9 @@ interface SingleDocumentEditorProps {
   onPrevious: () => void;
   onNext: () => void;
   onGenerateExcerpt: () => void;
+  onGenerateCategory?: () => void;
   onGenerateAllExcerpts: () => void;
+  onGenerateAllCategories?: () => void;
   onToggleView: () => void;
   onSave: () => void;
   onBack: () => void;
@@ -31,7 +33,9 @@ const SingleDocumentEditor: React.FC<SingleDocumentEditorProps> = ({
   onPrevious,
   onNext,
   onGenerateExcerpt,
+  onGenerateCategory,
   onGenerateAllExcerpts,
+  onGenerateAllCategories,
   onToggleView,
   onSave,
   onBack
@@ -53,6 +57,17 @@ const SingleDocumentEditor: React.FC<SingleDocumentEditorProps> = ({
             <Zap className="mr-2 h-4 w-4" />
             Generate All Excerpts
           </Button>
+          {onGenerateAllCategories && (
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={onGenerateAllCategories}
+              disabled={isGeneratingAI}
+            >
+              <Tag className="mr-2 h-4 w-4" />
+              Categorize All
+            </Button>
+          )}
           <Button 
             variant="outline" 
             size="sm" 
@@ -76,7 +91,30 @@ const SingleDocumentEditor: React.FC<SingleDocumentEditorProps> = ({
           </div>
           
           <div className="mb-4">
-            <label className="block text-sm font-medium mb-1">Categories</label>
+            <div className="flex justify-between items-center mb-1">
+              <label className="block text-sm font-medium">Categories</label>
+              {onGenerateCategory && (
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={onGenerateCategory}
+                  disabled={isGeneratingAI}
+                  className={currentDocument.aiProcessing?.status === 'processing' ? "opacity-50" : ""}
+                >
+                  {currentDocument.aiProcessing?.status === 'processing' ? (
+                    <>
+                      <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full mr-2" />
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <Tag className="mr-2 h-4 w-4" /> 
+                      Detect Category
+                    </>
+                  )}
+                </Button>
+              )}
+            </div>
             <Input 
               value={currentDocument.categories}
               onChange={(e) => onEdit('categories', e.target.value)}
