@@ -9,3 +9,7 @@ export interface CategoryNode {
 export interface CategoryHierarchy {
   categories: CategoryNode[];
 }
+
+export interface EditableCategoryNode extends CategoryNode {
+  isEditing?: boolean;
+}

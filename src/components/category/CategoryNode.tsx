@@ -1,9 +1,11 @@
 
 import React, { useState, useRef } from "react";
-import { Plus, Trash2, ChevronRight, ChevronDown, GripVertical } from "lucide-react";
+import { Plus, Trash2, ChevronRight, ChevronDown, GripVertical, Edit, Check } from "lucide-react";
 import { CategoryNode as CategoryNodeType } from "@/types/categories";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useCategories } from "@/context/CategoryContext";
+import { toast } from "@/components/ui/use-toast";
 
 interface CategoryNodeProps {
   node: CategoryNodeType;
@@ -24,9 +26,12 @@ const CategoryNode: React.FC<CategoryNodeProps> = ({
   isRoot = false,
   level = 0
 }) => {
+  const { updateCategoryName } = useCategories();
   const [expanded, setExpanded] = useState(true);
   const [newChildName, setNewChildName] = useState("");
   const [isAdding, setIsAdding] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedName, setEditedName] = useState(node.name);
   const nodeRef = useRef<HTMLDivElement>(null);
 
   const handleAddClick = () => {
@@ -39,6 +44,39 @@ const CategoryNode: React.FC<CategoryNodeProps> = ({
       onAddChild(node.id);
       setNewChildName("");
       setIsAdding(false);
+    }
+  };
+
+  const handleEditClick = () => {
+    setIsEditing(true);
+    setEditedName(node.name);
+  };
+
+  const handleSaveEdit = () => {
+    if (editedName.trim()) {
+      updateCategoryName(node.id, editedName);
+      setIsEditing(false);
+      toast({
+        title: "Category renamed",
+        description: `Successfully renamed to "${editedName}"`,
+      });
+    } else {
+      setEditedName(node.name);
+      setIsEditing(false);
+      toast({
+        title: "Rename cancelled",
+        description: "Category name cannot be empty",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSaveEdit();
+    } else if (e.key === 'Escape') {
+      setEditedName(node.name);
+      setIsEditing(false);
     }
   };
 
@@ -80,7 +118,7 @@ const CategoryNode: React.FC<CategoryNodeProps> = ({
         ref={nodeRef}
         className="flex items-center p-2 rounded-md hover:bg-gray-100 transition-colors"
         style={{ paddingLeft: `${padding}px` }}
-        draggable
+        draggable={!isEditing}
         onDragStart={handleDragStart}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
@@ -107,26 +145,60 @@ const CategoryNode: React.FC<CategoryNodeProps> = ({
         
         {node.children.length === 0 && <div className="w-7"></div>}
         
-        <span className="flex-1 font-medium">{node.name}</span>
+        {isEditing ? (
+          <div className="flex-1 flex items-center gap-1">
+            <Input
+              value={editedName}
+              onChange={(e) => setEditedName(e.target.value)}
+              className="h-7 py-1 text-sm"
+              autoFocus
+              onKeyDown={handleKeyDown}
+              onClick={(e) => e.stopPropagation()}
+            />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 p-0 text-green-500 hover:text-green-700"
+              onClick={handleSaveEdit}
+            >
+              <Check size={16} />
+            </Button>
+          </div>
+        ) : (
+          <span className="flex-1 font-medium">{node.name}</span>
+        )}
         
-        <Button
-          variant="ghost"
-          size="icon"
-          className="h-6 w-6 p-0 text-gray-500 hover:text-gray-700"
-          onClick={handleAddClick}
-        >
-          <Plus size={16} />
-        </Button>
-        
-        {!isRoot && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-6 w-6 p-0 text-gray-500 hover:text-red-500"
-            onClick={() => onDelete(node.id)}
-          >
-            <Trash2 size={16} />
-          </Button>
+        {!isEditing && (
+          <>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 p-0 text-gray-500 hover:text-gray-700"
+              onClick={handleEditClick}
+            >
+              <Edit size={16} />
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 p-0 text-gray-500 hover:text-gray-700"
+              onClick={handleAddClick}
+            >
+              <Plus size={16} />
+            </Button>
+            
+            {!isRoot && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-6 w-6 p-0 text-gray-500 hover:text-red-500"
+                onClick={() => onDelete(node.id)}
+              >
+                <Trash2 size={16} />
+              </Button>
+            )}
+          </>
         )}
       </div>
       

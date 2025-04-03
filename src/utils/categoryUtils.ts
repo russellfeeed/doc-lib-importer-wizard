@@ -1,4 +1,3 @@
-
 import { CategoryHierarchy, CategoryNode } from "@/types/categories";
 
 // Default categories to use if none exist
@@ -188,5 +187,37 @@ export const moveCategory = (
     updatedHierarchy.categories = addToNewParent(updatedHierarchy.categories);
   }
   
+  return updatedHierarchy;
+};
+
+// Rename a category
+export const renameCategory = (
+  hierarchy: CategoryHierarchy,
+  categoryId: string,
+  newName: string
+): CategoryHierarchy => {
+  const updatedHierarchy = { ...hierarchy };
+  
+  const updateNodeName = (categories: CategoryNode[]): CategoryNode[] => {
+    return categories.map(category => {
+      if (category.id === categoryId) {
+        return {
+          ...category,
+          name: newName
+        };
+      }
+      
+      if (category.children.length > 0) {
+        return {
+          ...category,
+          children: updateNodeName(category.children)
+        };
+      }
+      
+      return category;
+    });
+  };
+  
+  updatedHierarchy.categories = updateNodeName(updatedHierarchy.categories);
   return updatedHierarchy;
 };
