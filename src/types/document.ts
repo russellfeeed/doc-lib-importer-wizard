@@ -18,6 +18,7 @@ export interface DocumentFile {
   customTaxonomies: Record<string, string>;
   isProcessing?: boolean;
   processingError?: string;
+  thumbnail?: string;
   aiProcessing?: {
     status: 'idle' | 'processing' | 'completed' | 'error';
     error?: string;

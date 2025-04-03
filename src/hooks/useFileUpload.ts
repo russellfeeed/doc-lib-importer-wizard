@@ -3,7 +3,7 @@ import { useState, useCallback } from 'react';
 import { DocumentFile } from '@/types/document';
 import { toast } from 'sonner';
 import { generateUniqueId, formatFileSize, extractFileType } from '@/utils/fileUtils';
-import { extractTextFromDocument, processDocumentWithAI } from '@/utils/aiUtils';
+import { extractTextFromDocument, processDocumentWithAI, generatePdfThumbnail } from '@/utils/aiUtils';
 import { hasOpenAIKey } from '@/utils/openaiClient';
 
 interface UseFileUploadProps {
@@ -57,6 +57,20 @@ export function useFileUpload({ onFilesUploaded }: UseFileUploadProps) {
       newFiles.map(async (fileObj) => {
         try {
           let updatedFile = { ...fileObj, isProcessing: false };
+          
+          // Generate thumbnail for PDF files
+          if (fileObj.file.type === 'application/pdf') {
+            try {
+              const thumbnail = await generatePdfThumbnail(fileObj.file);
+              updatedFile = {
+                ...updatedFile,
+                thumbnail
+              };
+            } catch (error) {
+              console.error("Thumbnail generation error:", error);
+              // Continue without thumbnail if it fails
+            }
+          }
           
           // If AI is enabled, extract text and generate a summary
           if (aiEnabled) {

@@ -21,7 +21,31 @@ const FileList: React.FC<FileListProps> = ({ files, onRemoveFile }) => {
         {files.map(file => (
           <div key={file.id} className="flex items-center justify-between p-3 bg-white rounded-lg border shadow-sm">
             <div className="flex items-center space-x-3">
-              <FileText className="h-6 w-6 text-blue-500" />
+              {file.thumbnail ? (
+                <div className="h-16 w-12 flex-shrink-0 rounded overflow-hidden border border-gray-200 shadow-sm">
+                  <img 
+                    src={file.thumbnail} 
+                    alt={`Thumbnail for ${file.file.name}`}
+                    className="h-full w-full object-cover"
+                    onError={(e) => {
+                      // Fallback to icon if image fails to load
+                      const imgElement = e.currentTarget as HTMLImageElement;
+                      imgElement.style.display = 'none';
+                      const nextElement = imgElement.nextElementSibling as HTMLElement;
+                      if (nextElement) {
+                        nextElement.style.display = 'flex';
+                      }
+                    }}
+                  />
+                  <div className="hidden h-full w-full items-center justify-center bg-gray-100">
+                    <FileText className="h-6 w-6 text-blue-500" />
+                  </div>
+                </div>
+              ) : (
+                <div className="h-16 w-12 flex-shrink-0 rounded border border-gray-200 flex items-center justify-center bg-gray-100">
+                  <FileText className="h-6 w-6 text-blue-500" />
+                </div>
+              )}
               <div>
                 <p className="font-medium">{file.file.name}</p>
                 <p className="text-sm text-gray-500">{file.fileSize} • {file.fileType}</p>
