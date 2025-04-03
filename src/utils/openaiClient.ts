@@ -1,4 +1,3 @@
-
 import { toast } from "sonner";
 import { AiProcessingOptions } from "@/types/document";
 import { CategoryNode } from "@/types/categories";
@@ -245,6 +244,87 @@ ${content.substring(0, 8000)} // Limit content to avoid token limits
     return categoryPath;
   } catch (error) {
     console.error("Error calling OpenAI API for categorization:", error);
+    throw error;
+  }
+}
+
+/**
+ * Generate 1-5 relevant tags for a document based on its content
+ */
+export async function generateTagsWithOpenAI(
+  content: string,
+  fileName: string,
+  options: AiProcessingOptions = {}
+): Promise<string> {
+  if (!hasOpenAIKey()) {
+    throw new Error("OpenAI API key not set");
+  }
+  
+  const model = options.model || DEFAULT_MODEL;
+  const maxTokens = options.maxTokens || 100;
+  const temperature = options.temperature || 0.3;
+
+  const systemPrompt = `You are an expert document tagger. Your task is to analyze documents and generate 1-5 relevant, concise tags that accurately reflect the document's content and themes.`;
+  
+  const userPrompt = `Analyze this document titled "${fileName}" and generate 1-5 relevant tags. 
+  
+Return the tags as a comma-separated list (e.g., "compliance, regulations, safety"). Choose tags that accurately represent the main themes and topics of the document. Tags should be single words or short phrases, all lowercase.
+
+Document content:
+${content.substring(0, 8000)} // Limit content to avoid token limits
+`;
+
+  const messages: OpenAIMessage[] = [
+    {
+      role: "system",
+      content: systemPrompt,
+    },
+    {
+      role: "user",
+      content: userPrompt,
+    },
+  ];
+
+  const requestBody: OpenAIRequestBody = {
+    model,
+    messages,
+    max_tokens: maxTokens,
+    temperature,
+  };
+
+  try {
+    const response = await fetch(OPENAI_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error("OpenAI API error:", errorData);
+      throw new Error(
+        `OpenAI API error: ${errorData.error?.message || response.statusText}`
+      );
+    }
+
+    const data = await response.json() as OpenAIResponse;
+    console.log(`Received OpenAI tags response for document: ${fileName}`, {
+      model: data.model,
+      usage: data.usage,
+    });
+    
+    const tags = data.choices[0]?.message.content.trim();
+
+    if (!tags) {
+      throw new Error("OpenAI returned empty tags");
+    }
+
+    return tags;
+  } catch (error) {
+    console.error("Error calling OpenAI API for tag generation:", error);
     throw error;
   }
 }

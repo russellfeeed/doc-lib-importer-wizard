@@ -16,8 +16,10 @@ interface SingleDocumentEditorProps {
   onNext: () => void;
   onGenerateExcerpt: () => void;
   onGenerateCategory?: () => void;
+  onGenerateTags?: () => void;
   onGenerateAllExcerpts: () => void;
   onGenerateAllCategories?: () => void;
+  onGenerateAllTags?: () => void;
   onToggleView: () => void;
   onSave: () => void;
   onBack: () => void;
@@ -33,8 +35,10 @@ const SingleDocumentEditor: React.FC<SingleDocumentEditorProps> = ({
   onNext,
   onGenerateExcerpt,
   onGenerateCategory,
+  onGenerateTags,
   onGenerateAllExcerpts,
   onGenerateAllCategories,
+  onGenerateAllTags,
   onToggleView,
   onSave,
   onBack
@@ -47,6 +51,7 @@ const SingleDocumentEditor: React.FC<SingleDocumentEditorProps> = ({
         isGeneratingAI={isGeneratingAI}
         onGenerateAllExcerpts={onGenerateAllExcerpts}
         onGenerateAllCategories={onGenerateAllCategories}
+        onGenerateAllTags={onGenerateAllTags}
         onToggleView={onToggleView}
       />
       
@@ -56,6 +61,7 @@ const SingleDocumentEditor: React.FC<SingleDocumentEditorProps> = ({
           isGeneratingAI={isGeneratingAI}
           onEdit={onEdit}
           onGenerateCategory={onGenerateCategory}
+          onGenerateTags={onGenerateTags}
         />
         
         <DocumentContent 

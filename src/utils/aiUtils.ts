@@ -1,6 +1,5 @@
-
 import { toast } from "sonner";
-import { hasOpenAIKey, summarizeWithOpenAI, categorizeWithOpenAI } from "./openaiClient";
+import { hasOpenAIKey, summarizeWithOpenAI, categorizeWithOpenAI, generateTagsWithOpenAI } from "./openaiClient";
 import { AiProcessingOptions } from "@/types/document";
 import { CategoryNode } from "@/types/categories";
 import { loadCategories } from "./categoryUtils";
@@ -73,6 +72,35 @@ export async function generateDocumentCategory(
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
     toast.error(`AI categorization failed: ${errorMessage}`);
     return "";  // Return empty string on error
+  }
+}
+
+// AI service to generate tags for a document
+export async function generateDocumentTags(
+  content: string,
+  fileName: string,
+  options?: AiProcessingOptions
+): Promise<string> {
+  // Check if API key is available
+  if (!hasOpenAIKey()) {
+    toast.error("OpenAI API key is not set. Please set your API key to use AI features.");
+    throw new Error("OpenAI API key not set");
+  }
+
+  // Show toast to indicate processing
+  toast.info(`Generating tags for ${fileName}...`);
+  
+  try {
+    // Use the OpenAI client to generate tags
+    const tags = await generateTagsWithOpenAI(content, fileName, options);
+    
+    // Return the AI-generated tags
+    return tags;
+  } catch (error) {
+    console.error("AI tag generation error:", error);
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    toast.error(`AI tag generation failed: ${errorMessage}`);
+    throw error;
   }
 }
 
@@ -163,7 +191,7 @@ async function extractTextFromTxt(file: File): Promise<string> {
 export async function processDocumentWithAI(
   file: File,
   options?: AiProcessingOptions
-): Promise<{ summary: string, content: string, category?: string }> {
+): Promise<{ summary: string, content: string, category?: string, tags?: string }> {
   try {
     // 1. Extract text from document
     const extractedText = await extractTextFromDocument(file);
@@ -174,10 +202,14 @@ export async function processDocumentWithAI(
     // 3. Determine appropriate category
     const category = await generateDocumentCategory(extractedText, file.name, undefined, options);
     
+    // 4. Generate document tags
+    const tags = await generateDocumentTags(extractedText, file.name, options);
+    
     return {
       summary,
       content: extractedText,
-      category
+      category,
+      tags
     };
   } catch (error) {
     console.error("Error processing document with AI:", error);

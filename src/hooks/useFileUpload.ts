@@ -61,13 +61,14 @@ export function useFileUpload({ onFilesUploaded }: UseFileUploadProps) {
           // If AI is enabled, extract text and generate a summary
           if (aiEnabled) {
             try {
-              const { summary, content, category } = await processDocumentWithAI(fileObj.file);
+              const { summary, content, category, tags } = await processDocumentWithAI(fileObj.file);
               
               updatedFile = {
                 ...updatedFile,
                 excerpt: summary,
                 content: content,
                 categories: category || '',
+                tags: tags || '',
                 aiProcessing: {
                   status: 'completed',
                   model: 'gpt-4o-mini' // Default model

@@ -3,7 +3,7 @@ import React from 'react';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
-import { Tag } from 'lucide-react';
+import { Tag, BookCopy } from 'lucide-react';
 import { DocumentFile } from '@/types/document';
 
 interface DocumentMetadataProps {
@@ -11,13 +11,15 @@ interface DocumentMetadataProps {
   isGeneratingAI: boolean;
   onEdit: (field: keyof DocumentFile, value: string | boolean) => void;
   onGenerateCategory?: () => void;
+  onGenerateTags?: () => void;
 }
 
 const DocumentMetadata: React.FC<DocumentMetadataProps> = ({
   document,
   isGeneratingAI,
   onEdit,
-  onGenerateCategory
+  onGenerateCategory,
+  onGenerateTags
 }) => {
   return (
     <div>
@@ -48,7 +50,7 @@ const DocumentMetadata: React.FC<DocumentMetadataProps> = ({
                 </>
               ) : (
                 <>
-                  <Tag className="mr-2 h-4 w-4" /> 
+                  <BookCopy className="mr-2 h-4 w-4" /> 
                   Detect Category
                 </>
               )}
@@ -65,7 +67,30 @@ const DocumentMetadata: React.FC<DocumentMetadataProps> = ({
       </div>
       
       <div className="mb-4">
-        <label className="block text-sm font-medium mb-1">Tags</label>
+        <div className="flex justify-between items-center mb-1">
+          <label className="block text-sm font-medium">Tags</label>
+          {onGenerateTags && (
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={onGenerateTags}
+              disabled={isGeneratingAI}
+              className={document.aiProcessing?.status === 'processing' ? "opacity-50" : ""}
+            >
+              {document.aiProcessing?.status === 'processing' ? (
+                <>
+                  <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full mr-2" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <Tag className="mr-2 h-4 w-4" /> 
+                  Generate Tags
+                </>
+              )}
+            </Button>
+          )}
+        </div>
         <Input 
           value={document.tags}
           onChange={(e) => onEdit('tags', e.target.value)}

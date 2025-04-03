@@ -39,8 +39,10 @@ export function useDocumentEditor({
   const {
     handleGenerateExcerpt,
     handleGenerateCategory,
+    handleGenerateTags,
     handleGenerateAllExcerpts,
-    handleGenerateAllCategories
+    handleGenerateAllCategories,
+    handleGenerateAllTags
   } = useAiGeneration({
     editedDocuments,
     currentDocIndex,
@@ -60,9 +62,11 @@ export function useDocumentEditor({
     handlePrevious,
     handleGenerateExcerpt,
     handleGenerateCategory,
+    handleGenerateTags,
     handleSaveAll,
     toggleEditAll,
     handleGenerateAllExcerpts,
     handleGenerateAllCategories,
+    handleGenerateAllTags,
   };
 }

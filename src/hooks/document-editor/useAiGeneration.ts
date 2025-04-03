@@ -1,7 +1,6 @@
-
 import { toast } from 'sonner';
 import { DocumentFile } from '@/types/document';
-import { generateDocumentSummary, generateDocumentCategory } from '@/utils/aiUtils';
+import { generateDocumentSummary, generateDocumentCategory, generateDocumentTags } from '@/utils/aiUtils';
 import { hasOpenAIKey } from '@/utils/openaiClient';
 
 interface UseAiGenerationProps {
@@ -33,7 +32,6 @@ export function useAiGeneration({
     setIsGeneratingAI(true);
     
     try {
-      // Update document to show processing state
       setEditedDocuments(prev => prev.map((doc, index) =>
         index === currentDocIndex ? { 
           ...doc, 
@@ -41,17 +39,14 @@ export function useAiGeneration({
         } : doc
       ));
       
-      // Get the content to summarize
       const contentToSummarize = currentDocument.content || 
         (currentDocument.file ? `Document: ${currentDocument.file.name}` : 'No content available');
       
-      // Generate the summary using OpenAI
       const summary = await generateDocumentSummary(
         contentToSummarize, 
         currentDocument.file?.name || currentDocument.name
       );
       
-      // Update document with the new summary
       setEditedDocuments(prev => prev.map((doc, index) =>
         index === currentDocIndex ? { 
           ...doc, 
@@ -67,7 +62,6 @@ export function useAiGeneration({
     } catch (error) {
       console.error("Error generating AI excerpt:", error);
       
-      // Update document to show error state
       setEditedDocuments(prev => prev.map((doc, index) =>
         index === currentDocIndex ? { 
           ...doc, 
@@ -94,7 +88,6 @@ export function useAiGeneration({
     setIsGeneratingAI(true);
     
     try {
-      // Update document to show processing state
       setEditedDocuments(prev => prev.map((doc, index) =>
         index === currentDocIndex ? { 
           ...doc, 
@@ -102,14 +95,12 @@ export function useAiGeneration({
         } : doc
       ));
       
-      // Generate the category using OpenAI
       const category = await generateDocumentCategory(
         currentDocument.content || 'No content available', 
         currentDocument.file.name
       );
       
       if (category) {
-        // Update document with the new category
         setEditedDocuments(prev => prev.map((doc, index) =>
           index === currentDocIndex ? { 
             ...doc, 
@@ -128,7 +119,6 @@ export function useAiGeneration({
     } catch (error) {
       console.error("Error generating AI category:", error);
       
-      // Update document to show error state
       setEditedDocuments(prev => prev.map((doc, index) =>
         index === currentDocIndex ? { 
           ...doc, 
@@ -140,6 +130,63 @@ export function useAiGeneration({
       ));
       
       toast.error("Failed to determine document category");
+    } finally {
+      setIsGeneratingAI(false);
+    }
+  };
+
+  const handleGenerateTags = async () => {
+    const currentDocument = editedDocuments[currentDocIndex];
+    if (!currentDocument.file) {
+      toast.error("Cannot generate tags: No file attached");
+      return;
+    }
+    
+    setIsGeneratingAI(true);
+    
+    try {
+      setEditedDocuments(prev => prev.map((doc, index) =>
+        index === currentDocIndex ? { 
+          ...doc, 
+          aiProcessing: { status: 'processing' } 
+        } : doc
+      ));
+      
+      const tags = await generateDocumentTags(
+        currentDocument.content || 'No content available', 
+        currentDocument.file.name
+      );
+      
+      if (tags) {
+        setEditedDocuments(prev => prev.map((doc, index) =>
+          index === currentDocIndex ? { 
+            ...doc, 
+            tags: tags,
+            aiProcessing: { 
+              status: 'completed',
+              model: 'gpt-4o-mini' // Default model
+            } 
+          } : doc
+        ));
+        
+        toast.success(`Generated tags: ${tags}`);
+      } else {
+        toast.warning("AI couldn't generate tags for this document");
+      }
+    } catch (error) {
+      console.error("Error generating AI tags:", error);
+      
+      setEditedDocuments(prev => prev.map((doc, index) =>
+        index === currentDocIndex ? { 
+          ...doc, 
+          aiProcessing: { 
+            status: 'error',
+            error: error instanceof Error ? error.message : 'Failed to generate tags'
+          } 
+        } : doc
+      ));
+      
+      toast.error("Failed to generate document tags");
     } finally {
       setIsGeneratingAI(false);
     }
@@ -160,31 +207,25 @@ export function useAiGeneration({
     
     toast.info("Generating excerpts for all documents...");
     
-    // Create a copy of documents to update
     const docsInProgress = [...editedDocuments];
     
-    // Process each document that needs an excerpt
     for (let i = 0; i < docsInProgress.length; i++) {
       const doc = docsInProgress[i];
       
-      // Skip documents that already have excerpts
       if (!doc.file || (doc.excerpt && doc.excerpt.trim() !== '')) continue;
       
       try {
-        // Update status to processing
         docsInProgress[i] = {
           ...doc,
           aiProcessing: { status: 'processing' }
         };
         setEditedDocuments([...docsInProgress]);
         
-        // Generate summary using OpenAI
         const summary = await generateDocumentSummary(
           doc.content || 'No content available',
           doc.file.name
         );
         
-        // Update with new summary
         docsInProgress[i] = {
           ...doc,
           excerpt: summary,
@@ -194,11 +235,9 @@ export function useAiGeneration({
           }
         };
         setEditedDocuments([...docsInProgress]);
-        
       } catch (error) {
         console.error(`Error generating excerpt for document ${i}:`, error);
         
-        // Update with error status
         docsInProgress[i] = {
           ...doc,
           aiProcessing: {
@@ -229,31 +268,25 @@ export function useAiGeneration({
     
     toast.info("Determining categories for all documents...");
     
-    // Create a copy of documents to update
     const docsInProgress = [...editedDocuments];
     
-    // Process each document that needs a category
     for (let i = 0; i < docsInProgress.length; i++) {
       const doc = docsInProgress[i];
       
-      // Skip documents that already have categories
       if (!doc.file || (doc.categories && doc.categories.trim() !== '')) continue;
       
       try {
-        // Update status to processing
         docsInProgress[i] = {
           ...doc,
           aiProcessing: { status: 'processing' }
         };
         setEditedDocuments([...docsInProgress]);
         
-        // Generate category using OpenAI
         const category = await generateDocumentCategory(
           doc.content || 'No content available',
           doc.file.name
         );
         
-        // Update with new category
         if (category) {
           docsInProgress[i] = {
             ...doc,
@@ -265,11 +298,9 @@ export function useAiGeneration({
           };
           setEditedDocuments([...docsInProgress]);
         }
-        
       } catch (error) {
         console.error(`Error determining category for document ${i}:`, error);
         
-        // Update with error status
         docsInProgress[i] = {
           ...doc,
           aiProcessing: {
@@ -285,10 +316,75 @@ export function useAiGeneration({
     toast.success("Finished determining document categories");
   };
 
+  const handleGenerateAllTags = async () => {
+    setIsGeneratingAI(true);
+    
+    const hasFilesToProcess = editedDocuments.some(doc => 
+      doc.file && (!doc.tags || doc.tags.trim() === '')
+    );
+    
+    if (!hasFilesToProcess) {
+      toast.info("No documents need AI tag generation");
+      setIsGeneratingAI(false);
+      return;
+    }
+    
+    toast.info("Generating tags for all documents...");
+    
+    const docsInProgress = [...editedDocuments];
+    
+    for (let i = 0; i < docsInProgress.length; i++) {
+      const doc = docsInProgress[i];
+      
+      if (!doc.file || (doc.tags && doc.tags.trim() !== '')) continue;
+      
+      try {
+        docsInProgress[i] = {
+          ...doc,
+          aiProcessing: { status: 'processing' }
+        };
+        setEditedDocuments([...docsInProgress]);
+        
+        const tags = await generateDocumentTags(
+          doc.content || 'No content available',
+          doc.file.name
+        );
+        
+        if (tags) {
+          docsInProgress[i] = {
+            ...doc,
+            tags: tags,
+            aiProcessing: { 
+              status: 'completed',
+              model: 'gpt-4o-mini' // Default model
+            }
+          };
+          setEditedDocuments([...docsInProgress]);
+        }
+      } catch (error) {
+        console.error(`Error generating tags for document ${i}:`, error);
+        
+        docsInProgress[i] = {
+          ...doc,
+          aiProcessing: {
+            status: 'error',
+            error: error instanceof Error ? error.message : 'Failed to generate tags'
+          }
+        };
+        setEditedDocuments([...docsInProgress]);
+      }
+    }
+    
+    setIsGeneratingAI(false);
+    toast.success("Finished generating document tags");
+  };
+
   return {
     handleGenerateExcerpt,
     handleGenerateCategory,
+    handleGenerateTags,
     handleGenerateAllExcerpts,
-    handleGenerateAllCategories
+    handleGenerateAllCategories,
+    handleGenerateAllTags
   };
 }

@@ -30,10 +30,12 @@ const DocumentEditor: React.FC<DocumentEditorProps> = ({
     handlePrevious,
     handleGenerateExcerpt,
     handleGenerateCategory,
+    handleGenerateTags,
     handleSaveAll,
     toggleEditAll,
     handleGenerateAllExcerpts,
     handleGenerateAllCategories,
+    handleGenerateAllTags,
   } = useDocumentEditor({
     initialDocuments: documents, 
     onSave
@@ -66,8 +68,10 @@ const DocumentEditor: React.FC<DocumentEditorProps> = ({
           onNext={handleNext}
           onGenerateExcerpt={handleGenerateExcerpt}
           onGenerateCategory={handleGenerateCategory}
+          onGenerateTags={handleGenerateTags}
           onGenerateAllExcerpts={handleGenerateAllExcerpts}
           onGenerateAllCategories={handleGenerateAllCategories}
+          onGenerateAllTags={handleGenerateAllTags}
           onToggleView={toggleEditAll}
           onSave={handleSaveAll}
           onBack={onBack}
