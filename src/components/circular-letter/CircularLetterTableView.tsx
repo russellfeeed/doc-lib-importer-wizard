@@ -2,7 +2,7 @@
 import React from 'react';
 import { CircularLetter } from '@/types/circular-letter';
 import { Button } from '@/components/ui/button';
-import { Save, FilePlus } from 'lucide-react';
+import { Save, FilePlus, Tag } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 
 interface CircularLetterTableViewProps {
@@ -52,20 +52,34 @@ const CircularLetterTableView: React.FC<CircularLetterTableViewProps> = ({
             <tr className="bg-gray-100">
               <th className="px-4 py-2 text-left border">File Name</th>
               <th className="px-4 py-2 text-left border">Reference</th>
+              <th className="px-4 py-2 text-left border">Corr. Ref</th>
               <th className="px-4 py-2 text-left border">Date</th>
               <th className="px-4 py-2 text-left border">Title</th>
               <th className="px-4 py-2 text-left border">Audience</th>
               <th className="px-4 py-2 text-left border">Author</th>
+              <th className="px-4 py-2 text-left border">
+                <div className="flex items-center">
+                  <Tag className="h-3 w-3 mr-1" />
+                  Tags
+                </div>
+              </th>
             </tr>
           </thead>
           <tbody>
             {letters.map((letter, index) => (
               <tr key={letter.id} className="border-b hover:bg-gray-50">
-                <td className="px-4 py-2 border">{letter.name}</td>
+                <td className="px-4 py-2 border text-sm">{letter.file.name}</td>
                 <td className="px-4 py-2 border">
                   <Input 
                     value={letter.referenceNumber}
                     onChange={(e) => onEditLetter(index, 'referenceNumber', e.target.value)}
+                    className="h-8 min-h-8"
+                  />
+                </td>
+                <td className="px-4 py-2 border">
+                  <Input 
+                    value={letter.correspondenceRef}
+                    onChange={(e) => onEditLetter(index, 'correspondenceRef', e.target.value)}
                     className="h-8 min-h-8"
                   />
                 </td>
@@ -94,6 +108,13 @@ const CircularLetterTableView: React.FC<CircularLetterTableViewProps> = ({
                   <Input 
                     value={letter.author}
                     onChange={(e) => onEditLetter(index, 'author', e.target.value)}
+                    className="h-8 min-h-8"
+                  />
+                </td>
+                <td className="px-4 py-2 border">
+                  <Input 
+                    value={letter.tags}
+                    onChange={(e) => onEditLetter(index, 'tags', e.target.value)}
                     className="h-8 min-h-8"
                   />
                 </td>

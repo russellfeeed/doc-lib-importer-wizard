@@ -6,11 +6,13 @@ export interface CircularLetter {
   fileSize: string;
   fileType: string;
   referenceNumber: string;
+  correspondenceRef: string;
   date: string;
   audience: string;
   title: string;
   details: string;
   author: string;
+  tags: string;
   content: string;
   isProcessing?: boolean;
   processingError?: string;

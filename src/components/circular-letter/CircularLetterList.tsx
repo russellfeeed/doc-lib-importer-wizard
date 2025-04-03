@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { CircularLetter } from '@/types/circular-letter';
-import { FileText, AlertCircle, Zap, X } from 'lucide-react';
+import { FileText, AlertCircle, Zap, X, Tag } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 interface CircularLetterListProps {
@@ -26,10 +26,20 @@ const CircularLetterList: React.FC<CircularLetterListProps> = ({ letters, onRemo
                 <p className="font-medium">{letter.file.name}</p>
                 <p className="text-sm text-gray-500">{letter.fileSize}</p>
                 {letter.referenceNumber && !letter.isProcessing && letter.aiProcessing?.status === 'completed' && (
-                  <p className="text-xs text-green-600">
-                    <span className="font-medium">Ref:</span> {letter.referenceNumber} | 
-                    <span className="font-medium"> Date:</span> {letter.date}
-                  </p>
+                  <div className="text-xs">
+                    <p className="text-green-600">
+                      <span className="font-medium">Ref:</span> {letter.referenceNumber} 
+                      {letter.correspondenceRef && (
+                        <> | <span className="font-medium">Corr Ref:</span> {letter.correspondenceRef}</>
+                      )}
+                    </p>
+                    {letter.tags && (
+                      <p className="text-blue-600 flex items-center gap-1 mt-1">
+                        <Tag className="h-3 w-3" />
+                        {letter.tags}
+                      </p>
+                    )}
+                  </div>
                 )}
               </div>
             </div>

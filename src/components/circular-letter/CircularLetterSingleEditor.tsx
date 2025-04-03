@@ -4,7 +4,7 @@ import { CircularLetter } from '@/types/circular-letter';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, ListFilter, Save } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ListFilter, Save, Tag, File } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 
 interface CircularLetterSingleEditorProps {
@@ -59,6 +59,16 @@ const CircularLetterSingleEditor: React.FC<CircularLetterSingleEditorProps> = ({
       </div>
 
       <Card className="p-6">
+        <div className="mb-4">
+          <label className="block text-sm font-medium mb-1 flex items-center">
+            <File className="h-4 w-4 mr-1 text-gray-500" />
+            Filename
+          </label>
+          <div className="text-sm text-gray-700 border p-2 rounded bg-gray-50">
+            {currentLetter.file.name}
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
             <div className="mb-4">
@@ -67,6 +77,15 @@ const CircularLetterSingleEditor: React.FC<CircularLetterSingleEditorProps> = ({
                 value={currentLetter.referenceNumber}
                 onChange={(e) => onEdit('referenceNumber', e.target.value)}
                 placeholder="Enter reference number"
+              />
+            </div>
+            
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-1">Correspondence Reference</label>
+              <Input 
+                value={currentLetter.correspondenceRef}
+                onChange={(e) => onEdit('correspondenceRef', e.target.value)}
+                placeholder="Enter correspondence reference"
               />
             </div>
             
@@ -105,6 +124,18 @@ const CircularLetterSingleEditor: React.FC<CircularLetterSingleEditorProps> = ({
                 value={currentLetter.author}
                 onChange={(e) => onEdit('author', e.target.value)}
                 placeholder="Enter author or sender"
+              />
+            </div>
+            
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-1 flex items-center">
+                <Tag className="h-4 w-4 mr-1" />
+                Tags
+              </label>
+              <Input 
+                value={currentLetter.tags}
+                onChange={(e) => onEdit('tags', e.target.value)}
+                placeholder="Enter 1-5 comma-separated tags"
               />
             </div>
           </div>

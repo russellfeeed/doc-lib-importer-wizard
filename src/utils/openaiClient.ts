@@ -338,11 +338,13 @@ export async function extractCircularLetterDataWithOpenAI(
   options: AiProcessingOptions = {}
 ): Promise<{
   referenceNumber: string;
+  correspondenceRef: string;
   date: string;
   audience: string;
   title: string;
   details: string;
   author: string;
+  tags: string;
 }> {
   if (!hasOpenAIKey()) {
     throw new Error("OpenAI API key not set");
@@ -354,20 +356,22 @@ export async function extractCircularLetterDataWithOpenAI(
 
   const systemPrompt = `You are a data extraction specialist that analyzes circular letters and extracts specific information from them. Your task is to extract the following information from the document:
 1. Reference Number: The document's unique identifier or reference code
-2. Date: The date when the circular letter was issued, in YYYY-MM-DD format
-3. Audience: The intended recipients or departments that should read this circular
-4. Title: The main title or subject of the circular letter
-5. Details: A brief summary (2-3 sentences) of the main points or announcements
-6. Author/Sender: The person, department, or authority who issued the circular letter
+2. Correspondence Reference: Any internal reference numbers mentioned in the body of the document (different from the main reference number)
+3. Date: The date when the circular letter was issued, in YYYY-MM-DD format
+4. Audience: The intended recipients or departments that should read this circular
+5. Title: The main title or subject of the circular letter
+6. Details: A brief summary (2-3 sentences) of the main points or announcements
+7. Author/Sender: The person, department, or authority who issued the circular letter
+8. Tags: Generate 1-5 relevant keywords or tags that describe the main topics of this circular letter, separated by commas
 
 Format your response as a JSON object with these fields. If you cannot find a specific field, use an empty string as value.`;
   
-  const userPrompt = `Extract information from this circular letter titled "${fileName}".
+  const userPrompt = `Extract information from this circular letter with filename "${fileName}".
 
 Here is the document content:
 ${content}
 
-Return a JSON object with the fields: referenceNumber, date, audience, title, details, and author.`;
+Return a JSON object with the fields: referenceNumber, correspondenceRef, date, audience, title, details, author, and tags.`;
 
   const messages: OpenAIMessage[] = [
     {
@@ -427,22 +431,26 @@ Return a JSON object with the fields: referenceNumber, date, audience, title, de
       
       return {
         referenceNumber: extractedData.referenceNumber || '',
+        correspondenceRef: extractedData.correspondenceRef || '',
         date: extractedData.date || '',
         audience: extractedData.audience || '',
         title: extractedData.title || '',
         details: extractedData.details || '',
-        author: extractedData.author || ''
+        author: extractedData.author || '',
+        tags: extractedData.tags || ''
       };
     } catch (error) {
       console.error("Error parsing OpenAI response:", error);
       // Fallback to empty values if parsing fails
       return {
         referenceNumber: '',
+        correspondenceRef: '',
         date: '',
         audience: '',
         title: '',
         details: '',
-        author: ''
+        author: '',
+        tags: ''
       };
     }
   } catch (error) {

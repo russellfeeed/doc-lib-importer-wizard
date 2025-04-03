@@ -1,4 +1,3 @@
-
 import { toast } from "sonner";
 import { hasOpenAIKey, summarizeWithOpenAI, categorizeWithOpenAI, generateTagsWithOpenAI, extractCircularLetterDataWithOpenAI } from "./openaiClient";
 import { AiProcessingOptions } from "@/types/document";
@@ -225,12 +224,14 @@ export async function processCircularLetterWithAI(
   options?: AiProcessingOptions
 ): Promise<{ 
   content: string, 
-  referenceNumber: string, 
+  referenceNumber: string,
+  correspondenceRef: string,
   date: string,
   audience: string,
   title: string,
   details: string,
-  author: string
+  author: string,
+  tags: string
 }> {
   try {
     // 1. Extract text from document
@@ -239,21 +240,25 @@ export async function processCircularLetterWithAI(
     // 2. Use AI to extract specific fields from the circular letter
     const { 
       referenceNumber, 
+      correspondenceRef,
       date, 
       audience, 
       title, 
       details, 
-      author 
+      author,
+      tags
     } = await extractCircularLetterDataWithOpenAI(extractedText, file.name, options);
     
     return {
       content: extractedText,
       referenceNumber,
+      correspondenceRef,
       date,
       audience,
       title,
       details,
-      author
+      author,
+      tags
     };
   } catch (error) {
     console.error("Error processing circular letter with AI:", error);
