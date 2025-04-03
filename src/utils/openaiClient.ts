@@ -1,6 +1,7 @@
 import { toast } from "sonner";
 import { AiProcessingOptions } from "@/types/document";
 import { CategoryNode } from "@/types/categories";
+import { AppendixItem } from "@/types/circular-letter";
 
 const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
 
@@ -345,13 +346,14 @@ export async function extractCircularLetterDataWithOpenAI(
   details: string;
   author: string;
   tags: string;
+  appendices: AppendixItem[];
 }> {
   if (!hasOpenAIKey()) {
     throw new Error("OpenAI API key not set");
   }
 
   const model = options.model || DEFAULT_MODEL;
-  const maxTokens = options.maxTokens || 500;
+  const maxTokens = options.maxTokens || 2000;
   const temperature = options.temperature || 0.3;
 
   const systemPrompt = `You are a data extraction specialist that analyzes circular letters and extracts specific information from them. Your task is to extract the following information from the document:
@@ -360,18 +362,19 @@ export async function extractCircularLetterDataWithOpenAI(
 3. Date: The date when the circular letter was issued, in YYYY-MM-DD format
 4. Audience: The intended recipients or departments that should read this circular
 5. Title: The main title or subject of the circular letter
-6. Details: A brief summary (2-3 sentences) of the main points or announcements
+6. Details: The full content of the circular letter, excluding headers, footers, salutations, and signatures. This should be the complete text of the main body of the document.
 7. Author/Sender: The person, department, or authority who issued the circular letter
 8. Tags: Generate 1-5 relevant keywords or tags that describe the main topics of this circular letter, separated by commas
+9. Appendices: If the document contains appendices, identify each one as a separate item with a title and content.
 
-Format your response as a JSON object with these fields. If you cannot find a specific field, use an empty string as value.`;
+Format your response as a JSON object with these fields. If you cannot find a specific field, use an empty string as value. For appendices, return an array of objects, each with 'title' and 'content' fields. If there are no appendices, use an empty array.`;
   
   const userPrompt = `Extract information from this circular letter with filename "${fileName}".
 
 Here is the document content:
 ${content}
 
-Return a JSON object with the fields: referenceNumber, correspondenceRef, date, audience, title, details, author, and tags.`;
+Return a JSON object with the fields: referenceNumber, correspondenceRef, date, audience, title, details, author, tags, and appendices.`;
 
   const messages: OpenAIMessage[] = [
     {
@@ -437,7 +440,8 @@ Return a JSON object with the fields: referenceNumber, correspondenceRef, date, 
         title: extractedData.title || '',
         details: extractedData.details || '',
         author: extractedData.author || '',
-        tags: extractedData.tags || ''
+        tags: extractedData.tags || '',
+        appendices: Array.isArray(extractedData.appendices) ? extractedData.appendices : []
       };
     } catch (error) {
       console.error("Error parsing OpenAI response:", error);
@@ -450,7 +454,8 @@ Return a JSON object with the fields: referenceNumber, correspondenceRef, date, 
         title: '',
         details: '',
         author: '',
-        tags: ''
+        tags: '',
+        appendices: []
       };
     }
   } catch (error) {

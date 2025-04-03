@@ -4,6 +4,7 @@ import { AiProcessingOptions } from "@/types/document";
 import { CategoryNode } from "@/types/categories";
 import { loadCategories } from "./categoryUtils";
 import * as pdfjs from 'pdfjs-dist';
+import { AppendixItem } from "@/types/circular-letter";
 
 // Set worker path for pdf.js
 pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
@@ -277,7 +278,8 @@ export async function processCircularLetterWithAI(
   title: string,
   details: string,
   author: string,
-  tags: string
+  tags: string,
+  appendices: AppendixItem[]
 }> {
   try {
     // 1. Extract text from document
@@ -292,7 +294,8 @@ export async function processCircularLetterWithAI(
       title, 
       details, 
       author,
-      tags
+      tags,
+      appendices
     } = await extractCircularLetterDataWithOpenAI(extractedText, file.name, options);
     
     return {
@@ -304,7 +307,8 @@ export async function processCircularLetterWithAI(
       title,
       details,
       author,
-      tags
+      tags,
+      appendices
     };
   } catch (error) {
     console.error("Error processing circular letter with AI:", error);

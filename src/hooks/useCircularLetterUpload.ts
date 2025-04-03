@@ -1,4 +1,3 @@
-
 import { useState, useCallback } from 'react';
 import { CircularLetter } from '@/types/circular-letter';
 import { toast } from 'sonner';
@@ -44,6 +43,7 @@ export function useCircularLetterUpload({ onLettersUploaded }: UseCircularLetter
         author: '',
         tags: '',
         content: '',
+        appendices: [],
         isProcessing: true,
         aiProcessing: {
           status: aiEnabled ? 'processing' : 'idle'
@@ -88,7 +88,8 @@ export function useCircularLetterUpload({ onLettersUploaded }: UseCircularLetter
                 title, 
                 details, 
                 author,
-                tags
+                tags,
+                appendices
               } = await processCircularLetterWithAI(letterObj.file);
               
               updatedLetter = {
@@ -102,6 +103,7 @@ export function useCircularLetterUpload({ onLettersUploaded }: UseCircularLetter
                 details: details || '',
                 author: author || '',
                 tags: tags || '',
+                appendices: appendices || [],
                 aiProcessing: {
                   status: 'completed',
                   model: 'gpt-4o-mini'

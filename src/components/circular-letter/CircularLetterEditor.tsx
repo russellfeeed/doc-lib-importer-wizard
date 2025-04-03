@@ -36,8 +36,8 @@ const CircularLetterEditor: React.FC<CircularLetterEditorProps> = ({
     handleSaveAll,
     toggleEditAll,
   } = useDocumentEditor({
-    initialDocuments: letters as any, 
-    onSave: (docs) => onSave(docs as any)
+    initialDocuments: letters as unknown as any[], 
+    onSave: (docs) => onSave(docs as unknown as CircularLetter[])
   });
 
   // Handle the case when there are no letters
@@ -68,7 +68,7 @@ const CircularLetterEditor: React.FC<CircularLetterEditorProps> = ({
     <div className="space-y-6">
       {!isEditingAll ? (
         <CircularLetterSingleEditor
-          currentLetter={currentLetter as CircularLetterWithAssertion}
+          currentLetter={currentLetter as unknown as CircularLetterWithAssertion}
           currentIndex={currentDocIndex}
           totalLetters={editedLetters.length}
           isGeneratingAI={isGeneratingAI}
@@ -81,7 +81,7 @@ const CircularLetterEditor: React.FC<CircularLetterEditorProps> = ({
         />
       ) : (
         <CircularLetterTableView
-          letters={editedLetters as CircularLetterWithAssertion[]}
+          letters={editedLetters as unknown as CircularLetterWithAssertion[]}
           isGeneratingAI={isGeneratingAI}
           onEditLetter={handleCircularLetterTableChange}
           onToggleView={toggleEditAll}

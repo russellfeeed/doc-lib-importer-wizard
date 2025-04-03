@@ -1,4 +1,9 @@
 
+export interface AppendixItem {
+  title: string;
+  content: string;
+}
+
 export interface CircularLetter {
   id: string;
   file: File;
@@ -14,7 +19,8 @@ export interface CircularLetter {
   author: string;
   tags: string;
   content: string;
-  thumbnail?: string; // New field for storing the document's thumbnail image
+  appendices?: AppendixItem[];
+  thumbnail?: string; // Field for storing the document's thumbnail image
   isProcessing?: boolean;
   processingError?: string;
   aiProcessing?: {
