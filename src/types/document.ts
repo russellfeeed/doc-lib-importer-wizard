@@ -1,0 +1,36 @@
+
+export interface DocumentFile {
+  id: string;
+  file: File;
+  name: string;
+  fileSize: string;
+  fileType: string;
+  excerpt: string;
+  categories: string;
+  tags: string;
+  authors: string;
+  fileUrl: string;
+  directUrl: string;
+  imageUrl: string;
+  content: string;
+  published: boolean;
+  customFields: Record<string, string>;
+  customTaxonomies: Record<string, string>;
+  isProcessing?: boolean;
+  processingError?: string;
+}
+
+export interface CSVData {
+  Name: string;
+  Categories: string;
+  Tags: string;
+  'Document Authors': string;
+  'File URL': string;
+  'Direct URL': string;
+  'Featured Image URL': string;
+  'File Size': string;
+  Excerpt: string;
+  Content: string;
+  Published: string;
+  [key: string]: string;
+}
