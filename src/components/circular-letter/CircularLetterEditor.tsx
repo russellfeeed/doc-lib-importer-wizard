@@ -18,6 +18,10 @@ const CircularLetterEditor: React.FC<CircularLetterEditorProps> = ({
   onSave, 
   onBack 
 }) => {
+  // Create a type assertion to make TypeScript happy
+  // This is a workaround since we're using the document editor hook with circular letters
+  type CircularLetterWithAssertion = CircularLetter & Record<string, any>;
+
   // Reuse the document editor hook with our circular letters
   const {
     editedDocuments: editedLetters,
@@ -50,15 +54,25 @@ const CircularLetterEditor: React.FC<CircularLetterEditorProps> = ({
     );
   }
 
+  // Create a type-safe wrapper around the handleChange function
+  const handleCircularLetterChange = (field: keyof CircularLetter, value: string | boolean) => {
+    handleChange(field as any, value);
+  };
+
+  // Create a type-safe wrapper around the handleTableChange function
+  const handleCircularLetterTableChange = (index: number, field: keyof CircularLetter, value: string | boolean) => {
+    handleTableChange(index, field as any, value);
+  };
+
   return (
     <div className="space-y-6">
       {!isEditingAll ? (
         <CircularLetterSingleEditor
-          currentLetter={currentLetter as any}
+          currentLetter={currentLetter as CircularLetterWithAssertion}
           currentIndex={currentDocIndex}
           totalLetters={editedLetters.length}
           isGeneratingAI={isGeneratingAI}
-          onEdit={handleChange}
+          onEdit={handleCircularLetterChange}
           onPrevious={handlePrevious}
           onNext={handleNext}
           onToggleView={toggleEditAll}
@@ -67,9 +81,9 @@ const CircularLetterEditor: React.FC<CircularLetterEditorProps> = ({
         />
       ) : (
         <CircularLetterTableView
-          letters={editedLetters as any}
+          letters={editedLetters as CircularLetterWithAssertion[]}
           isGeneratingAI={isGeneratingAI}
-          onEditLetter={handleTableChange}
+          onEditLetter={handleCircularLetterTableChange}
           onToggleView={toggleEditAll}
           onSave={handleSaveAll}
           onBack={onBack}

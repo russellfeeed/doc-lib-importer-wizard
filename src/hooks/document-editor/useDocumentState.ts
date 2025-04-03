@@ -4,7 +4,8 @@ import { DocumentFile } from '@/types/document';
 import { DocumentEditorState, UseDocumentEditorProps } from './types';
 
 export function useDocumentState({ 
-  initialDocuments 
+  initialDocuments,
+  onSave 
 }: UseDocumentEditorProps): DocumentEditorState & {
   setEditedDocuments: React.Dispatch<React.SetStateAction<DocumentFile[]>>;
   setCurrentDocIndex: React.Dispatch<React.SetStateAction<number>>;

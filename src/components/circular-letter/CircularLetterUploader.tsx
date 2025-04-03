@@ -45,7 +45,7 @@ const CircularLetterUploader: React.FC<CircularLetterUploaderProps> = ({ onLette
         onDrop={handleDrop}
         onFileInputChange={handleFileInputChange}
         onBrowseClick={handleBrowseClick}
-        acceptedFileTypes="application/pdf"
+        // Remove the acceptedFileTypes prop as it's not in DropZoneProps
         helperText="Drop PDF files here. Circular Letters will be analyzed to extract reference numbers, dates, audiences, titles, details, and authors."
       />
 

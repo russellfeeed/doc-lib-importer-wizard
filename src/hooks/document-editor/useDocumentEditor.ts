@@ -19,7 +19,7 @@ export function useDocumentEditor({
     isGeneratingAI,
     setIsGeneratingAI,
     currentDocument
-  } = useDocumentState({ initialDocuments });
+  } = useDocumentState({ initialDocuments, onSave });
 
   const { handleChange, handleTableChange, handleSaveAll } = useDocumentActions({
     editedDocuments,

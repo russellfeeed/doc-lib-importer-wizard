@@ -29,8 +29,12 @@ const CircularLetterList: React.FC<CircularLetterListProps> = ({ letters, onRemo
                     className="h-full w-full object-cover"
                     onError={(e) => {
                       // Fallback to icon if image fails to load
-                      e.currentTarget.style.display = 'none';
-                      e.currentTarget.nextElementSibling!.style.display = 'flex';
+                      const imgElement = e.currentTarget as HTMLImageElement;
+                      imgElement.style.display = 'none';
+                      const nextElement = imgElement.nextElementSibling as HTMLElement;
+                      if (nextElement) {
+                        nextElement.style.display = 'flex';
+                      }
                     }}
                   />
                   <div className="hidden h-full w-full items-center justify-center bg-gray-100">
