@@ -1,5 +1,6 @@
 
 import { toast } from "sonner";
+import { AiProcessingOptions } from "@/types/document";
 
 const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
 
@@ -76,11 +77,7 @@ export function hasOpenAIKey(): boolean {
 export async function summarizeWithOpenAI(
   content: string,
   fileName: string,
-  options: {
-    model?: string;
-    maxTokens?: number;
-    temperature?: number;
-  } = {}
+  options: AiProcessingOptions = {}
 ): Promise<string> {
   if (!hasOpenAIKey()) {
     throw new Error("OpenAI API key not set");
@@ -90,25 +87,21 @@ export async function summarizeWithOpenAI(
   const maxTokens = options.maxTokens || 300;
   const temperature = options.temperature || 0.3;
 
-  const prompt = `
-You are a professional document summarizer. Create a concise, informative excerpt/summary 
-for the following document titled "${fileName}". 
-The summary should be 2-3 sentences long and highlight the key information.
-Focus on the main topic, purpose, and any significant findings or conclusions.
-Be clear, professional, and objective.
+  const systemPrompt = `You are tasked with creating concise document summaries. Your summaries should be professional, factual, and never contain meta-text about AI or instructions.`;
+  
+  const userPrompt = `Create a brief, professional summary of this document titled "${fileName}". The summary should be 2-3 sentences that capture the main topic and key points. Write in clear, straightforward language that would appear in a document management system. Do not include any meta-commentary about AI or summarization processes in your response.
 
-Here is the document content to summarize:
-${content}
-`;
+Here is the document content:
+${content}`;
 
   const messages: OpenAIMessage[] = [
     {
       role: "system",
-      content: "You are a helpful assistant that specializes in document summarization.",
+      content: systemPrompt,
     },
     {
       role: "user",
-      content: prompt,
+      content: userPrompt,
     },
   ];
 
