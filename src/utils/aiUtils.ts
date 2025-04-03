@@ -319,3 +319,44 @@ export async function processCircularLetterWithAI(
     throw error;
   }
 }
+
+// Convert plain text to Markdown format for readability
+export function convertToMarkdown(text: string): string {
+  if (!text) return '';
+  
+  // Basic Markdown conversion
+  let markdown = text;
+  
+  // Handle paragraphs - convert double line breaks to proper Markdown paragraphs
+  markdown = markdown.replace(/\n\s*\n/g, '\n\n');
+  
+  // Handle headings - look for potential headings (uppercase lines or numbered sections)
+  const lines = markdown.split('\n');
+  const processedLines = lines.map(line => {
+    // Check for potential headings (all caps or numbered sections)
+    if (/^\d+\.\s+[A-Z][^a-z]*$/.test(line) || /^[A-Z][^a-z\d]{3,}$/.test(line)) {
+      return `\n## ${line}\n`;
+    }
+    
+    // Check for subheadings (lowercase numbered sections)
+    if (/^\d+\.\d+\s+.+$/.test(line)) {
+      return `\n### ${line}\n`;
+    }
+    
+    return line;
+  });
+  
+  markdown = processedLines.join('\n');
+  
+  // Handle lists - convert lines starting with * or - or numbered lists
+  markdown = markdown.replace(/^(\s*)[•*-]\s+/gm, '$1* ');
+  markdown = markdown.replace(/^(\s*)(\d+)[.)]\s+/gm, '$1$2. ');
+  
+  // Handle emphasis - convert certain patterns to bold
+  markdown = markdown.replace(/\b(IMPORTANT|NOTE|WARNING):/g, '**$1:**');
+  
+  // Handle horizontal rules
+  markdown = markdown.replace(/^[-*=]{3,}\s*$/gm, '\n---\n');
+  
+  return markdown;
+}

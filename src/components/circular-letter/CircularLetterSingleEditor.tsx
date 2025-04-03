@@ -1,12 +1,14 @@
-
-import React from 'react';
+import React, { useState } from 'react';
 import { CircularLetter, AppendixItem } from '@/types/circular-letter';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, ListFilter, Save, Tag, File, Plus, Minus } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ListFilter, Save, Tag, File, Plus, Minus, FileText } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { convertToMarkdown } from '@/utils/aiUtils';
+import { toast } from "sonner";
 
 interface CircularLetterSingleEditorProps {
   currentLetter: CircularLetter;
@@ -33,6 +35,8 @@ const CircularLetterSingleEditor: React.FC<CircularLetterSingleEditorProps> = ({
   onSave,
   onBack
 }) => {
+  const [isMarkdownViewOpen, setIsMarkdownViewOpen] = useState(false);
+  
   const handleAppendixChange = (index: number, field: keyof AppendixItem, value: string) => {
     if (!currentLetter.appendices) return;
     
@@ -67,6 +71,34 @@ const CircularLetterSingleEditor: React.FC<CircularLetterSingleEditorProps> = ({
     onEdit('appendices' as keyof CircularLetter, updatedAppendices as any);
   };
 
+  const getMarkdownContent = () => {
+    // Combine title, details and appendices into a single markdown document
+    let markdown = `# ${currentLetter.title || 'Circular Letter'}\n\n`;
+    
+    // Add metadata section
+    markdown += `## Metadata\n\n`;
+    markdown += `- **Reference Number**: ${currentLetter.referenceNumber || 'N/A'}\n`;
+    markdown += `- **Date**: ${currentLetter.date || 'N/A'}\n`;
+    markdown += `- **Audience**: ${currentLetter.audience || 'N/A'}\n`;
+    markdown += `- **Author**: ${currentLetter.author || 'N/A'}\n\n`;
+    
+    // Add main content
+    markdown += `## Content\n\n`;
+    markdown += convertToMarkdown(currentLetter.details) + '\n\n';
+    
+    // Add appendices
+    if (currentLetter.appendices && currentLetter.appendices.length > 0) {
+      markdown += `## Appendices\n\n`;
+      
+      currentLetter.appendices.forEach((appendix, index) => {
+        markdown += `### ${appendix.title || `Appendix ${index + 1}`}\n\n`;
+        markdown += convertToMarkdown(appendix.content) + '\n\n';
+      });
+    }
+    
+    return markdown;
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -82,6 +114,40 @@ const CircularLetterSingleEditor: React.FC<CircularLetterSingleEditorProps> = ({
           )}
         </div>
         <div className="flex space-x-2">
+          <Dialog open={isMarkdownViewOpen} onOpenChange={setIsMarkdownViewOpen}>
+            <DialogTrigger asChild>
+              <Button 
+                variant="outline" 
+                size="sm" 
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                View as Markdown
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-4xl h-[80vh]">
+              <DialogHeader>
+                <DialogTitle>Markdown View</DialogTitle>
+              </DialogHeader>
+              <div className="overflow-y-auto h-full">
+                <div className="bg-gray-50 p-4 rounded border font-mono whitespace-pre-wrap text-sm">
+                  {getMarkdownContent()}
+                </div>
+              </div>
+              <div className="flex justify-end mt-4">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => {
+                    navigator.clipboard.writeText(getMarkdownContent());
+                    toast.success("Markdown copied to clipboard");
+                  }}
+                >
+                  Copy to Clipboard
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
+          
           <Button 
             variant="outline" 
             size="sm" 
