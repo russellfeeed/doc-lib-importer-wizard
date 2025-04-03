@@ -20,7 +20,7 @@ const Index = () => {
               <path d="M13 14h5.5a2.5 2.5 0 0 1 0 5H13" />
               <path d="M9 14h1" />
             </svg>
-            New: AI-powered document summarization now available!
+            OpenAI-powered document summarization now available!
           </span>
         </div>
       </header>

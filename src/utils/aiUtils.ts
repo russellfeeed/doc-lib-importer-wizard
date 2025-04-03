@@ -1,46 +1,38 @@
 
 import { toast } from "sonner";
+import { hasOpenAIKey, summarizeWithOpenAI } from "./openaiClient";
+import { AiProcessingOptions } from "@/types/document";
 
-// Mock AI service for document summarization
-// In a production environment, this would be replaced with a real API call
-// to services like OpenAI, Azure, or other NLP providers
-export async function generateDocumentSummary(content: string, fileName: string): Promise<string> {
-  // For demo purposes, we'll simulate an API call with a timeout
-  return new Promise((resolve) => {
-    // Show toast to indicate processing
-    toast.info(`Generating summary for ${fileName}...`);
+// Real AI service for document summarization using OpenAI
+export async function generateDocumentSummary(
+  content: string, 
+  fileName: string,
+  options?: AiProcessingOptions
+): Promise<string> {
+  // Check if API key is available
+  if (!hasOpenAIKey()) {
+    toast.error("OpenAI API key is not set. Please set your API key to use AI features.");
+    throw new Error("OpenAI API key not set");
+  }
+
+  // Show toast to indicate processing
+  toast.info(`Generating summary for ${fileName}...`);
+  
+  try {
+    // Use the OpenAI client to generate a summary
+    const summary = await summarizeWithOpenAI(content, fileName, options);
     
-    // Simulate API processing time
-    setTimeout(() => {
-      // In a real implementation, we would send the content to an AI API
-      // and get back a summarized version
-      
-      // Generate a mock summary based on the file name
-      const summary = `This document covers key information related to ${fileName.replace(/\.[^/.]+$/, "")}. It includes important details that would be relevant for organizational knowledge management and decision making. The document appears to be a ${getDocumentType(fileName)} that would be useful for reference purposes.`;
-      
-      // Resolve with the generated summary
-      resolve(summary);
-    }, 2000);
-  });
+    // Return the AI-generated summary
+    return summary;
+  } catch (error) {
+    console.error("AI processing error:", error);
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    toast.error(`AI summarization failed: ${errorMessage}`);
+    throw error;
+  }
 }
 
-// Helper function to guess document type based on file name
-function getDocumentType(fileName: string): string {
-  const lowerFileName = fileName.toLowerCase();
-  
-  if (lowerFileName.includes('policy')) return 'policy document';
-  if (lowerFileName.includes('report')) return 'report';
-  if (lowerFileName.includes('guide') || lowerFileName.includes('manual')) return 'guide or manual';
-  if (lowerFileName.includes('form')) return 'form or template';
-  if (lowerFileName.includes('letter')) return 'letter or correspondence';
-  if (lowerFileName.includes('presentation')) return 'presentation';
-  if (lowerFileName.includes('contract')) return 'contract or agreement';
-  
-  // Default type
-  return 'professional document';
-}
-
-// In a real implementation, this would be an API call to extract text from various document types
+// Extract text from various document types
 export async function extractTextFromDocument(file: File): Promise<string> {
   // For demo purposes, we'll return a placeholder text
   // In production, this would use libraries like pdf.js for PDFs,
@@ -63,41 +55,25 @@ This extracted text would then be sent to an AI service for summarization.`;
   });
 }
 
-// Integration with OpenAI's GPT API (placeholder implementation)
-// In a real implementation, you would need an API key and make actual requests
-export async function requestOpenAISummary(text: string): Promise<string> {
-  // This is a placeholder. In a real implementation, you would:
-  // 1. Send the text to OpenAI's API
-  // 2. Receive a summarized response
-  // 3. Return that summary
-  
-  // For now, we'll just return a simulated response
-  return `This is a simulated AI-generated summary that would come from OpenAI's API in a real implementation.
-The summary would be more coherent and contextually relevant to the actual document content.`;
-}
-
-// Potential function for a more complete implementation
-export async function processDocumentWithAI(file: File): Promise<{ summary: string, keywords: string[] }> {
+// Process a document with AI
+export async function processDocumentWithAI(
+  file: File,
+  options?: AiProcessingOptions
+): Promise<{ summary: string, content: string }> {
   try {
     // 1. Extract text from document
     const extractedText = await extractTextFromDocument(file);
     
-    // 2. Generate summary using AI
-    const summary = await requestOpenAISummary(extractedText);
-    
-    // 3. Extract keywords (in a real implementation)
-    const keywords = ["sample", "keywords", "would", "be", "extracted"];
+    // 2. Generate summary using OpenAI
+    const summary = await generateDocumentSummary(extractedText, file.name, options);
     
     return {
       summary,
-      keywords
+      content: extractedText
     };
   } catch (error) {
     console.error("Error processing document with AI:", error);
     toast.error("Failed to process document with AI");
-    return {
-      summary: "Error generating summary",
-      keywords: []
-    };
+    throw error;
   }
 }

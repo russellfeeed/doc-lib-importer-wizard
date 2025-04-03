@@ -53,7 +53,7 @@ export function useDocumentEditor(initialDocuments: DocumentFile[], onSave: (doc
         } : doc
       ));
       
-      // Generate the summary
+      // Generate the summary using OpenAI
       const summary = await generateDocumentSummary(
         currentDocument.content || 'No content available', 
         currentDocument.file.name
@@ -64,7 +64,10 @@ export function useDocumentEditor(initialDocuments: DocumentFile[], onSave: (doc
         index === currentDocIndex ? { 
           ...doc, 
           excerpt: summary,
-          aiProcessing: { status: 'completed' } 
+          aiProcessing: { 
+            status: 'completed',
+            model: 'gpt-4o-mini' // Default model
+          } 
         } : doc
       ));
       
@@ -78,7 +81,7 @@ export function useDocumentEditor(initialDocuments: DocumentFile[], onSave: (doc
           ...doc, 
           aiProcessing: { 
             status: 'error',
-            error: 'Failed to generate AI summary'
+            error: error instanceof Error ? error.message : 'Failed to generate AI summary'
           } 
         } : doc
       ));
@@ -136,7 +139,7 @@ export function useDocumentEditor(initialDocuments: DocumentFile[], onSave: (doc
         };
         setEditedDocuments([...docsInProgress]);
         
-        // Generate summary
+        // Generate summary using OpenAI
         const summary = await generateDocumentSummary(
           doc.content || 'No content available',
           doc.file.name
@@ -146,7 +149,10 @@ export function useDocumentEditor(initialDocuments: DocumentFile[], onSave: (doc
         docsInProgress[i] = {
           ...doc,
           excerpt: summary,
-          aiProcessing: { status: 'completed' }
+          aiProcessing: { 
+            status: 'completed',
+            model: 'gpt-4o-mini' // Default model
+          }
         };
         setEditedDocuments([...docsInProgress]);
         
@@ -158,7 +164,7 @@ export function useDocumentEditor(initialDocuments: DocumentFile[], onSave: (doc
           ...doc,
           aiProcessing: {
             status: 'error',
-            error: 'Failed to generate AI summary'
+            error: error instanceof Error ? error.message : 'Failed to generate AI summary'
           }
         };
         setEditedDocuments([...docsInProgress]);

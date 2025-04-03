@@ -21,6 +21,8 @@ export interface DocumentFile {
   aiProcessing?: {
     status: 'idle' | 'processing' | 'completed' | 'error';
     error?: string;
+    model?: string;
+    tokensUsed?: number;
   };
 }
 
@@ -37,4 +39,10 @@ export interface CSVData {
   Content: string;
   Published: string;
   [key: string]: string;
+}
+
+export interface AiProcessingOptions {
+  model?: string;
+  maxTokens?: number;
+  temperature?: number;
 }

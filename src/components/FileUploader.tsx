@@ -1,11 +1,12 @@
-
 import React, { useState, useCallback, useRef } from 'react';
 import { Upload, X, FileText, AlertCircle, Zap } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DocumentFile } from '@/types/document';
 import { generateUniqueId, formatFileSize, extractFileType } from '@/utils/fileUtils';
 import { toast } from 'sonner';
-import { extractTextFromDocument, generateDocumentSummary } from '@/utils/aiUtils';
+import { extractTextFromDocument, processDocumentWithAI } from '@/utils/aiUtils';
+import ApiKeyManager from './ApiKeyManager';
+import { hasOpenAIKey } from '@/utils/openaiClient';
 
 interface FileUploaderProps {
   onFilesUploaded: (files: DocumentFile[]) => void;
@@ -20,6 +21,12 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onFilesUploaded }) => {
 
   const handleFileSelection = useCallback(async (selectedFiles: FileList | null) => {
     if (!selectedFiles || selectedFiles.length === 0) return;
+    
+    // Check if AI is enabled but no API key is set
+    if (aiEnabled && !hasOpenAIKey()) {
+      toast.error("Please set your OpenAI API key to use AI features");
+      return;
+    }
     
     setIsLoading(true);
     
@@ -57,15 +64,15 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onFilesUploaded }) => {
           // If AI is enabled, extract text and generate a summary
           if (aiEnabled) {
             try {
-              const extractedText = await extractTextFromDocument(fileObj.file);
-              const summary = await generateDocumentSummary(extractedText, fileObj.file.name);
+              const { summary, content } = await processDocumentWithAI(fileObj.file);
               
               updatedFile = {
                 ...updatedFile,
                 excerpt: summary,
-                content: extractedText,
+                content: content,
                 aiProcessing: {
-                  status: 'completed'
+                  status: 'completed',
+                  model: 'gpt-4o-mini' // Default model
                 }
               };
               
@@ -78,6 +85,17 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onFilesUploaded }) => {
                   error: 'Failed to generate AI summary'
                 }
               };
+            }
+          } else {
+            // If AI is not enabled, just extract the text content
+            try {
+              const content = await extractTextFromDocument(fileObj.file);
+              updatedFile = {
+                ...updatedFile,
+                content
+              };
+            } catch (error) {
+              console.error("Text extraction error:", error);
             }
           }
           
@@ -148,9 +166,21 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onFilesUploaded }) => {
     onFilesUploaded(files);
   }, [files, onFilesUploaded]);
 
+  const handleApiKeyChange = (hasKey: boolean) => {
+    if (!hasKey && aiEnabled) {
+      toast.info("AI summarization requires an OpenAI API key");
+    }
+  };
+
   const toggleAI = useCallback(() => {
-    setAiEnabled(prev => !prev);
-    toast.info(aiEnabled ? "AI summarization disabled" : "AI summarization enabled");
+    const newAiEnabled = !aiEnabled;
+    setAiEnabled(newAiEnabled);
+    
+    if (newAiEnabled && !hasOpenAIKey()) {
+      toast.info("Please set your OpenAI API key to use AI features");
+    } else {
+      toast.info(newAiEnabled ? "AI summarization enabled" : "AI summarization disabled");
+    }
   }, [aiEnabled]);
 
   return (
@@ -168,6 +198,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onFilesUploaded }) => {
             <Zap className={`h-4 w-4 mr-1 ${aiEnabled ? "text-white" : "text-gray-500"}`} />
             {aiEnabled ? "Enabled" : "Disabled"}
           </Button>
+          <ApiKeyManager onKeyChange={handleApiKeyChange} />
         </div>
       </div>
 
@@ -175,16 +206,26 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onFilesUploaded }) => {
         className={`file-drop-area border-2 border-dashed rounded-lg p-8 transition-all ${
           isDragging ? 'border-blue-500 bg-blue-50' : 'border-gray-300 hover:border-blue-400'
         }`}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setIsDragging(true);
+        }}
+        onDragLeave={(e) => {
+          e.preventDefault();
+          setIsDragging(false);
+        }}
+        onDrop={(e) => {
+          e.preventDefault();
+          setIsDragging(false);
+          handleFileSelection(e.dataTransfer.files);
+        }}
       >
         <input
           type="file"
           multiple
           className="hidden"
           ref={fileInputRef}
-          onChange={handleFileInputChange}
+          onChange={(e) => handleFileSelection(e.target.files)}
           accept=".pdf,.doc,.docx,.txt,.rtf,.odt,.xls,.xlsx,.ppt,.pptx"
         />
         
@@ -194,7 +235,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onFilesUploaded }) => {
           <p className="mt-1 text-sm text-gray-500">Supports PDF, Word, Excel, PowerPoint and text files</p>
           <Button 
             variant="outline" 
-            onClick={handleBrowseClick} 
+            onClick={() => fileInputRef.current?.click()} 
             className="mt-4"
           >
             Browse Files
@@ -245,7 +286,10 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onFilesUploaded }) => {
                   <Button
                     variant="ghost"
                     size="icon"
-                    onClick={() => handleRemoveFile(file.id)}
+                    onClick={() => {
+                      setFiles(prevFiles => prevFiles.filter(f => f.id !== file.id));
+                      toast.info("File removed");
+                    }}
                     title="Remove file"
                   >
                     <X className="h-4 w-4" />
@@ -259,7 +303,19 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onFilesUploaded }) => {
 
       <div className="flex justify-end mt-6">
         <Button 
-          onClick={handleContinue} 
+          onClick={() => {
+            if (files.length === 0) {
+              toast.error("Please upload at least one file");
+              return;
+            }
+            
+            if (files.some(file => file.isProcessing)) {
+              toast.error("Please wait for all files to finish processing");
+              return;
+            }
+            
+            onFilesUploaded(files);
+          }} 
           disabled={files.length === 0 || isLoading || files.some(file => file.isProcessing)}
         >
           Continue
