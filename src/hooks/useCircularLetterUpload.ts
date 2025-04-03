@@ -1,8 +1,9 @@
+
 import { useState, useCallback } from 'react';
 import { CircularLetter } from '@/types/circular-letter';
 import { toast } from 'sonner';
 import { generateUniqueId, formatFileSize, extractFileType } from '@/utils/fileUtils';
-import { extractTextFromDocument, processCircularLetterWithAI } from '@/utils/aiUtils';
+import { extractTextFromDocument, processCircularLetterWithAI, generatePdfThumbnail } from '@/utils/aiUtils';
 import { hasOpenAIKey } from '@/utils/openaiClient';
 
 interface UseCircularLetterUploadProps {
@@ -62,6 +63,18 @@ export function useCircularLetterUpload({ onLettersUploaded }: UseCircularLetter
       newLetters.map(async (letterObj) => {
         try {
           let updatedLetter = { ...letterObj, isProcessing: false };
+          
+          // Generate thumbnail for the PDF
+          try {
+            const thumbnail = await generatePdfThumbnail(letterObj.file);
+            updatedLetter = {
+              ...updatedLetter,
+              thumbnail
+            };
+          } catch (error) {
+            console.error("Thumbnail generation error:", error);
+            // Continue without thumbnail if it fails
+          }
           
           // If AI is enabled, extract text and generate metadata
           if (aiEnabled) {

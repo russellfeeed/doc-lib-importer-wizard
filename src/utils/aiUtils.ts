@@ -8,6 +8,52 @@ import * as pdfjs from 'pdfjs-dist';
 // Set worker path for pdf.js
 pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
+// Generate a thumbnail for a PDF file
+export async function generatePdfThumbnail(file: File): Promise<string> {
+  try {
+    // Convert the file to an ArrayBuffer
+    const arrayBuffer = await file.arrayBuffer();
+    
+    // Load the PDF file
+    const pdf = await pdfjs.getDocument({ data: arrayBuffer }).promise;
+    
+    // Get the first page
+    const page = await pdf.getPage(1);
+    
+    // Set viewport for thumbnail (scale down for thumbnail)
+    const viewport = page.getViewport({ scale: 0.5 });
+    
+    // Create a canvas element
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    
+    if (!context) {
+      throw new Error('Could not get canvas context');
+    }
+    
+    // Set canvas dimensions
+    canvas.height = viewport.height;
+    canvas.width = viewport.width;
+    
+    // Render PDF page to canvas
+    await page.render({
+      canvasContext: context,
+      viewport: viewport
+    }).promise;
+    
+    // Convert canvas to data URL
+    const thumbnailUrl = canvas.toDataURL('image/jpeg', 0.7);
+    
+    // Clean up
+    page.cleanup();
+    
+    return thumbnailUrl;
+  } catch (error) {
+    console.error('Error generating PDF thumbnail:', error);
+    throw error;
+  }
+}
+
 // Real AI service for document summarization using OpenAI
 export async function generateDocumentSummary(
   content: string, 

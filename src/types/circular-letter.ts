@@ -14,6 +14,7 @@ export interface CircularLetter {
   author: string;
   tags: string;
   content: string;
+  thumbnail?: string; // New field for storing the document's thumbnail image
   isProcessing?: boolean;
   processingError?: string;
   aiProcessing?: {

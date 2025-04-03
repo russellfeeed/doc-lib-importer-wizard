@@ -21,7 +21,27 @@ const CircularLetterList: React.FC<CircularLetterListProps> = ({ letters, onRemo
         {letters.map(letter => (
           <div key={letter.id} className="flex items-center justify-between p-3 bg-white rounded-lg border shadow-sm">
             <div className="flex items-center space-x-3">
-              <FileText className="h-6 w-6 text-blue-500" />
+              {letter.thumbnail ? (
+                <div className="h-16 w-12 flex-shrink-0 rounded overflow-hidden border border-gray-200 shadow-sm">
+                  <img 
+                    src={letter.thumbnail} 
+                    alt={`Thumbnail for ${letter.file.name}`}
+                    className="h-full w-full object-cover"
+                    onError={(e) => {
+                      // Fallback to icon if image fails to load
+                      e.currentTarget.style.display = 'none';
+                      e.currentTarget.nextElementSibling!.style.display = 'flex';
+                    }}
+                  />
+                  <div className="hidden h-full w-full items-center justify-center bg-gray-100">
+                    <FileText className="h-6 w-6 text-blue-500" />
+                  </div>
+                </div>
+              ) : (
+                <div className="h-16 w-12 flex-shrink-0 rounded border border-gray-200 flex items-center justify-center bg-gray-100">
+                  <FileText className="h-6 w-6 text-blue-500" />
+                </div>
+              )}
               <div>
                 <p className="font-medium">{letter.file.name}</p>
                 <p className="text-sm text-gray-500">{letter.fileSize}</p>
