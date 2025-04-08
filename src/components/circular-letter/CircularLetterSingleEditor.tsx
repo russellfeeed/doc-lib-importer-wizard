@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { CircularLetter, AppendixItem } from '@/types/circular-letter';
 import { Input } from '@/components/ui/input';
@@ -80,7 +79,8 @@ const CircularLetterSingleEditor: React.FC<CircularLetterSingleEditorProps> = ({
     markdown += `- **Correspondence Reference**: ${currentLetter.correspondenceRef || 'N/A'}\n`;
     markdown += `- **Date**: ${currentLetter.date || 'N/A'}\n`;
     markdown += `- **Audience**: ${currentLetter.audience || 'N/A'}\n`;
-    markdown += `- **Author**: ${currentLetter.author || 'N/A'}\n\n`;
+    markdown += `- **Author**: ${currentLetter.author || 'N/A'}\n`;
+    markdown += `- **Category**: ${currentLetter.categories || 'N/A'}\n\n`;
     
     markdown += `## Content\n\n`;
     markdown += convertToMarkdown(currentLetter.details) + '\n\n';
@@ -253,6 +253,15 @@ const CircularLetterSingleEditor: React.FC<CircularLetterSingleEditorProps> = ({
                 value={currentLetter.tags}
                 onChange={(e) => onEdit('tags', e.target.value)}
                 placeholder="Enter 1-5 comma-separated tags"
+              />
+            </div>
+
+            <div className="mb-4">
+              <label className="block text-sm font-medium mb-1">Category</label>
+              <Input 
+                value={currentLetter.categories}
+                onChange={(e) => onEdit('categories', e.target.value)}
+                placeholder="Document category"
               />
             </div>
           </div>
