@@ -1,11 +1,20 @@
-
 import React, { useState, useRef } from "react";
 import { Plus, Trash2, ChevronRight, ChevronDown, GripVertical, Edit, Check } from "lucide-react";
 import { CategoryNode as CategoryNodeType } from "@/types/categories";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useCategories } from "@/context/CategoryContext";
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface CategoryNodeProps {
   node: CategoryNodeType;
@@ -26,13 +35,16 @@ const CategoryNode: React.FC<CategoryNodeProps> = ({
   isRoot = false,
   level = 0
 }) => {
-  const { updateCategoryName } = useCategories();
+  const { updateCategoryName, hierarchy } = useCategories();
   const [expanded, setExpanded] = useState(true);
   const [newChildName, setNewChildName] = useState("");
   const [isAdding, setIsAdding] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editedName, setEditedName] = useState(node.name);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const nodeRef = useRef<HTMLDivElement>(null);
+
+  const isOnlyRootCategory = isRoot && hierarchy.categories.length <= 1;
 
   const handleAddClick = () => {
     setIsAdding(true);
@@ -56,18 +68,11 @@ const CategoryNode: React.FC<CategoryNodeProps> = ({
     if (editedName.trim()) {
       updateCategoryName(node.id, editedName);
       setIsEditing(false);
-      toast({
-        title: "Category renamed",
-        description: `Successfully renamed to "${editedName}"`,
-      });
+      toast.success(`Successfully renamed to "${editedName}"`);
     } else {
       setEditedName(node.name);
       setIsEditing(false);
-      toast({
-        title: "Rename cancelled",
-        description: "Category name cannot be empty",
-        variant: "destructive",
-      });
+      toast.error("Category name cannot be empty");
     }
   };
 
@@ -188,19 +193,43 @@ const CategoryNode: React.FC<CategoryNodeProps> = ({
               <Plus size={16} />
             </Button>
             
-            {!isRoot && (
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-6 w-6 p-0 text-gray-500 hover:text-red-500"
-                onClick={() => onDelete(node.id)}
-              >
-                <Trash2 size={16} />
-              </Button>
-            )}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 p-0 text-gray-500 hover:text-red-500"
+              onClick={() => setDeleteDialogOpen(true)}
+              disabled={isOnlyRootCategory}
+              title={isOnlyRootCategory ? "Cannot delete the only root category" : "Delete category"}
+            >
+              <Trash2 size={16} />
+            </Button>
           </>
         )}
       </div>
+      
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete the "{node.name}" category{node.children.length > 0 ? " and all its subcategories" : ""}.
+              This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                onDelete(node.id);
+                toast.success(`Deleted "${node.name}" category`);
+              }}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       
       {isAdding && (
         <div 
