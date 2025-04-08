@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import CategoryManager from '@/components/category/CategoryManager';
+import { CategoryProvider } from '@/context/CategoryContext';
 
 const Categories: React.FC = () => {
   return (
@@ -22,7 +23,9 @@ const Categories: React.FC = () => {
         Create and manage document categories for better organization and easier retrieval.
       </p>
       
-      <CategoryManager />
+      <CategoryProvider>
+        <CategoryManager />
+      </CategoryProvider>
     </div>
   );
 };
