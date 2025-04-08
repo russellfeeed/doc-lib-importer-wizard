@@ -2,8 +2,9 @@ import { useState, useCallback } from 'react';
 import { CircularLetter } from '@/types/circular-letter';
 import { toast } from 'sonner';
 import { generateUniqueId, formatFileSize, extractFileType } from '@/utils/fileUtils';
-import { extractTextFromDocument, processCircularLetterWithAI, generatePdfThumbnail } from '@/utils/aiUtils';
+import { extractTextFromDocument, processCircularLetterWithAI, generatePdfThumbnail, generateDocumentCategory } from '@/utils/aiUtils';
 import { hasOpenAIKey } from '@/utils/openaiClient';
+import { useCategories } from '@/context/CategoryContext';
 
 interface UseCircularLetterUploadProps {
   onLettersUploaded: (letters: CircularLetter[]) => void;
@@ -14,6 +15,7 @@ export function useCircularLetterUpload({ onLettersUploaded }: UseCircularLetter
   const [isDragging, setIsDragging] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [aiEnabled, setAiEnabled] = useState(true);
+  const { hierarchy } = useCategories();
 
   const handleFileSelection = useCallback(async (selectedFiles: FileList | null) => {
     if (!selectedFiles || selectedFiles.length === 0) return;
@@ -42,6 +44,7 @@ export function useCircularLetterUpload({ onLettersUploaded }: UseCircularLetter
         details: '',
         author: '',
         tags: '',
+        categories: '',
         content: '',
         appendices: [],
         isProcessing: true,
@@ -110,6 +113,25 @@ export function useCircularLetterUpload({ onLettersUploaded }: UseCircularLetter
                 }
               };
               
+              // After extracting basic info, now detect the category
+              try {
+                const categoryPath = await generateDocumentCategory(
+                  content, 
+                  letterObj.name,
+                  hierarchy.categories
+                );
+                
+                updatedLetter = {
+                  ...updatedLetter,
+                  categories: categoryPath
+                };
+                
+                console.log(`Detected category for ${letterObj.name}: ${categoryPath}`);
+              } catch (error) {
+                console.error("Category detection error:", error);
+                // Continue without category if detection fails
+              }
+              
               toast.success(`Circular Letter "${letterObj.name}" processed successfully`);
               
             } catch (error) {
@@ -155,7 +177,7 @@ export function useCircularLetterUpload({ onLettersUploaded }: UseCircularLetter
     
     setIsLoading(false);
     toast.success(`${newLetters.length} circular letters added successfully`);
-  }, [aiEnabled]);
+  }, [aiEnabled, hierarchy.categories]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();

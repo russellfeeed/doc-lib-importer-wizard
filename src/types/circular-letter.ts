@@ -1,8 +1,4 @@
-
-export interface AppendixItem {
-  title: string;
-  content: string;
-}
+import { AppendixItem } from "./document";
 
 export interface CircularLetter {
   id: string;
@@ -18,15 +14,15 @@ export interface CircularLetter {
   details: string;
   author: string;
   tags: string;
+  categories?: string; // Added categories field
   content: string;
-  appendices?: AppendixItem[];
-  thumbnail?: string; // Field for storing the document's thumbnail image
-  isProcessing?: boolean;
+  appendices: AppendixItem[];
+  thumbnail?: string;
+  isProcessing: boolean;
   processingError?: string;
-  aiProcessing?: {
+  aiProcessing: {
     status: 'idle' | 'processing' | 'completed' | 'error';
     error?: string;
     model?: string;
-    tokensUsed?: number;
   };
 }
