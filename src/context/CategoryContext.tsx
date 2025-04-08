@@ -11,7 +11,16 @@ interface CategoryContextType {
   updateCategoryName: (categoryId: string, newName: string) => void;
 }
 
-const CategoryContext = createContext<CategoryContextType | undefined>(undefined);
+// Create a default context with dummy implementations
+const defaultContext: CategoryContextType = {
+  hierarchy: { categories: [] },
+  addNewCategory: () => {},
+  deleteCategory: () => {},
+  moveNode: () => {},
+  updateCategoryName: () => {}
+};
+
+const CategoryContext = createContext<CategoryContextType>(defaultContext);
 
 export const CategoryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [hierarchy, setHierarchy] = useState<CategoryHierarchy>({ categories: [] });
@@ -19,15 +28,26 @@ export const CategoryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // Load categories from localStorage on initial mount only
   useEffect(() => {
-    const loaded = loadCategories();
-    setHierarchy(loaded);
-    setIsInitialized(true);
+    try {
+      const loaded = loadCategories();
+      setHierarchy(loaded);
+    } catch (error) {
+      console.error("Error loading categories:", error);
+      // Fallback to empty categories if loading fails
+      setHierarchy({ categories: [] });
+    } finally {
+      setIsInitialized(true);
+    }
   }, []);
 
   // Save to localStorage whenever hierarchy changes, but only after initial load
   useEffect(() => {
     if (isInitialized) {
-      saveCategories(hierarchy);
+      try {
+        saveCategories(hierarchy);
+      } catch (error) {
+        console.error("Error saving categories:", error);
+      }
     }
   }, [hierarchy, isInitialized]);
 
@@ -51,16 +71,16 @@ export const CategoryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setHierarchy(updated);
   };
 
+  const contextValue = {
+    hierarchy,
+    addNewCategory,
+    deleteCategory,
+    moveNode,
+    updateCategoryName
+  };
+
   return (
-    <CategoryContext.Provider
-      value={{
-        hierarchy,
-        addNewCategory,
-        deleteCategory,
-        moveNode,
-        updateCategoryName
-      }}
-    >
+    <CategoryContext.Provider value={contextValue}>
       {children}
     </CategoryContext.Provider>
   );
@@ -68,7 +88,7 @@ export const CategoryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
 export const useCategories = () => {
   const context = useContext(CategoryContext);
-  if (context === undefined) {
+  if (!context) {
     throw new Error("useCategories must be used within a CategoryProvider");
   }
   return context;

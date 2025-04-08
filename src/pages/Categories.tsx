@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React from 'react';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -11,8 +11,11 @@ import { toast } from 'sonner';
 const CategoryInitializer: React.FC = () => {
   const { hierarchy, addNewCategory } = useCategories();
 
-  useEffect(() => {
-    // Check if "Circular Letters" category already exists
+  // Check if "Circular Letters" category already exists
+  React.useEffect(() => {
+    // Only run if hierarchy and categories are ready
+    if (!hierarchy || !hierarchy.categories) return;
+    
     const circularLettersCategoryExists = hierarchy.categories.some(
       category => category.name === "Circular Letters"
     );
@@ -37,7 +40,7 @@ const CategoryInitializer: React.FC = () => {
         }
       }, 500); // Small delay to ensure the parent category is saved first
     }
-  }, [hierarchy.categories, addNewCategory]);
+  }, [hierarchy, addNewCategory]);
 
   return null;
 };
