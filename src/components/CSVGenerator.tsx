@@ -3,11 +3,12 @@ import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft, Download, Copy, Check, ArrowRight, RefreshCw } from 'lucide-react';
 import { DocumentFile } from '@/types/document';
+import { CircularLetter } from '@/types/circular-letter';
 import { generateCSV, copyToClipboard } from '@/utils/csvUtils';
 import { toast } from 'sonner';
 
 interface CSVGeneratorProps {
-  documents: DocumentFile[];
+  documents: DocumentFile[] | CircularLetter[];
   onBack: () => void;
   onReset: () => void;
 }
@@ -20,16 +21,23 @@ const CSVGenerator: React.FC<CSVGeneratorProps> = ({
   const [csvContent, setCsvContent] = useState<string>('');
   const [isGenerating, setIsGenerating] = useState(true);
   const [isCopied, setIsCopied] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  
+  // Determine if we're dealing with circular letters
+  const isCircularLetter = documents.length > 0 && 'referenceNumber' in documents[0];
   
   useEffect(() => {
     // Generate CSV when component mounts
     const generate = async () => {
       setIsGenerating(true);
+      setError(null);
+      
       try {
         const csv = generateCSV(documents);
         setCsvContent(csv);
       } catch (error) {
         console.error('Error generating CSV:', error);
+        setError('Failed to generate CSV. Please check the console for details.');
         toast.error('Error generating CSV');
       } finally {
         setIsGenerating(false);
@@ -44,7 +52,11 @@ const CSVGenerator: React.FC<CSVGeneratorProps> = ({
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', 'document-library-import.csv');
+    
+    // Use appropriate filename based on content type
+    const filename = isCircularLetter ? 'circular-letters-export.csv' : 'document-library-import.csv';
+    link.setAttribute('download', filename);
+    
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
@@ -68,12 +80,15 @@ const CSVGenerator: React.FC<CSVGeneratorProps> = ({
       <div className="bg-blue-50 rounded-lg p-6 border border-blue-100">
         <h3 className="text-lg font-semibold text-blue-700 mb-2">CSV File Ready</h3>
         <p className="text-gray-700 mb-4">
-          Your CSV file has been generated and is ready to import into Barn2's Document Library WordPress plugin.
+          {isCircularLetter 
+            ? 'Your CSV file containing circular letter data has been generated and is ready to download.'
+            : 'Your CSV file has been generated and is ready to import into Barn2\'s Document Library WordPress plugin.'
+          }
         </p>
         <div className="flex flex-wrap gap-3">
           <Button
             onClick={handleDownload}
-            disabled={isGenerating}
+            disabled={isGenerating || !!error}
             className="bg-blue-600 hover:bg-blue-700"
           >
             <Download className="mr-2 h-4 w-4" />
@@ -82,7 +97,7 @@ const CSVGenerator: React.FC<CSVGeneratorProps> = ({
           <Button
             variant="outline"
             onClick={handleCopy}
-            disabled={isGenerating}
+            disabled={isGenerating || !!error}
           >
             {isCopied ? <Check className="mr-2 h-4 w-4" /> : <Copy className="mr-2 h-4 w-4" />}
             {isCopied ? 'Copied!' : 'Copy to Clipboard'}
@@ -93,13 +108,17 @@ const CSVGenerator: React.FC<CSVGeneratorProps> = ({
       <div className="border rounded-lg overflow-hidden">
         <div className="bg-gray-50 p-3 border-b flex justify-between items-center">
           <h3 className="font-medium">CSV Preview</h3>
-          <div className="text-sm text-gray-500">{documents.length} documents</div>
+          <div className="text-sm text-gray-500">{documents.length} {isCircularLetter ? 'circular letters' : 'documents'}</div>
         </div>
         
         {isGenerating ? (
           <div className="p-6 text-center">
             <div className="animate-spin h-6 w-6 border-2 border-blue-600 border-t-transparent rounded-full mx-auto mb-2"></div>
             <p className="text-gray-500">Generating CSV...</p>
+          </div>
+        ) : error ? (
+          <div className="p-6 text-center text-red-500">
+            <p>{error}</p>
           </div>
         ) : (
           <pre className="bg-gray-900 text-green-400 p-4 font-mono text-sm overflow-x-auto whitespace-pre-wrap h-80">
@@ -110,23 +129,34 @@ const CSVGenerator: React.FC<CSVGeneratorProps> = ({
       
       <div className="bg-gray-50 rounded-lg p-6 border">
         <h3 className="font-semibold mb-2">Next Steps</h3>
-        <ol className="list-decimal list-inside space-y-2 text-gray-700">
-          <li>Log in to your WordPress admin panel</li>
-          <li>Go to Document Library <ArrowRight className="inline h-3 w-3" /> Import</li>
-          <li>Upload the CSV file you just downloaded</li>
-          <li>Map the fields according to the Barn2 documentation</li>
-          <li>Complete the import process</li>
-        </ol>
-        <div className="mt-4">
-          <a 
-            href="https://barn2.com/kb/add-import-documents/#bulk-import-documents" 
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-blue-600 hover:text-blue-800 underline flex items-center"
-          >
-            View Barn2 Documentation
-          </a>
-        </div>
+        {isCircularLetter ? (
+          <ol className="list-decimal list-inside space-y-2 text-gray-700">
+            <li>Download your CSV file containing circular letter data</li>
+            <li>Import this data into your document management system</li>
+            <li>Use the provided metadata to organize and categorize your circular letters</li>
+          </ol>
+        ) : (
+          <ol className="list-decimal list-inside space-y-2 text-gray-700">
+            <li>Log in to your WordPress admin panel</li>
+            <li>Go to Document Library <ArrowRight className="inline h-3 w-3" /> Import</li>
+            <li>Upload the CSV file you just downloaded</li>
+            <li>Map the fields according to the Barn2 documentation</li>
+            <li>Complete the import process</li>
+          </ol>
+        )}
+        
+        {!isCircularLetter && (
+          <div className="mt-4">
+            <a 
+              href="https://barn2.com/kb/add-import-documents/#bulk-import-documents" 
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 hover:text-blue-800 underline flex items-center"
+            >
+              View Barn2 Documentation
+            </a>
+          </div>
+        )}
       </div>
       
       <div className="flex justify-between mt-6">

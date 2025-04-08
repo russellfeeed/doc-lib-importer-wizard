@@ -56,7 +56,7 @@ const CircularLetterManager: React.FC = () => {
       description: 'Download your CSV file for import into a document management system',
       component: (
         <CSVGenerator 
-          documents={letters as any} 
+          documents={letters} 
           onBack={handleBackToEdit}
           onReset={handleReset}
         />

@@ -1,78 +1,135 @@
 
 import { DocumentFile, CSVData } from '@/types/document';
+import { CircularLetter } from '@/types/circular-letter';
 
 /**
  * Converts document data to CSV format
  */
-export const generateCSV = (documents: DocumentFile[]): string => {
-  // Define headers based on Barn2 documentation
-  const headers = [
-    'Name',
-    'Categories',
-    'Tags',
-    'Document Authors',
-    'File URL',
-    'Direct URL',
-    'Featured Image URL',
-    'File Size',
-    'Excerpt',
-    'Content',
-    'Published',
-    // Add standard custom fields here if needed
-  ];
+export const generateCSV = (documents: DocumentFile[] | CircularLetter[]): string => {
+  // Check if we're working with circular letters
+  const isCircularLetter = documents.length > 0 && 'referenceNumber' in documents[0];
   
-  // Get all unique custom field and taxonomy keys from all documents
-  const customFieldKeys = new Set<string>();
-  const customTaxonomyKeys = new Set<string>();
+  // Define headers based on document type
+  let headers: string[] = [];
   
-  documents.forEach(doc => {
-    Object.keys(doc.customFields).forEach(key => customFieldKeys.add(key));
-    Object.keys(doc.customTaxonomies).forEach(key => customTaxonomyKeys.add(key));
-  });
-  
-  // Add custom field headers (prefixing with cf: as needed)
-  customFieldKeys.forEach(key => {
-    headers.push(key.startsWith('cf:') ? key : `Custom Field ${key}`);
-  });
-  
-  // Add custom taxonomy headers (prefixing with tax: as needed)
-  customTaxonomyKeys.forEach(key => {
-    headers.push(key.startsWith('tax:') ? key : `Custom Taxonomy ${key}`);
-  });
+  if (isCircularLetter) {
+    // Headers for circular letters
+    headers = [
+      'Name',
+      'Reference Number',
+      'Correspondence Ref',
+      'Date',
+      'Audience',
+      'Title',
+      'Details',
+      'Author',
+      'Tags',
+      'File Size',
+      'Content',
+    ];
+  } else {
+    // Headers for regular documents
+    headers = [
+      'Name',
+      'Categories',
+      'Tags',
+      'Document Authors',
+      'File URL',
+      'Direct URL',
+      'Featured Image URL',
+      'File Size',
+      'Excerpt',
+      'Content',
+      'Published',
+    ];
+    
+    // Get all unique custom field and taxonomy keys from all documents
+    const customFieldKeys = new Set<string>();
+    const customTaxonomyKeys = new Set<string>();
+    
+    documents.forEach(doc => {
+      // Safely access customFields and customTaxonomies
+      const docFile = doc as DocumentFile;
+      if (docFile.customFields) {
+        Object.keys(docFile.customFields).forEach(key => customFieldKeys.add(key));
+      }
+      if (docFile.customTaxonomies) {
+        Object.keys(docFile.customTaxonomies).forEach(key => customTaxonomyKeys.add(key));
+      }
+    });
+    
+    // Add custom field headers (prefixing with cf: as needed)
+    customFieldKeys.forEach(key => {
+      headers.push(key.startsWith('cf:') ? key : `Custom Field ${key}`);
+    });
+    
+    // Add custom taxonomy headers (prefixing with tax: as needed)
+    customTaxonomyKeys.forEach(key => {
+      headers.push(key.startsWith('tax:') ? key : `Custom Taxonomy ${key}`);
+    });
+  }
   
   // Create CSV header row
   let csv = headers.join(',') + '\n';
   
   // Add document rows
   documents.forEach(doc => {
-    const row: CSVData = {
-      'Name': escapeCsvValue(doc.name),
-      'Categories': escapeCsvValue(doc.categories),
-      'Tags': escapeCsvValue(doc.tags),
-      'Document Authors': escapeCsvValue(doc.authors),
-      'File URL': escapeCsvValue(doc.fileUrl),
-      'Direct URL': escapeCsvValue(doc.directUrl),
-      'Featured Image URL': escapeCsvValue(doc.imageUrl),
-      'File Size': escapeCsvValue(doc.fileSize),
-      'Excerpt': escapeCsvValue(doc.excerpt),
-      'Content': escapeCsvValue(doc.content),
-      'Published': doc.published ? 'TRUE' : 'FALSE',
-    };
+    let row: Record<string, string> = {};
     
-    // Add custom fields
-    customFieldKeys.forEach(key => {
-      const displayKey = key.startsWith('cf:') ? key : `Custom Field ${key}`;
-      row[displayKey] = escapeCsvValue(doc.customFields[key] || '');
-    });
-    
-    // Add custom taxonomies
-    customTaxonomyKeys.forEach(key => {
-      const displayKey = key.startsWith('tax:') ? key : `Custom Taxonomy ${key}`;
-      row[displayKey] = escapeCsvValue(doc.customTaxonomies[key] || '');
-    });
+    if (isCircularLetter) {
+      // Map circular letter properties
+      const letter = doc as CircularLetter;
+      row = {
+        'Name': escapeCsvValue(letter.name),
+        'Reference Number': escapeCsvValue(letter.referenceNumber),
+        'Correspondence Ref': escapeCsvValue(letter.correspondenceRef),
+        'Date': escapeCsvValue(letter.date),
+        'Audience': escapeCsvValue(letter.audience),
+        'Title': escapeCsvValue(letter.title),
+        'Details': escapeCsvValue(letter.details),
+        'Author': escapeCsvValue(letter.author),
+        'Tags': escapeCsvValue(letter.tags),
+        'File Size': escapeCsvValue(letter.fileSize),
+        'Content': escapeCsvValue(letter.content),
+      };
+    } else {
+      // Map document properties
+      const docFile = doc as DocumentFile;
+      row = {
+        'Name': escapeCsvValue(docFile.name),
+        'Categories': escapeCsvValue(docFile.categories),
+        'Tags': escapeCsvValue(docFile.tags),
+        'Document Authors': escapeCsvValue(docFile.authors),
+        'File URL': escapeCsvValue(docFile.fileUrl),
+        'Direct URL': escapeCsvValue(docFile.directUrl),
+        'Featured Image URL': escapeCsvValue(docFile.imageUrl),
+        'File Size': escapeCsvValue(docFile.fileSize),
+        'Excerpt': escapeCsvValue(docFile.excerpt),
+        'Content': escapeCsvValue(docFile.content),
+        'Published': docFile.published ? 'TRUE' : 'FALSE',
+      };
+      
+      // Add custom fields if they exist
+      if (docFile.customFields) {
+        const customFieldKeys = Object.keys(docFile.customFields);
+        customFieldKeys.forEach(key => {
+          const displayKey = key.startsWith('cf:') ? key : `Custom Field ${key}`;
+          row[displayKey] = escapeCsvValue(docFile.customFields[key] || '');
+        });
+      }
+      
+      // Add custom taxonomies if they exist
+      if (docFile.customTaxonomies) {
+        const customTaxonomyKeys = Object.keys(docFile.customTaxonomies);
+        customTaxonomyKeys.forEach(key => {
+          const displayKey = key.startsWith('tax:') ? key : `Custom Taxonomy ${key}`;
+          row[displayKey] = escapeCsvValue(docFile.customTaxonomies[key] || '');
+        });
+      }
+    }
     
     // Add row to CSV
-    csv += Object.values(row).join(',') + '\n';
+    csv += headers.map(header => row[header] || '').join(',') + '\n';
   });
   
   return csv;
