@@ -1,4 +1,3 @@
-
 export interface DocumentFile {
   id: string;
   file: File;
@@ -46,4 +45,9 @@ export interface AiProcessingOptions {
   model?: string;
   maxTokens?: number;
   temperature?: number;
+}
+
+export interface AppendixItem {
+  title: string;
+  content: string;
 }

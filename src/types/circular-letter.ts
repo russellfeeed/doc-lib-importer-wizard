@@ -1,3 +1,4 @@
+
 import { AppendixItem } from "./document";
 
 export interface CircularLetter {
@@ -26,3 +27,5 @@ export interface CircularLetter {
     model?: string;
   };
 }
+
+export type { AppendixItem };
