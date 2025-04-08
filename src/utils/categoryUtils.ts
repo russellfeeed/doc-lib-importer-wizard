@@ -127,25 +127,25 @@ export const removeCategory = (
 ): CategoryHierarchy => {
   const updatedHierarchy = { ...hierarchy };
   
-  // Remove it from root categories if present there
+  // First remove from root level if it exists there
   updatedHierarchy.categories = updatedHierarchy.categories.filter(
     category => category.id !== categoryId
   );
   
-  // Also remove it from any children if it's nested
-  const removeFromChildren = (categories: CategoryNode[]): CategoryNode[] => {
+  // Then check for and remove from any nested locations
+  const processChildren = (categories: CategoryNode[]): CategoryNode[] => {
     return categories.map(category => ({
       ...category,
       children: category.children
         .filter(child => child.id !== categoryId)
         .map(child => ({
           ...child,
-          children: removeFromChildren(child.children)
+          children: processChildren(child.children)
         }))
     }));
   };
   
-  updatedHierarchy.categories = removeFromChildren(updatedHierarchy.categories);
+  updatedHierarchy.categories = processChildren(updatedHierarchy.categories);
   
   return updatedHierarchy;
 };

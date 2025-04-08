@@ -33,6 +33,8 @@ const CategoryInitializer: React.FC = () => {
         );
         
         if (circularLettersCategory) {
+          // Add subcategories without showing toasts from here
+          // (toast messages will be displayed by CategoryNode component)
           addNewCategory(circularLettersCategory.id, "Announcements");
           addNewCategory(circularLettersCategory.id, "Policies");
           addNewCategory(circularLettersCategory.id, "Updates");

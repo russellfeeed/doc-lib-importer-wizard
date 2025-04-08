@@ -57,6 +57,7 @@ const CategoryNode: React.FC<CategoryNodeProps> = ({
       onAddChild(node.id, newChildName);
       setNewChildName("");
       setIsAdding(false);
+      toast.success(`Created "${newChildName}" subcategory`);
     }
   };
 
@@ -67,9 +68,10 @@ const CategoryNode: React.FC<CategoryNodeProps> = ({
 
   const handleSaveEdit = () => {
     if (editedName.trim() && editedName !== node.name) {
+      const oldName = node.name;
       updateCategoryName(node.id, editedName);
       setIsEditing(false);
-      toast.success(`Successfully renamed to "${editedName}"`);
+      toast.success(`Successfully renamed from "${oldName}" to "${editedName}"`);
     } else if (editedName === node.name) {
       setIsEditing(false);
     } else {
@@ -119,11 +121,13 @@ const CategoryNode: React.FC<CategoryNodeProps> = ({
   };
 
   const handleDeleteConfirm = () => {
-    // First close the dialog, then delete the category
+    const categoryName = node.name;
+    // First close the dialog
     setDeleteDialogOpen(false);
-    // Now actually delete the category and show the success toast
+    // Then delete the category
     onDelete(node.id);
-    toast.success(`Deleted "${node.name}" category`);
+    // Show confirmation toast after deletion
+    toast.success(`Deleted "${categoryName}" category`);
   };
 
   const padding = level * 20;

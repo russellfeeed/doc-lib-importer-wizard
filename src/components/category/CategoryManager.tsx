@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import CategoryNode from "./CategoryNode";
 import { useCategories } from "@/context/CategoryContext";
 import { CategoryNode as CategoryNodeType } from "@/types/categories";
+import { toast } from "sonner";
 
 const CategoryManager: React.FC = () => {
   const { hierarchy, addNewCategory, deleteCategory, moveNode } = useCategories();
@@ -66,12 +67,12 @@ const CategoryManager: React.FC = () => {
       addNewCategory(null, newRootName);
       setNewRootName("");
       setIsAddingRoot(false);
+      toast.success(`Created "${newRootName}" root category`);
     }
   };
 
   const handleDeleteCategory = (categoryId: string) => {
-    // Just call deleteCategory directly without adding any toast
-    // (toasts are now handled in the CategoryNode component)
+    // Just delete the category - toasts are handled in CategoryNode.tsx
     deleteCategory(categoryId);
   };
 
