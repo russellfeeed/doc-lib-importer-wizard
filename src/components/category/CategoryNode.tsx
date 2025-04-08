@@ -46,6 +46,10 @@ const CategoryNode: React.FC<CategoryNodeProps> = ({
   const nodeRef = useRef<HTMLDivElement>(null);
 
   const isOnlyRootCategory = isRoot && hierarchy.categories.length <= 1;
+  const isCircularLettersCategory = node.name === "Circular Letters";
+
+  // Add this check to prevent deletion of "Circular Letters" category
+  const canDelete = !isOnlyRootCategory && !isCircularLettersCategory;
 
   const handleAddClick = () => {
     setIsAdding(true);
@@ -213,8 +217,14 @@ const CategoryNode: React.FC<CategoryNodeProps> = ({
               size="icon"
               className="h-6 w-6 p-0 text-gray-500 hover:text-red-500"
               onClick={() => setDeleteDialogOpen(true)}
-              disabled={isOnlyRootCategory}
-              title={isOnlyRootCategory ? "Cannot delete the only root category" : "Delete category"}
+              disabled={!canDelete}
+              title={
+                isOnlyRootCategory 
+                  ? "Cannot delete the only root category" 
+                  : isCircularLettersCategory 
+                    ? "Cannot delete the Circular Letters category" 
+                    : "Delete category"
+              }
             >
               <Trash2 size={16} />
             </Button>
