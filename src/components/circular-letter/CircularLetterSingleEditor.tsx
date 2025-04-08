@@ -1,9 +1,10 @@
+
 import React, { useState } from 'react';
 import { CircularLetter, AppendixItem } from '@/types/circular-letter';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, ListFilter, Save, Tag, File, Plus, Minus, FileText } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ListFilter, Save, Tag, File, Plus, Minus, FileText, ExternalLink } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
@@ -96,6 +97,16 @@ const CircularLetterSingleEditor: React.FC<CircularLetterSingleEditorProps> = ({
     return markdown;
   };
 
+  const openPdfInNewTab = () => {
+    if (!currentLetter.file) {
+      toast.error("PDF file not available");
+      return;
+    }
+    
+    const fileUrl = URL.createObjectURL(currentLetter.file);
+    window.open(fileUrl, '_blank');
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -111,6 +122,14 @@ const CircularLetterSingleEditor: React.FC<CircularLetterSingleEditorProps> = ({
           )}
         </div>
         <div className="flex space-x-2">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={openPdfInNewTab}
+          >
+            <ExternalLink className="h-4 w-4 mr-2" />
+            View Original PDF
+          </Button>
           <Dialog open={isMarkdownViewOpen} onOpenChange={setIsMarkdownViewOpen}>
             <DialogTrigger asChild>
               <Button 
