@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from "react";
 import { Plus, Trash2, ChevronRight, ChevronDown, GripVertical, Edit, Check } from "lucide-react";
 import { CategoryNode as CategoryNodeType } from "@/types/categories";
@@ -46,10 +45,7 @@ const CategoryNode: React.FC<CategoryNodeProps> = ({
   const nodeRef = useRef<HTMLDivElement>(null);
 
   const isOnlyRootCategory = isRoot && hierarchy.categories.length <= 1;
-  const isCircularLettersCategory = node.name === "Circular Letters";
-
-  // Add this check to prevent deletion of "Circular Letters" category
-  const canDelete = !isOnlyRootCategory && !isCircularLettersCategory;
+  const canDelete = !isOnlyRootCategory;
 
   const handleAddClick = () => {
     setIsAdding(true);
@@ -126,11 +122,8 @@ const CategoryNode: React.FC<CategoryNodeProps> = ({
 
   const handleDeleteConfirm = () => {
     const categoryName = node.name;
-    // First close the dialog
     setDeleteDialogOpen(false);
-    // Then delete the category
     onDelete(node.id);
-    // Show confirmation toast after deletion
     toast.success(`Deleted "${categoryName}" category`);
   };
 
@@ -218,13 +211,7 @@ const CategoryNode: React.FC<CategoryNodeProps> = ({
               className="h-6 w-6 p-0 text-gray-500 hover:text-red-500"
               onClick={() => setDeleteDialogOpen(true)}
               disabled={!canDelete}
-              title={
-                isOnlyRootCategory 
-                  ? "Cannot delete the only root category" 
-                  : isCircularLettersCategory 
-                    ? "Cannot delete the Circular Letters category" 
-                    : "Delete category"
-              }
+              title={isOnlyRootCategory ? "Cannot delete the only root category" : "Delete category"}
             >
               <Trash2 size={16} />
             </Button>

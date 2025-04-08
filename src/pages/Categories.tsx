@@ -7,20 +7,21 @@ import CategoryManager from '@/components/category/CategoryManager';
 import { useCategories } from '@/context/CategoryContext';
 import { toast } from 'sonner';
 
-// This component will ensure that a "Circular Letters" category exists
+// This component is now optional - it only adds Circular Letters if it doesn't exist on first load
 const CategoryInitializer: React.FC = () => {
   const { hierarchy, addNewCategory } = useCategories();
+  const [initialized, setInitialized] = React.useState(false);
 
-  // Check if "Circular Letters" category already exists
+  // Check if "Circular Letters" category already exists, but only on first load
   React.useEffect(() => {
-    // Only run if hierarchy and categories are ready
-    if (!hierarchy || !hierarchy.categories) return;
+    // Only run once and only if hierarchy and categories are ready
+    if (initialized || !hierarchy || !hierarchy.categories) return;
     
     const circularLettersCategoryExists = hierarchy.categories.some(
       category => category.name === "Circular Letters"
     );
 
-    // If not, create it
+    // If not, create it, but only on first load (not after deletion)
     if (!circularLettersCategoryExists) {
       addNewCategory(null, "Circular Letters");
       toast.success('Created "Circular Letters" category');
@@ -34,7 +35,6 @@ const CategoryInitializer: React.FC = () => {
         
         if (circularLettersCategory) {
           // Add subcategories without showing toasts from here
-          // (toast messages will be displayed by CategoryNode component)
           addNewCategory(circularLettersCategory.id, "Announcements");
           addNewCategory(circularLettersCategory.id, "Policies");
           addNewCategory(circularLettersCategory.id, "Updates");
@@ -42,7 +42,9 @@ const CategoryInitializer: React.FC = () => {
         }
       }, 500); // Small delay to ensure the parent category is saved first
     }
-  }, [hierarchy, addNewCategory]);
+    
+    setInitialized(true);
+  }, [hierarchy, addNewCategory, initialized]);
 
   return null;
 };
