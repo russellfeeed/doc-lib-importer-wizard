@@ -69,6 +69,12 @@ const CategoryManager: React.FC = () => {
     }
   };
 
+  const handleDeleteCategory = (categoryId: string) => {
+    // Just call deleteCategory directly without adding any toast
+    // (toasts are now handled in the CategoryNode component)
+    deleteCategory(categoryId);
+  };
+
   const handleRootDragOver = (e: React.DragEvent) => {
     e.preventDefault();
   };
@@ -130,7 +136,7 @@ const CategoryManager: React.FC = () => {
                 key={category.id}
                 node={category}
                 onAddChild={(parentId, name) => addNewCategory(parentId, name)}
-                onDelete={deleteCategory}
+                onDelete={handleDeleteCategory}
                 onDragStart={handleDragStart}
                 onDrop={handleDrop}
                 isRoot={true}

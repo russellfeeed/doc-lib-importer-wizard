@@ -1,3 +1,4 @@
+
 import React, { useState, useRef } from "react";
 import { Plus, Trash2, ChevronRight, ChevronDown, GripVertical, Edit, Check } from "lucide-react";
 import { CategoryNode as CategoryNodeType } from "@/types/categories";
@@ -117,6 +118,14 @@ const CategoryNode: React.FC<CategoryNodeProps> = ({
     onDrop(e, node.id);
   };
 
+  const handleDeleteConfirm = () => {
+    // First close the dialog, then delete the category
+    setDeleteDialogOpen(false);
+    // Now actually delete the category and show the success toast
+    onDelete(node.id);
+    toast.success(`Deleted "${node.name}" category`);
+  };
+
   const padding = level * 20;
 
   return (
@@ -221,10 +230,7 @@ const CategoryNode: React.FC<CategoryNodeProps> = ({
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => {
-                onDelete(node.id);
-                toast.success(`Deleted "${node.name}" category`);
-              }}
+              onClick={handleDeleteConfirm}
               className="bg-red-600 hover:bg-red-700"
             >
               Delete
