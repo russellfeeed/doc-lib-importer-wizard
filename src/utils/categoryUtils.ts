@@ -1,4 +1,3 @@
-
 import { CategoryHierarchy, CategoryNode } from "@/types/categories";
 
 // Default categories to use if none exist
@@ -127,16 +126,27 @@ export const removeCategory = (
 ): CategoryHierarchy => {
   const updatedHierarchy = { ...hierarchy };
   
-  const removeFromArray = (categories: CategoryNode[]): CategoryNode[] => {
+  // First check if it's a root category we need to remove
+  updatedHierarchy.categories = updatedHierarchy.categories.filter(
+    category => category.id !== categoryId
+  );
+  
+  // Also remove it from any potential parent categories (if it wasn't a root)
+  const removeFromChildren = (categories: CategoryNode[]): CategoryNode[] => {
     return categories
       .filter(category => category.id !== categoryId)
       .map(category => ({
         ...category,
-        children: removeFromArray(category.children)
+        children: removeFromChildren(category.children)
       }));
   };
   
-  updatedHierarchy.categories = removeFromArray(updatedHierarchy.categories);
+  // Apply the filter to all remaining categories
+  updatedHierarchy.categories = updatedHierarchy.categories.map(category => ({
+    ...category,
+    children: removeFromChildren(category.children)
+  }));
+  
   return updatedHierarchy;
 };
 
@@ -223,4 +233,3 @@ export const renameCategory = (
   updatedHierarchy.categories = updateNodeName(updatedHierarchy.categories);
   return updatedHierarchy;
 };
-

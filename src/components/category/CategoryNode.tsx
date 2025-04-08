@@ -1,4 +1,3 @@
-
 import React, { useState, useRef } from "react";
 import { Plus, Trash2, ChevronRight, ChevronDown, GripVertical, Edit, Check } from "lucide-react";
 import { CategoryNode as CategoryNodeType } from "@/types/categories";
@@ -71,7 +70,6 @@ const CategoryNode: React.FC<CategoryNodeProps> = ({
       setIsEditing(false);
       toast.success(`Successfully renamed to "${editedName}"`);
     } else if (editedName === node.name) {
-      // No changes made, just exit edit mode
       setIsEditing(false);
     } else {
       setEditedName(node.name);
@@ -284,4 +282,3 @@ const CategoryNode: React.FC<CategoryNodeProps> = ({
 };
 
 export default CategoryNode;
-
