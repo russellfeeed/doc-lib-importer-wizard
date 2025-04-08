@@ -15,34 +15,40 @@ const CategoryContext = createContext<CategoryContextType | undefined>(undefined
 
 export const CategoryProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [hierarchy, setHierarchy] = useState<CategoryHierarchy>({ categories: [] });
+  const [isInitialized, setIsInitialized] = useState(false);
 
+  // Load categories from localStorage on initial mount only
   useEffect(() => {
     const loaded = loadCategories();
     setHierarchy(loaded);
+    setIsInitialized(true);
   }, []);
+
+  // Save to localStorage whenever hierarchy changes, but only after initial load
+  useEffect(() => {
+    if (isInitialized) {
+      saveCategories(hierarchy);
+    }
+  }, [hierarchy, isInitialized]);
 
   const addNewCategory = (parentId: string | null, name: string) => {
     const updated = addCategory(hierarchy, parentId, name);
     setHierarchy(updated);
-    saveCategories(updated);
   };
 
   const deleteCategory = (categoryId: string) => {
     const updated = removeCategory(hierarchy, categoryId);
     setHierarchy(updated);
-    saveCategories(updated);
   };
 
   const moveNode = (categoryId: string, newParentId: string | null) => {
     const updated = moveCategory(hierarchy, categoryId, newParentId);
     setHierarchy(updated);
-    saveCategories(updated);
   };
 
   const updateCategoryName = (categoryId: string, newName: string) => {
     const updated = renameCategory(hierarchy, categoryId, newName);
     setHierarchy(updated);
-    saveCategories(updated);
   };
 
   return (

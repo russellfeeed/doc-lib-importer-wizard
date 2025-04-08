@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import CategoryManager from '@/components/category/CategoryManager';
-import { CategoryProvider, useCategories } from '@/context/CategoryContext';
+import { useCategories } from '@/context/CategoryContext';
 import { toast } from 'sonner';
 
 // This component will ensure that a "Circular Letters" category exists
@@ -59,10 +59,8 @@ const Categories: React.FC = () => {
         Create and manage document categories for better organization and easier retrieval.
       </p>
       
-      <CategoryProvider>
-        <CategoryInitializer />
-        <CategoryManager />
-      </CategoryProvider>
+      <CategoryInitializer />
+      <CategoryManager />
     </div>
   );
 };
