@@ -1,10 +1,46 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import CategoryManager from '@/components/category/CategoryManager';
-import { CategoryProvider } from '@/context/CategoryContext';
+import { CategoryProvider, useCategories } from '@/context/CategoryContext';
+import { toast } from 'sonner';
+
+// This component will ensure that a "Circular Letters" category exists
+const CategoryInitializer: React.FC = () => {
+  const { hierarchy, addNewCategory } = useCategories();
+
+  useEffect(() => {
+    // Check if "Circular Letters" category already exists
+    const circularLettersCategoryExists = hierarchy.categories.some(
+      category => category.name === "Circular Letters"
+    );
+
+    // If not, create it
+    if (!circularLettersCategoryExists) {
+      addNewCategory(null, "Circular Letters");
+      toast.success('Created "Circular Letters" category');
+      
+      // Create some default subcategories for Circular Letters
+      setTimeout(() => {
+        // Find the newly created category ID
+        const circularLettersCategory = hierarchy.categories.find(
+          category => category.name === "Circular Letters"
+        );
+        
+        if (circularLettersCategory) {
+          addNewCategory(circularLettersCategory.id, "Announcements");
+          addNewCategory(circularLettersCategory.id, "Policies");
+          addNewCategory(circularLettersCategory.id, "Updates");
+          addNewCategory(circularLettersCategory.id, "Requirements");
+        }
+      }, 500); // Small delay to ensure the parent category is saved first
+    }
+  }, [hierarchy.categories, addNewCategory]);
+
+  return null;
+};
 
 const Categories: React.FC = () => {
   return (
@@ -24,6 +60,7 @@ const Categories: React.FC = () => {
       </p>
       
       <CategoryProvider>
+        <CategoryInitializer />
         <CategoryManager />
       </CategoryProvider>
     </div>

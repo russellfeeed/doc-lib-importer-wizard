@@ -1,3 +1,4 @@
+
 import { useState, useCallback } from 'react';
 import { CircularLetter } from '@/types/circular-letter';
 import { toast } from 'sonner';
@@ -44,7 +45,7 @@ export function useCircularLetterUpload({ onLettersUploaded }: UseCircularLetter
         details: '',
         author: '',
         tags: '',
-        categories: '',
+        categories: 'Circular Letters', // Default category path
         content: '',
         appendices: [],
         isProcessing: true,
@@ -113,13 +114,42 @@ export function useCircularLetterUpload({ onLettersUploaded }: UseCircularLetter
                 }
               };
               
-              // After extracting basic info, now detect the category
+              // After extracting basic info, now detect the specific circular letter subcategory
               try {
-                const categoryPath = await generateDocumentCategory(
-                  content, 
-                  letterObj.name,
-                  hierarchy.categories
+                // First check if there's a "Circular Letters" root category
+                const circularLettersCategory = hierarchy.categories.find(
+                  category => category.name === "Circular Letters"
                 );
+                
+                let categoryPath = 'Circular Letters';
+                
+                if (circularLettersCategory) {
+                  // If there are subcategories, try to find the best match based on content
+                  if (circularLettersCategory.children.length > 0) {
+                    // Only pass the Circular Letters subcategories for classification
+                    const subCategoryPath = await generateDocumentCategory(
+                      content, 
+                      letterObj.name,
+                      circularLettersCategory.children
+                    );
+                    
+                    if (subCategoryPath) {
+                      categoryPath = `Circular Letters > ${subCategoryPath}`;
+                    }
+                  }
+                } else {
+                  // If no Circular Letters category exists, use the full hierarchy
+                  // but still make sure it starts with "Circular Letters"
+                  const suggestedCategory = await generateDocumentCategory(
+                    content, 
+                    letterObj.name,
+                    hierarchy.categories
+                  );
+                  
+                  if (suggestedCategory) {
+                    categoryPath = `Circular Letters > ${suggestedCategory.split(' > ').pop()}`;
+                  }
+                }
                 
                 updatedLetter = {
                   ...updatedLetter,
@@ -129,7 +159,11 @@ export function useCircularLetterUpload({ onLettersUploaded }: UseCircularLetter
                 console.log(`Detected category for ${letterObj.name}: ${categoryPath}`);
               } catch (error) {
                 console.error("Category detection error:", error);
-                // Continue without category if detection fails
+                // If category detection fails, use the default "Circular Letters" category
+                updatedLetter = {
+                  ...updatedLetter,
+                  categories: 'Circular Letters'
+                };
               }
               
               toast.success(`Circular Letter "${letterObj.name}" processed successfully`);
@@ -141,7 +175,8 @@ export function useCircularLetterUpload({ onLettersUploaded }: UseCircularLetter
                 aiProcessing: {
                   status: 'error',
                   error: 'Failed to extract information from circular letter'
-                }
+                },
+                categories: 'Circular Letters' // Ensure default category is set even on error
               };
             }
           } else {
@@ -150,7 +185,8 @@ export function useCircularLetterUpload({ onLettersUploaded }: UseCircularLetter
               const content = await extractTextFromDocument(letterObj.file);
               updatedLetter = {
                 ...updatedLetter,
-                content
+                content,
+                categories: 'Circular Letters' // Ensure default category is set
               };
             } catch (error) {
               console.error("Text extraction error:", error);
@@ -163,7 +199,8 @@ export function useCircularLetterUpload({ onLettersUploaded }: UseCircularLetter
           return {
             ...letterObj,
             isProcessing: false,
-            processingError: 'Failed to process file'
+            processingError: 'Failed to process file',
+            categories: 'Circular Letters' // Ensure default category is set even on error
           };
         }
       })
@@ -219,7 +256,18 @@ export function useCircularLetterUpload({ onLettersUploaded }: UseCircularLetter
       return;
     }
     
-    onLettersUploaded(letters);
+    // Ensure all letters have at least the default category
+    const lettersWithCategories = letters.map(letter => {
+      if (!letter.categories) {
+        return {
+          ...letter,
+          categories: 'Circular Letters'
+        };
+      }
+      return letter;
+    });
+    
+    onLettersUploaded(lettersWithCategories);
   }, [letters, onLettersUploaded]);
 
   const toggleAI = useCallback(() => {
