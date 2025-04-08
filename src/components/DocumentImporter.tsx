@@ -1,6 +1,9 @@
 
 import React, { useState } from 'react';
 import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { ArrowLeft } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import FileUploader from '@/components/FileUploader';
 import DocumentEditor from '@/components/DocumentEditor';
 import CSVGenerator from '@/components/CSVGenerator';
@@ -68,6 +71,15 @@ const DocumentImporter: React.FC = () => {
 
   return (
     <div className="space-y-6">
+      <div className="flex items-center mb-4">
+        <Button asChild variant="ghost" size="sm" className="gap-2">
+          <Link to="/">
+            <ArrowLeft className="h-4 w-4" />
+            Back to Home
+          </Link>
+        </Button>
+      </div>
+      
       <div className="flex justify-between items-center mb-10">
         <div className="flex space-x-2 md:space-x-4">
           {Object.entries(steps).map(([key, step], index) => (
