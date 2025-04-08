@@ -1,3 +1,4 @@
+
 import { CategoryHierarchy, CategoryNode } from "@/types/categories";
 
 // Default categories to use if none exist
@@ -198,6 +199,7 @@ export const renameCategory = (
 ): CategoryHierarchy => {
   const updatedHierarchy = { ...hierarchy };
   
+  // Helper function to update node names in a tree structure
   const updateNodeName = (categories: CategoryNode[]): CategoryNode[] => {
     return categories.map(category => {
       if (category.id === categoryId) {
@@ -221,3 +223,4 @@ export const renameCategory = (
   updatedHierarchy.categories = updateNodeName(updatedHierarchy.categories);
   return updatedHierarchy;
 };
+
