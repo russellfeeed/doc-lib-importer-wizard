@@ -1,10 +1,10 @@
-
 import React, { useState } from "react";
-import { Plus } from "lucide-react";
+import { Plus, Code, MousePointer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import CategoryNode from "./CategoryNode";
+import CategoryJsonEditor from "./CategoryJsonEditor";
 import { useCategories } from "@/context/CategoryContext";
 import { CategoryNode as CategoryNodeType } from "@/types/categories";
 import { toast } from "sonner";
@@ -14,6 +14,28 @@ const CategoryManager: React.FC = () => {
   const [newRootName, setNewRootName] = useState("");
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [isAddingRoot, setIsAddingRoot] = useState(false);
+  const [viewMode, setViewMode] = useState<'ui' | 'json'>('ui');
+
+  // Helper function to find a category by ID
+  const findCategoryById = (
+    categories: CategoryNodeType[],
+    id: string
+  ): CategoryNodeType | null => {
+    for (const category of categories) {
+      if (category.id === id) {
+        return category;
+      }
+      
+      if (category.children.length > 0) {
+        const found = findCategoryById(category.children, id);
+        if (found) {
+          return found;
+        }
+      }
+    }
+    
+    return null;
+  };
 
   const handleDragStart = (e: React.DragEvent, nodeId: string) => {
     setDraggingId(nodeId);
@@ -38,27 +60,6 @@ const CategoryManager: React.FC = () => {
     
     moveNode(draggingId, newParentId);
     setDraggingId(null);
-  };
-
-  // Helper function to find a category by ID
-  const findCategoryById = (
-    categories: CategoryNodeType[],
-    id: string
-  ): CategoryNodeType | null => {
-    for (const category of categories) {
-      if (category.id === id) {
-        return category;
-      }
-      
-      if (category.children.length > 0) {
-        const found = findCategoryById(category.children, id);
-        if (found) {
-          return found;
-        }
-      }
-    }
-    
-    return null;
   };
 
   const handleAddRoot = (e: React.FormEvent) => {
@@ -93,60 +94,89 @@ const CategoryManager: React.FC = () => {
       <CardHeader>
         <CardTitle className="flex justify-between items-center">
           <span>Category Hierarchy</span>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            className="gap-1"
-            onClick={() => setIsAddingRoot(true)}
-          >
-            <Plus size={16} /> Add Root
-          </Button>
+          <div className="flex items-center gap-2">
+            <div className="flex rounded-md border">
+              <Button
+                variant={viewMode === 'ui' ? 'default' : 'ghost'}
+                size="sm"
+                className="gap-1 rounded-r-none"
+                onClick={() => setViewMode('ui')}
+              >
+                <MousePointer size={16} />
+                Drag & Drop
+              </Button>
+              <Button
+                variant={viewMode === 'json' ? 'default' : 'ghost'}
+                size="sm"
+                className="gap-1 rounded-l-none"
+                onClick={() => setViewMode('json')}
+              >
+                <Code size={16} />
+                JSON
+              </Button>
+            </div>
+            {viewMode === 'ui' && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="gap-1"
+                onClick={() => setIsAddingRoot(true)}
+              >
+                <Plus size={16} /> Add Root
+              </Button>
+            )}
+          </div>
         </CardTitle>
       </CardHeader>
-      <CardContent
-        className="p-4 min-h-[200px]"
-        onDragOver={handleRootDragOver}
-        onDrop={handleRootDrop}
-      >
-        {isAddingRoot && (
-          <div className="mb-4">
-            <form onSubmit={handleAddRoot} className="flex gap-2">
-              <Input
-                value={newRootName}
-                onChange={(e) => setNewRootName(e.target.value)}
-                placeholder="Root category name"
-                className="flex-1"
-                autoFocus
-              />
-              <Button type="submit">Add</Button>
-              <Button 
-                type="button" 
-                variant="ghost" 
-                onClick={() => setIsAddingRoot(false)}
-              >
-                Cancel
-              </Button>
-            </form>
-          </div>
-        )}
-        
-        {hierarchy.categories.length > 0 ? (
-          <div className="space-y-2">
-            {hierarchy.categories.map((category) => (
-              <CategoryNode
-                key={category.id}
-                node={category}
-                onAddChild={(parentId, name) => addNewCategory(parentId, name)}
-                onDelete={handleDeleteCategory}
-                onDragStart={handleDragStart}
-                onDrop={handleDrop}
-                isRoot={true}
-              />
-            ))}
-          </div>
+      <CardContent className="p-4 min-h-[200px]">
+        {viewMode === 'json' ? (
+          <CategoryJsonEditor />
         ) : (
-          <div className="text-center py-8 text-gray-500">
-            <p>No categories yet. Click 'Add Root' to create your first category.</p>
+          <div
+            onDragOver={handleRootDragOver}
+            onDrop={handleRootDrop}
+          >
+            {isAddingRoot && (
+              <div className="mb-4">
+                <form onSubmit={handleAddRoot} className="flex gap-2">
+                  <Input
+                    value={newRootName}
+                    onChange={(e) => setNewRootName(e.target.value)}
+                    placeholder="Root category name"
+                    className="flex-1"
+                    autoFocus
+                  />
+                  <Button type="submit">Add</Button>
+                  <Button 
+                    type="button" 
+                    variant="ghost" 
+                    onClick={() => setIsAddingRoot(false)}
+                  >
+                    Cancel
+                  </Button>
+                </form>
+              </div>
+            )}
+            
+            {hierarchy.categories.length > 0 ? (
+              <div className="space-y-2">
+                {hierarchy.categories.map((category) => (
+                  <CategoryNode
+                    key={category.id}
+                    node={category}
+                    onAddChild={(parentId, name) => addNewCategory(parentId, name)}
+                    onDelete={handleDeleteCategory}
+                    onDragStart={handleDragStart}
+                    onDrop={handleDrop}
+                    isRoot={true}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-gray-500">
+                <p>No categories yet. Click 'Add Root' to create your first category.</p>
+              </div>
+            )}
           </div>
         )}
       </CardContent>
