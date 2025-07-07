@@ -66,9 +66,9 @@ const DocumentContent: React.FC<DocumentContentProps> = ({
       <div className="mb-4">
         <label className="block text-sm font-medium mb-1">File URL</label>
         <Input 
-          value={document.fileUrl}
+          value={document.fileUrl || `https://dev.members.nsi.org.uk/wp-content/uploads/2025/07/${document.name}`}
           onChange={(e) => onEdit('fileUrl', e.target.value)}
-          placeholder="URL to the file (e.g., Dropbox link)"
+          placeholder={`https://dev.members.nsi.org.uk/wp-content/uploads/2025/07/${document.name}`}
         />
       </div>
       
