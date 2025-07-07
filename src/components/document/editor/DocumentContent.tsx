@@ -66,18 +66,18 @@ const DocumentContent: React.FC<DocumentContentProps> = ({
       <div className="mb-4">
         <label className="block text-sm font-medium mb-1">File URL</label>
         <Input 
-          value={document.fileUrl || `https://dev.members.nsi.org.uk/wp-content/uploads/2025/07/${document.name}`}
+          value={document.fileUrl || `https://dev.members.nsi.org.uk/wp-content/uploads/2025/07/${document.name}${document.name.includes('.') ? '' : '.pdf'}`}
           onChange={(e) => onEdit('fileUrl', e.target.value)}
-          placeholder={`https://dev.members.nsi.org.uk/wp-content/uploads/2025/07/${document.name}`}
+          placeholder={`https://dev.members.nsi.org.uk/wp-content/uploads/2025/07/${document.name}${document.name.includes('.') ? '' : '.pdf'}`}
         />
       </div>
       
       <div className="mb-4">
         <label className="block text-sm font-medium mb-1">Direct URL</label>
         <Input 
-          value={document.directUrl || `https://dev.members.nsi.org.uk/wp-content/uploads/2025/07/${document.name}`}
+          value={document.directUrl || `https://dev.members.nsi.org.uk/wp-content/uploads/2025/07/${document.name}${document.name.includes('.') ? '' : '.pdf'}`}
           onChange={(e) => onEdit('directUrl', e.target.value)}
-          placeholder={`https://dev.members.nsi.org.uk/wp-content/uploads/2025/07/${document.name}`}
+          placeholder={`https://dev.members.nsi.org.uk/wp-content/uploads/2025/07/${document.name}${document.name.includes('.') ? '' : '.pdf'}`}
         />
       </div>
     </div>
