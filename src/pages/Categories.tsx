@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import CategoryManager from '@/components/category/CategoryManager';
+import WordPressImporter from '@/components/category/WordPressImporter';
 import { useCategories } from '@/context/CategoryContext';
 import { toast } from 'sonner';
 
@@ -67,7 +68,11 @@ const Categories: React.FC = () => {
       </p>
       
       <CategoryInitializer />
-      <CategoryManager />
+      
+      <div className="space-y-6">
+        <WordPressImporter />
+        <CategoryManager />
+      </div>
     </div>
   );
 };

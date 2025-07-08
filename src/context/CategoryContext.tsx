@@ -5,7 +5,7 @@ import { loadCategories, saveCategories, addCategory, removeCategory, moveCatego
 
 interface CategoryContextType {
   hierarchy: CategoryHierarchy;
-  addNewCategory: (parentId: string | null, name: string) => void;
+  addNewCategory: (parentId: string | null, name: string) => string;
   deleteCategory: (categoryId: string) => void;
   moveNode: (categoryId: string, newParentId: string | null) => void;
   updateCategoryName: (categoryId: string, newName: string) => void;
@@ -14,7 +14,7 @@ interface CategoryContextType {
 // Create a default context with dummy implementations
 const defaultContext: CategoryContextType = {
   hierarchy: { categories: [] },
-  addNewCategory: () => {},
+  addNewCategory: () => '',
   deleteCategory: () => {},
   moveNode: () => {},
   updateCategoryName: () => {}
@@ -51,9 +51,10 @@ export const CategoryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   }, [hierarchy, isInitialized]);
 
-  const addNewCategory = (parentId: string | null, name: string) => {
-    const updated = addCategory(hierarchy, parentId, name);
-    setHierarchy(updated);
+  const addNewCategory = (parentId: string | null, name: string): string => {
+    const result = addCategory(hierarchy, parentId, name);
+    setHierarchy(result.hierarchy);
+    return result.newCategoryId;
   };
 
   const deleteCategory = (categoryId: string) => {

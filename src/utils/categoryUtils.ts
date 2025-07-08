@@ -79,7 +79,7 @@ export const addCategory = (
   hierarchy: CategoryHierarchy,
   parentId: string | null,
   name: string
-): CategoryHierarchy => {
+): { hierarchy: CategoryHierarchy; newCategoryId: string } => {
   const newCategory: CategoryNode = {
     id: generateUniqueId(),
     name,
@@ -117,7 +117,7 @@ export const addCategory = (
     updatedHierarchy.categories = addChildToParent(updatedHierarchy.categories);
   }
   
-  return updatedHierarchy;
+  return { hierarchy: updatedHierarchy, newCategoryId: newCategory.id };
 };
 
 // Remove a category from the hierarchy
