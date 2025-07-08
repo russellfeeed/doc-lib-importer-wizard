@@ -141,8 +141,8 @@ export async function generateDocumentTags(
     // Use the OpenAI client to generate tags
     const tags = await generateTagsWithOpenAI(content, fileName, options);
     
-    // Return the AI-generated tags
-    return tags;
+    // Convert tags to lowercase and return
+    return tags.split(',').map(tag => tag.trim().toLowerCase()).join(', ');
   } catch (error) {
     console.error("AI tag generation error:", error);
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
