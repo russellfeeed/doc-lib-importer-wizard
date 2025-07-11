@@ -151,11 +151,17 @@ export async function generateDocumentTags(
       if (categoryParts.length >= 2) {
         // Create tag as "<2nd level> <top level>"
         const categoryTag = `${categoryParts[1]} ${categoryParts[0]}`.toLowerCase();
-        baseTags.push(categoryTag);
+        // Only add if not already present
+        if (!baseTags.includes(categoryTag)) {
+          baseTags.push(categoryTag);
+        }
       }
     }
     
-    return baseTags.join(', ');
+    // Remove any duplicates from the final tag list
+    const uniqueTags = [...new Set(baseTags)];
+    
+    return uniqueTags.join(', ');
   } catch (error) {
     console.error("AI tag generation error:", error);
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
