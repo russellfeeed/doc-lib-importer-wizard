@@ -1,10 +1,13 @@
 
-import React from 'react';
+import React, { useState } from 'react';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
-import { Tag, BookCopy } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Tag, BookCopy, FolderOpen, ChevronRight } from 'lucide-react';
 import { DocumentFile } from '@/types/document';
+import { useCategories } from '@/context/CategoryContext';
+import { CategoryNode } from '@/types/categories';
 
 interface DocumentMetadataProps {
   document: DocumentFile;
@@ -21,6 +24,50 @@ const DocumentMetadata: React.FC<DocumentMetadataProps> = ({
   onGenerateCategory,
   onGenerateTags
 }) => {
+  const { hierarchy } = useCategories();
+  const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+
+  const buildCategoryPath = (categoryId: string, categories: CategoryNode[]): string => {
+    const findCategoryPath = (id: string, nodes: CategoryNode[], path: string[] = []): string[] | null => {
+      for (const node of nodes) {
+        if (node.id === id) {
+          return [...path, node.name];
+        }
+        if (node.children.length > 0) {
+          const result = findCategoryPath(id, node.children, [...path, node.name]);
+          if (result) return result;
+        }
+      }
+      return null;
+    };
+    
+    const path = findCategoryPath(categoryId, categories);
+    return path ? path.join(' > ') : '';
+  };
+
+  const handleCategorySelect = (categoryId: string) => {
+    const categoryPath = buildCategoryPath(categoryId, hierarchy.categories);
+    onEdit('categories', categoryPath);
+    setIsPopoverOpen(false);
+  };
+
+  const renderCategoryTree = (categories: CategoryNode[], level = 0) => {
+    return categories.map((category) => (
+      <div key={category.id} className={`${level > 0 ? 'ml-4' : ''}`}>
+        <Button
+          variant="ghost"
+          size="sm"
+          className="w-full justify-start text-left h-8 px-2"
+          onClick={() => handleCategorySelect(category.id)}
+        >
+          <FolderOpen className="mr-2 h-3 w-3" />
+          {category.name}
+        </Button>
+        {category.children.length > 0 && renderCategoryTree(category.children, level + 1)}
+      </div>
+    ));
+  };
+
   return (
     <div>
       <div className="mb-4">
@@ -34,7 +81,27 @@ const DocumentMetadata: React.FC<DocumentMetadataProps> = ({
       
       <div className="mb-4">
         <div className="flex justify-between items-center mb-1">
-          <label className="block text-sm font-medium">Categories</label>
+          <div className="flex items-center gap-2">
+            <label className="block text-sm font-medium">Categories</label>
+            <Popover open={isPopoverOpen} onOpenChange={setIsPopoverOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <FolderOpen className="mr-2 h-4 w-4" />
+                  Select
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-80 max-h-96 overflow-y-auto" align="start">
+                <div className="space-y-1">
+                  <h4 className="font-medium text-sm mb-2">Select Category</h4>
+                  {hierarchy.categories.length > 0 ? (
+                    renderCategoryTree(hierarchy.categories)
+                  ) : (
+                    <p className="text-sm text-muted-foreground">No categories available</p>
+                  )}
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
           {onGenerateCategory && (
             <Button 
               variant="outline" 
