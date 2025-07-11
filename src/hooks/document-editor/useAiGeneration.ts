@@ -154,7 +154,8 @@ export function useAiGeneration({
       
       const tags = await generateDocumentTags(
         currentDocument.content || 'No content available', 
-        currentDocument.file.name
+        currentDocument.file.name,
+        currentDocument.categories
       );
       
       if (tags) {
@@ -347,7 +348,8 @@ export function useAiGeneration({
         
         const tags = await generateDocumentTags(
           doc.content || 'No content available',
-          doc.file.name
+          doc.file.name,
+          doc.categories
         );
         
         if (tags) {

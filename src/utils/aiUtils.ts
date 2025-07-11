@@ -126,6 +126,7 @@ export async function generateDocumentCategory(
 export async function generateDocumentTags(
   content: string,
   fileName: string,
+  category?: string,
   options?: AiProcessingOptions
 ): Promise<string> {
   // Check if API key is available
@@ -141,8 +142,20 @@ export async function generateDocumentTags(
     // Use the OpenAI client to generate tags
     const tags = await generateTagsWithOpenAI(content, fileName, options);
     
-    // Convert tags to lowercase and return
-    return tags.split(',').map(tag => tag.trim().toLowerCase()).join(', ');
+    // Convert tags to lowercase
+    const baseTags = tags.split(',').map(tag => tag.trim().toLowerCase());
+    
+    // Add category-based tag if category is provided
+    if (category && category.trim()) {
+      const categoryParts = category.split(' > ').map(part => part.trim());
+      if (categoryParts.length >= 2) {
+        // Create tag as "<2nd level> <top level>"
+        const categoryTag = `${categoryParts[1]} ${categoryParts[0]}`.toLowerCase();
+        baseTags.push(categoryTag);
+      }
+    }
+    
+    return baseTags.join(', ');
   } catch (error) {
     console.error("AI tag generation error:", error);
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
@@ -249,8 +262,8 @@ export async function processDocumentWithAI(
     // 3. Determine appropriate category
     const category = await generateDocumentCategory(extractedText, file.name, undefined, options);
     
-    // 4. Generate document tags
-    const tags = await generateDocumentTags(extractedText, file.name, options);
+    // 4. Generate document tags (pass category for additional tag generation)
+    const tags = await generateDocumentTags(extractedText, file.name, category, options);
     
     return {
       summary,
