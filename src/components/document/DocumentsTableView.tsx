@@ -11,7 +11,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
-import { ChevronLeft, Edit, Check, Zap } from 'lucide-react';
+import { ChevronLeft, Edit, Check, Zap, ExternalLink } from 'lucide-react';
 import { DocumentFile } from '@/types/document';
 
 interface DocumentsTableViewProps {
@@ -78,6 +78,7 @@ const DocumentsTableView: React.FC<DocumentsTableViewProps> = ({
               <TableHead>File Size</TableHead>
               <TableHead>Excerpt</TableHead>
               <TableHead>Published</TableHead>
+              <TableHead>Actions</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -128,6 +129,17 @@ const DocumentsTableView: React.FC<DocumentsTableViewProps> = ({
                     checked={doc.published}
                     onCheckedChange={(checked) => onEditDocument(index, 'published', checked)}
                   />
+                </TableCell>
+                <TableCell>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => window.open(doc.fileUrl || doc.directUrl, '_blank')}
+                    disabled={!doc.fileUrl && !doc.directUrl}
+                  >
+                    <ExternalLink className="mr-2 h-3 w-3" />
+                    Open
+                  </Button>
                 </TableCell>
               </TableRow>
             ))}
