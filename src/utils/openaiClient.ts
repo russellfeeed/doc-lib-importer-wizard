@@ -2,6 +2,7 @@ import { toast } from "sonner";
 import { AiProcessingOptions } from "@/types/document";
 import { CategoryNode } from "@/types/categories";
 import { AppendixItem } from "@/types/circular-letter";
+import { getPromptConfig } from "@/utils/promptManager";
 
 const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
 
@@ -84,16 +85,16 @@ export async function summarizeWithOpenAI(
     throw new Error("OpenAI API key not set");
   }
 
-  const model = options.model || DEFAULT_MODEL;
-  const maxTokens = options.maxTokens || 300;
-  const temperature = options.temperature || 0.3;
+  const config = getPromptConfig('summarization');
+  const model = options.model || config.model;
+  const maxTokens = options.maxTokens || config.maxTokens;
+  const temperature = options.temperature || config.temperature;
 
-  const systemPrompt = `You are tasked with creating concise document summaries. Your summaries should be professional, factual, and never contain meta-text about AI or instructions.`;
+  const systemPrompt = config.systemPrompt;
   
-  const userPrompt = `Create a brief, professional summary of this document titled "${fileName}". The summary should be 2-3 sentences that capture the main topic and key points. Write in clear, straightforward language that would appear in a document management system. Do not include any meta-commentary about AI or summarization processes in your response.
-
-Here is the document content:
-${content}`;
+  const userPrompt = config.userPromptTemplate
+    .replace('{fileName}', fileName)
+    .replace('{content}', content);
 
   const messages: OpenAIMessage[] = [
     {
@@ -182,22 +183,17 @@ export async function categorizeWithOpenAI(
 
   const categoryHierarchy = formatCategories(categories);
   
-  const model = options.model || DEFAULT_MODEL;
-  const maxTokens = options.maxTokens || 300;
-  const temperature = options.temperature || 0.3;
+  const config = getPromptConfig('categorization');
+  const model = options.model || config.model;
+  const maxTokens = options.maxTokens || config.maxTokens;
+  const temperature = options.temperature || config.temperature;
 
-  const systemPrompt = `You are a document categorization assistant. Your task is to analyze document content and assign it to the most appropriate category from a predefined hierarchy.`;
+  const systemPrompt = config.systemPrompt;
   
-  const userPrompt = `Analyze this document titled "${fileName}" and determine the most appropriate category from the following hierarchy. 
-  
-Return the full category path using " > " as a separator (e.g., "Main Category > Subcategory"). If the document doesn't fit any category well, choose the closest match. Only return the category path, nothing else.
-
-Available categories:
-${categoryHierarchy}
-
-Document content:
-${content.substring(0, 8000)} // Limit content to avoid token limits
-`;
+  const userPrompt = config.userPromptTemplate
+    .replace('{fileName}', fileName)
+    .replace('{categories}', categoryHierarchy)
+    .replace('{content}', content.substring(0, 8000));
 
   const messages: OpenAIMessage[] = [
     {
@@ -261,19 +257,16 @@ export async function generateTagsWithOpenAI(
     throw new Error("OpenAI API key not set");
   }
   
-  const model = options.model || DEFAULT_MODEL;
-  const maxTokens = options.maxTokens || 100;
-  const temperature = options.temperature || 0.3;
+  const config = getPromptConfig('tagGeneration');
+  const model = options.model || config.model;
+  const maxTokens = options.maxTokens || config.maxTokens;
+  const temperature = options.temperature || config.temperature;
 
-  const systemPrompt = `You are an expert document tagger. Your task is to analyze documents and generate 1-5 relevant, concise tags that accurately reflect the document's content and themes.`;
+  const systemPrompt = config.systemPrompt;
   
-  const userPrompt = `Analyze this document titled "${fileName}" and generate 1-5 relevant tags. 
-  
-Return the tags as a comma-separated list (e.g., "compliance, regulations, safety"). Choose tags that accurately represent the main themes and topics of the document. Tags should be single words or short phrases, all lowercase.
-
-Document content:
-${content.substring(0, 8000)} // Limit content to avoid token limits
-`;
+  const userPrompt = config.userPromptTemplate
+    .replace('{fileName}', fileName)
+    .replace('{content}', content.substring(0, 8000));
 
   const messages: OpenAIMessage[] = [
     {
@@ -352,30 +345,16 @@ export async function extractCircularLetterDataWithOpenAI(
     throw new Error("OpenAI API key not set");
   }
 
-  const model = options.model || DEFAULT_MODEL;
-  const maxTokens = options.maxTokens || 2000;
-  const temperature = options.temperature || 0.3;
+  const config = getPromptConfig('circularLetters');
+  const model = options.model || config.model;
+  const maxTokens = options.maxTokens || config.maxTokens;
+  const temperature = options.temperature || config.temperature;
 
-  const systemPrompt = `You are a data extraction specialist that analyzes circular letters and extracts specific information from them. Your task is to extract the following information from the document:
-1. Reference Number: The document's unique identifier or reference code
-2. Correspondence Reference: Any internal reference numbers mentioned in the body of the document (different from the main reference number)
-3. Date: The date when the circular letter was issued, in YYYY-MM-DD format
-4. Audience: The intended recipients or departments that should read this circular
-5. Title: The main title or subject of the circular letter
-6. Details: The full content of the circular letter's main body, excluding headers, footers, salutations, signatures, and any appendices. This should only include the main text of the document.
-7. Author/Sender: The person, department, or authority who issued the circular letter
-8. Tags: Generate 1-5 relevant keywords or tags that describe the main topics of this circular letter, separated by commas
-9. Appendices: If the document contains appendices, identify each one as a separate item with a title and content. Make sure the appendix content is NOT included in the main details field.
-
-Format your response as a JSON object with these fields. If you cannot find a specific field, use an empty string as value. For appendices, return an array of objects, each with 'title' and 'content' fields. If there are no appendices, use an empty array.`;
+  const systemPrompt = config.systemPrompt;
   
-  const userPrompt = `Extract information from this circular letter with filename "${fileName}".
-
-Here is the document content:
-${content}
-
-Return a JSON object with the fields: referenceNumber, correspondenceRef, date, audience, title, details, author, tags, and appendices.
-Make sure the appendices content is NOT included in the details field.`;
+  const userPrompt = config.userPromptTemplate
+    .replace('{fileName}', fileName)
+    .replace('{content}', content);
 
   const messages: OpenAIMessage[] = [
     {

@@ -2,7 +2,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
-import { FileText, FileSignature, BarChart3 } from 'lucide-react';
+import { FileText, FileSignature, BarChart3, Settings } from 'lucide-react';
 
 const Index: React.FC = () => {
   return (
@@ -12,7 +12,7 @@ const Index: React.FC = () => {
         Upload, categorize, and manage your documents with AI-powered information extraction.
       </p>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <Link to="/documents" className="hover:no-underline">
           <Card className="p-6 hover:shadow-md transition-shadow">
             <div className="flex flex-col items-center text-center">
@@ -50,6 +50,20 @@ const Index: React.FC = () => {
               <h2 className="text-xl font-semibold mb-2">Category Manager</h2>
               <p className="text-gray-600">
                 Create and manage document categories to keep your library organized.
+              </p>
+            </div>
+          </Card>
+        </Link>
+
+        <Link to="/settings" className="hover:no-underline">
+          <Card className="p-6 hover:shadow-md transition-shadow">
+            <div className="flex flex-col items-center text-center">
+              <div className="bg-orange-100 p-4 rounded-full mb-4">
+                <Settings className="h-8 w-8 text-orange-600" />
+              </div>
+              <h2 className="text-xl font-semibold mb-2">AI Settings</h2>
+              <p className="text-gray-600">
+                Customize AI prompts and models for document processing and analysis.
               </p>
             </div>
           </Card>
