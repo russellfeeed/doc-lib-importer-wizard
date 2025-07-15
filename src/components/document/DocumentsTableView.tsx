@@ -134,8 +134,50 @@ const DocumentsTableView: React.FC<DocumentsTableViewProps> = ({
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => window.open(doc.fileUrl || doc.directUrl, '_blank')}
-                    disabled={!doc.fileUrl && !doc.directUrl}
+                    onClick={() => {
+                      // Create a preview of the document content
+                      const previewContent = `
+                        <!DOCTYPE html>
+                        <html>
+                        <head>
+                          <title>${doc.name}</title>
+                          <style>
+                            body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }
+                            .header { border-bottom: 2px solid #eee; padding-bottom: 20px; margin-bottom: 20px; }
+                            .metadata { background: #f5f5f5; padding: 15px; border-radius: 5px; margin-bottom: 20px; }
+                            .content { white-space: pre-wrap; }
+                          </style>
+                        </head>
+                        <body>
+                          <div class="header">
+                            <h1>${doc.name}</h1>
+                          </div>
+                          <div class="metadata">
+                            <p><strong>Categories:</strong> ${doc.categories || 'N/A'}</p>
+                            <p><strong>Tags:</strong> ${doc.tags || 'N/A'}</p>
+                            <p><strong>Authors:</strong> ${doc.authors || 'N/A'}</p>
+                            <p><strong>File Size:</strong> ${doc.fileSize}</p>
+                            <p><strong>Published:</strong> ${doc.published ? 'Yes' : 'No'}</p>
+                          </div>
+                          <div class="content">
+                            <h3>Excerpt:</h3>
+                            <p>${doc.excerpt || 'No excerpt available'}</p>
+                            
+                            <h3>Content:</h3>
+                            <p>${doc.content || 'No content available'}</p>
+                          </div>
+                        </body>
+                        </html>
+                      `;
+                      
+                      const blob = new Blob([previewContent], { type: 'text/html' });
+                      const url = URL.createObjectURL(blob);
+                      window.open(url, '_blank');
+                      
+                      // Clean up the object URL after a short delay
+                      setTimeout(() => URL.revokeObjectURL(url), 100);
+                    }}
+                    disabled={!doc.content && !doc.excerpt}
                   >
                     <ExternalLink className="mr-2 h-3 w-3" />
                     Open
