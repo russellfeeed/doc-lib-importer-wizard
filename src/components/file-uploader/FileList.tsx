@@ -3,7 +3,6 @@ import React from 'react';
 import { DocumentFile } from '@/types/document';
 import { FileText, AlertCircle, Zap, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Progress } from '@/components/ui/progress';
 
 interface FileListProps {
   files: DocumentFile[];
@@ -47,7 +46,7 @@ const FileList: React.FC<FileListProps> = ({ files, onRemoveFile }) => {
                   <FileText className="h-6 w-6 text-blue-500" />
                 </div>
               )}
-              <div className="flex-1">
+              <div>
                 <p className="font-medium">{file.file.name}</p>
                 <p className="text-sm text-gray-500">{file.fileSize} • {file.fileType}</p>
                 {file.categories && !file.isProcessing && file.aiProcessing?.status === 'completed' && (
@@ -55,34 +54,23 @@ const FileList: React.FC<FileListProps> = ({ files, onRemoveFile }) => {
                     <span className="font-medium">Category:</span> {file.categories}
                   </p>
                 )}
-                
-                {/* Progress bars */}
-                {file.isProcessing && (
-                  <div className="mt-2">
-                    <div className="flex items-center justify-between text-xs text-amber-600 mb-1">
-                      <span>Processing document...</span>
-                      <span>50%</span>
-                    </div>
-                    <Progress value={50} className="h-2" />
-                  </div>
-                )}
-                
-                {file.aiProcessing?.status === 'processing' && (
-                  <div className="mt-2">
-                    <div className="flex items-center justify-between text-xs text-blue-600 mb-1">
-                      <span>AI analyzing content...</span>
-                      <span>75%</span>
-                    </div>
-                    <Progress value={75} className="h-2" />
-                  </div>
-                )}
               </div>
             </div>
             <div className="flex items-center space-x-3">
-              {file.processingError ? (
+              {file.isProcessing ? (
+                <div className="flex items-center text-amber-500">
+                  <div className="animate-spin h-4 w-4 border-2 border-amber-500 border-t-transparent rounded-full mr-2" />
+                  <span>Processing...</span>
+                </div>
+              ) : file.processingError ? (
                 <div className="flex items-center text-red-500">
                   <AlertCircle className="h-4 w-4 mr-1" />
                   <span>Error</span>
+                </div>
+              ) : file.aiProcessing?.status === 'processing' ? (
+                <div className="flex items-center text-blue-500">
+                  <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full mr-2" />
+                  <span>AI Analyzing...</span>
                 </div>
               ) : file.aiProcessing?.status === 'error' ? (
                 <div className="flex items-center text-red-500">
@@ -92,7 +80,7 @@ const FileList: React.FC<FileListProps> = ({ files, onRemoveFile }) => {
               ) : file.aiProcessing?.status === 'completed' ? (
                 <div className="flex items-center text-green-500">
                   <Zap className="h-4 w-4 mr-1" />
-                  <span>Complete</span>
+                  <span>AI Ready</span>
                 </div>
               ) : null}
               <Button
