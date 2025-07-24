@@ -14,13 +14,43 @@ serve(async (req) => {
   try {
     console.log('WordPress proxy request received');
     
-    // WordPress API endpoint
-    const wordpressUrl = 'https://dev.members.nsi.org.uk/wp-json/wp/v2/doc_categories?per_page=100&_fields=id,name,parent,count';
+    if (req.method !== 'POST') {
+      return new Response(
+        JSON.stringify({ error: 'Method not allowed' }), 
+        { 
+          status: 405,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+
+    const body = await req.json();
+    const { url, username, password, per_page = 100, fields = 'id,name,parent,count' } = body;
+
+    if (!url || !username || !password) {
+      return new Response(
+        JSON.stringify({ error: 'Missing required fields: url, username, password' }), 
+        { 
+          status: 400,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        }
+      );
+    }
+
+    // Clean up URL and build WordPress API endpoint
+    const baseUrl = url.replace(/\/$/, '');
+    const wordpressUrl = `${baseUrl}/wp-json/wp/v2/doc_categories?per_page=${per_page}&_fields=${fields}`;
+    
+    console.log(`Making request to: ${wordpressUrl}`);
+    
+    // Create authentication header
+    const authString = btoa(`${username}:${password}`);
     
     // Make request to WordPress API
     const response = await fetch(wordpressUrl, {
       method: 'GET',
       headers: {
+        'Authorization': `Basic ${authString}`,
         'Content-Type': 'application/json',
         'User-Agent': 'Supabase-Edge-Function'
       }
@@ -28,8 +58,16 @@ serve(async (req) => {
 
     if (!response.ok) {
       console.error(`WordPress API error: ${response.status} ${response.statusText}`);
+      
+      let errorMessage = 'Failed to fetch WordPress categories';
+      if (response.status === 401) {
+        errorMessage = 'Invalid username or password';
+      } else if (response.status === 404) {
+        errorMessage = 'WordPress site not found or doc_categories taxonomy not available';
+      }
+      
       return new Response(
-        JSON.stringify({ error: 'Failed to fetch WordPress categories' }), 
+        JSON.stringify({ error: errorMessage }), 
         { 
           status: response.status,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }

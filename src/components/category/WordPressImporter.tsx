@@ -45,28 +45,24 @@ const WordPressImporter: React.FC = () => {
     setIsLoading(true);
     
     try {
-      // Clean up URL - remove trailing slash and add base path if needed
-      const baseUrl = credentials.url.replace(/\/$/, '');
-      const apiUrl = `${baseUrl}/wp-json/wp/v2/doc_categories?per_page=100&_fields=id,name,parent,count`;
-      
-      // Create authentication header
-      const authString = btoa(`${credentials.username}:${credentials.password}`);
-      
-      const response = await fetch(apiUrl, {
+      // Use the Supabase edge function instead of direct WordPress API call
+      const response = await fetch('https://tcdkvxorsyqsrxolxoni.supabase.co/functions/v1/wordpress-proxy', {
+        method: 'POST',
         headers: {
-          'Authorization': `Basic ${authString}`,
           'Content-Type': 'application/json',
         },
+        body: JSON.stringify({
+          url: credentials.url,
+          username: credentials.username,
+          password: credentials.password,
+          per_page: 100,
+          fields: 'id,name,parent,count'
+        }),
       });
 
       if (!response.ok) {
-        if (response.status === 401) {
-          throw new Error('Invalid username or password');
-        } else if (response.status === 404) {
-          throw new Error('WordPress site not found or doc_categories taxonomy not available');
-        } else {
-          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-        }
+        const errorData = await response.json();
+        throw new Error(errorData.error || `HTTP ${response.status}: ${response.statusText}`);
       }
 
       const categories: WordPressCategory[] = await response.json();
@@ -80,13 +76,8 @@ const WordPressImporter: React.FC = () => {
     } catch (error) {
       console.error('Error fetching WordPress categories:', error);
       
-      // Handle CORS errors specifically
-      if (error instanceof TypeError && error.message.includes('fetch')) {
-        toast.error('CORS Error: WordPress site must allow cross-origin requests. See solutions below.');
-      } else {
-        const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-        toast.error(`Failed to fetch categories: ${errorMessage}`);
-      }
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      toast.error(`Failed to fetch categories: ${errorMessage}`);
       setWpCategories([]);
     } finally {
       setIsLoading(false);
@@ -236,21 +227,7 @@ const WordPressImporter: React.FC = () => {
             <p>• Credentials are stored locally in your browser</p>
             <p>• Requires WordPress user with appropriate permissions</p>
             <p>• Fetches from doc_categories taxonomy (Document Library Plugin)</p>
-          </div>
-          
-          <div className="border-t pt-2">
-            <p className="font-medium text-orange-600">CORS Error Solutions:</p>
-            <p>If you see a CORS error, your WordPress site needs to allow cross-origin requests:</p>
-            <p>1. Install "WP CORS" plugin and configure it to allow your domain</p>
-            <p>2. Add this to your theme's functions.php:</p>
-            <code className="block bg-gray-100 p-1 mt-1 text-xs">
-              add_action('rest_api_init', function() {'{'}
-              <br />
-              &nbsp;&nbsp;header('Access-Control-Allow-Origin: *');
-              <br />
-              {'}'});
-            </code>
-            <p>3. Or contact your WordPress administrator to enable CORS</p>
+            <p>• Uses secure Supabase proxy to avoid CORS issues</p>
           </div>
         </div>
       </CardContent>
