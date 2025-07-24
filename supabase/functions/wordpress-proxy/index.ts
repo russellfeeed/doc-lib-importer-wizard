@@ -25,7 +25,15 @@ serve(async (req) => {
     }
 
     const body = await req.json();
-    const { url, username, password, per_page = 100, fields = 'id,name,parent,count' } = body;
+    const { 
+      url, 
+      username, 
+      password, 
+      basicAuthUser, 
+      basicAuthPassword, 
+      per_page = 100, 
+      fields = 'id,name,parent,count' 
+    } = body;
 
     if (!url || !username || !password) {
       return new Response(
@@ -43,17 +51,32 @@ serve(async (req) => {
     
     console.log(`Making request to: ${wordpressUrl}`);
     
-    // Create authentication header
-    const authString = btoa(`${username}:${password}`);
+    // Prepare headers
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      'User-Agent': 'Supabase-Edge-Function'
+    };
     
+    // Add HTTP Basic Authentication if provided (server-level auth)
+    if (basicAuthUser && basicAuthPassword) {
+      const basicAuthString = btoa(`${basicAuthUser}:${basicAuthPassword}`);
+      headers['Authorization'] = `Basic ${basicAuthString}`;
+      console.log('Using HTTP Basic Authentication for server access');
+    }
+    
+    // WordPress API authentication is handled via query parameters or custom headers
+    // For WordPress REST API, we'll use the Application Passwords method
+    const wpAuthString = btoa(`${username}:${password}`);
+    headers['X-WP-Auth'] = `Basic ${wpAuthString}`;
+    
+    // Also try the standard Authorization header as fallback
+    if (!basicAuthUser && !basicAuthPassword) {
+      headers['Authorization'] = `Basic ${wpAuthString}`;
+    }
     // Make request to WordPress API
     const response = await fetch(wordpressUrl, {
       method: 'GET',
-      headers: {
-        'Authorization': `Basic ${authString}`,
-        'Content-Type': 'application/json',
-        'User-Agent': 'Supabase-Edge-Function'
-      }
+      headers
     });
 
     if (!response.ok) {
