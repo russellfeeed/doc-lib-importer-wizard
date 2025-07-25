@@ -15,8 +15,15 @@ const CategoryInitializer: React.FC = () => {
 
   // Check if "Circular Letters" category already exists, but only on first load
   React.useEffect(() => {
+    console.log('🔄 CategoryInitializer: Effect triggered');
+    console.log('📊 CategoryInitializer: hierarchy:', hierarchy);
+    console.log('🔍 CategoryInitializer: initialized:', initialized);
+    
     // Only run once and only if hierarchy and categories are ready
-    if (initialized || !hierarchy || !hierarchy.categories) return;
+    if (initialized || !hierarchy || !hierarchy.categories) {
+      console.log('⏭️ CategoryInitializer: Skipping - already initialized or no hierarchy');
+      return;
+    }
     
     const circularLettersCategoryExists = hierarchy.categories.some(
       category => category.name === "Circular Letters"
@@ -24,6 +31,7 @@ const CategoryInitializer: React.FC = () => {
 
     // If not, create it, but only on first load (not after deletion)
     if (!circularLettersCategoryExists) {
+      console.log('🆕 CategoryInitializer: Creating default Circular Letters category...');
       addNewCategory(null, "Circular Letters");
       toast.success('Created "Circular Letters" category');
       
@@ -35,16 +43,21 @@ const CategoryInitializer: React.FC = () => {
         );
         
         if (circularLettersCategory) {
+          console.log('➕ CategoryInitializer: Adding subcategories...');
           // Add subcategories without showing toasts from here
           addNewCategory(circularLettersCategory.id, "Announcements");
           addNewCategory(circularLettersCategory.id, "Policies");
           addNewCategory(circularLettersCategory.id, "Updates");
           addNewCategory(circularLettersCategory.id, "Requirements");
+          console.log('✅ CategoryInitializer: Subcategories added');
         }
       }, 500); // Small delay to ensure the parent category is saved first
+    } else {
+      console.log('✅ CategoryInitializer: Circular Letters already exists, skipping');
     }
     
     setInitialized(true);
+    console.log('✅ CategoryInitializer: Marked as initialized');
   }, [hierarchy, addNewCategory, initialized]);
 
   return null;

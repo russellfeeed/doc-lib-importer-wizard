@@ -121,9 +121,16 @@ const WordPressImporter: React.FC = () => {
 
   const performImport = async (action: 'erase' | 'merge') => {
     try {
+      console.log('🚀 Starting import process with action:', action);
+      console.log('📊 Current hierarchy before import:', hierarchy);
+      
       // If erasing, clear existing categories first
       if (action === 'erase') {
+        console.log('🧹 Clearing all categories...');
         clearAllCategories();
+        console.log('✅ Categories cleared, waiting for state update...');
+        // Add a small delay to ensure state update completes
+        await new Promise(resolve => setTimeout(resolve, 100));
       }
 
       const categoryMap = new Map<number, string>(); // WordPress ID -> Local ID mapping
@@ -147,7 +154,9 @@ const WordPressImporter: React.FC = () => {
         }
         
         // Create this category
+        console.log(`➕ Creating WordPress category: ${wpCategory.name} under parent: ${parentLocalId || 'root'}`);
         const localId = addNewCategory(parentLocalId, wpCategory.name);
+        console.log(`✅ Created category with ID: ${localId}`);
         categoryMap.set(wpCategory.id, localId);
         processedCategories.add(wpCategory.id);
         

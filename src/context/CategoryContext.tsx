@@ -54,8 +54,11 @@ export const CategoryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   }, [hierarchy, isInitialized]);
 
   const addNewCategory = (parentId: string | null, name: string): string => {
+    console.log(`➕ CategoryContext: Adding category "${name}" under parent: ${parentId || 'root'}`);
     const result = addCategory(hierarchy, parentId, name);
+    console.log('📊 CategoryContext: Updated hierarchy after add:', result.hierarchy);
     setHierarchy(result.hierarchy);
+    console.log(`✅ CategoryContext: Category "${name}" added with ID: ${result.newCategoryId}`);
     return result.newCategoryId;
   };
 
@@ -75,8 +78,12 @@ export const CategoryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
   };
 
   const clearAllCategories = () => {
+    console.log('🗑️ CategoryContext: Clearing all categories...');
+    console.log('📊 Current hierarchy before clear:', hierarchy);
     const updated = clearCategories();
+    console.log('📊 Updated hierarchy after clear:', updated);
     setHierarchy(updated);
+    console.log('✅ CategoryContext: setHierarchy called with cleared data');
   };
 
   const contextValue = {
