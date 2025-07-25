@@ -29,8 +29,6 @@ serve(async (req) => {
       url, 
       username, 
       password, 
-      basicAuthUser, 
-      basicAuthPassword, 
       per_page = 100, 
       fields = 'id,name,parent,count' 
     } = body;
@@ -57,22 +55,9 @@ serve(async (req) => {
       'User-Agent': 'Supabase-Edge-Function'
     };
     
-    // Add HTTP Basic Authentication if provided (server-level auth)
-    if (basicAuthUser && basicAuthPassword) {
-      const basicAuthString = btoa(`${basicAuthUser}:${basicAuthPassword}`);
-      headers['Authorization'] = `Basic ${basicAuthString}`;
-      console.log('Using HTTP Basic Authentication for server access');
-    }
-    
-    // WordPress API authentication is handled via query parameters or custom headers
-    // For WordPress REST API, we'll use the Application Passwords method
-    const wpAuthString = btoa(`${username}:${password}`);
-    headers['X-WP-Auth'] = `Basic ${wpAuthString}`;
-    
-    // Also try the standard Authorization header as fallback
-    if (!basicAuthUser && !basicAuthPassword) {
-      headers['Authorization'] = `Basic ${wpAuthString}`;
-    }
+    // WordPress API authentication using Application Passwords method
+    const authString = btoa(`${username}:${password}`);
+    headers['Authorization'] = `Basic ${authString}`;
     // Make request to WordPress API
     const response = await fetch(wordpressUrl, {
       method: 'GET',

@@ -12,8 +12,6 @@ interface WordPressCredentials {
   url: string;
   username: string;
   password: string;
-  basicAuthUser?: string;
-  basicAuthPassword?: string;
 }
 
 interface WordPressCategory {
@@ -27,7 +25,7 @@ const WordPressImporter: React.FC = () => {
   const { addNewCategory } = useCategories();
   const [credentials, setCredentials] = useState<WordPressCredentials>(() => {
     const saved = localStorage.getItem('wp_credentials');
-    return saved ? JSON.parse(saved) : { url: '', username: '', password: '', basicAuthUser: '', basicAuthPassword: '' };
+    return saved ? JSON.parse(saved) : { url: '', username: '', password: '' };
   });
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -56,11 +54,6 @@ const WordPressImporter: React.FC = () => {
         fields: 'id,name,parent,count'
       };
 
-      // Add basic auth credentials if provided
-      if (credentials.basicAuthUser && credentials.basicAuthPassword) {
-        requestBody.basicAuthUser = credentials.basicAuthUser;
-        requestBody.basicAuthPassword = credentials.basicAuthPassword;
-      }
 
       const response = await fetch('https://tcdkvxorsyqsrxolxoni.supabase.co/functions/v1/wordpress-proxy', {
         method: 'POST',
@@ -194,51 +187,6 @@ const WordPressImporter: React.FC = () => {
             </div>
           </div>
           
-          <div className="border-t pt-3 space-y-3">
-            <h4 className="font-medium text-sm">HTTP Basic Authentication (Optional)</h4>
-            <p className="text-xs text-muted-foreground">
-              If your WordPress site requires server-level basic authentication:
-            </p>
-            
-            <div>
-              <Label htmlFor="basic-auth-user" className="flex items-center gap-1">
-                <User className="h-4 w-4" />
-                Basic Auth Username
-              </Label>
-              <Input
-                id="basic-auth-user"
-                placeholder="Server basic auth username (optional)"
-                value={credentials.basicAuthUser || ''}
-                onChange={(e) => saveCredentials({ ...credentials, basicAuthUser: e.target.value })}
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="basic-auth-password" className="flex items-center gap-1">
-                <Lock className="h-4 w-4" />
-                Basic Auth Password
-              </Label>
-              <div className="relative">
-                <Input
-                  id="basic-auth-password"
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="Server basic auth password (optional)"
-                  value={credentials.basicAuthPassword || ''}
-                  onChange={(e) => saveCredentials({ ...credentials, basicAuthPassword: e.target.value })}
-                  className="pr-10"
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="absolute right-1 top-1 h-7 w-7 p-0"
-                  onClick={() => setShowPassword(!showPassword)}
-                >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </Button>
-              </div>
-            </div>
-          </div>
 
         <div className="flex gap-2">
           <Button 
