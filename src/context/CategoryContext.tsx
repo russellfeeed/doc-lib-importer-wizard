@@ -95,11 +95,16 @@ export const CategoryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   const clearAllCategories = () => {
     console.log('🗑️ CategoryContext: Clearing all categories...');
-    console.log('📊 Current hierarchy before clear:', hierarchy);
+    console.log('📊 Current hierarchy before clear:', JSON.stringify(hierarchy, null, 2));
     const updated = clearCategories();
-    console.log('📊 Updated hierarchy after clear:', updated);
+    console.log('📊 Updated hierarchy after clear:', JSON.stringify(updated, null, 2));
     setHierarchy(updated);
     console.log('✅ CategoryContext: setHierarchy called with cleared data');
+    
+    // Add a small delay to check if state actually updated
+    setTimeout(() => {
+      console.log('🔍 CategoryContext: Checking state after clear (100ms):', JSON.stringify(hierarchy, null, 2));
+    }, 100);
   };
 
   const contextValue = {

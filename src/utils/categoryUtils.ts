@@ -91,7 +91,9 @@ export const addCategory = (
   
   console.log('🆕 Created new category object:', newCategory);
   
-  const updatedHierarchy = { ...hierarchy };
+  const updatedHierarchy: CategoryHierarchy = { 
+    categories: [...hierarchy.categories] 
+  };
   
   if (!parentId) {
     // Add as root category
