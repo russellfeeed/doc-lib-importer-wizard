@@ -95,25 +95,38 @@ const WordPressImporter: React.FC = () => {
     }
 
     try {
-      // First, create all parent categories (those with parent = 0)
-      const parentCategories = wpCategories.filter(cat => cat.parent === 0);
       const categoryMap = new Map<number, string>(); // WordPress ID -> Local ID mapping
+      const processedCategories = new Set<number>(); // Track processed categories
       
-      for (const parentCat of parentCategories) {
-        const localId = addNewCategory(null, parentCat.name);
-        categoryMap.set(parentCat.id, localId);
-      }
+      // Function to recursively create categories
+      const createCategory = (wpCategory: WordPressCategory): string => {
+        // If already processed, return the existing local ID
+        if (processedCategories.has(wpCategory.id)) {
+          return categoryMap.get(wpCategory.id)!;
+        }
+        
+        let parentLocalId: string | null = null;
+        
+        // If this category has a parent, ensure the parent is created first
+        if (wpCategory.parent !== 0) {
+          const parentCategory = wpCategories.find(cat => cat.id === wpCategory.parent);
+          if (parentCategory) {
+            parentLocalId = createCategory(parentCategory);
+          }
+        }
+        
+        // Create this category
+        const localId = addNewCategory(parentLocalId, wpCategory.name);
+        categoryMap.set(wpCategory.id, localId);
+        processedCategories.add(wpCategory.id);
+        
+        return localId;
+      };
       
-      // Then create child categories
-      const childCategories = wpCategories.filter(cat => cat.parent !== 0);
-      
-      for (const childCat of childCategories) {
-        const parentLocalId = categoryMap.get(childCat.parent);
-        if (parentLocalId) {
-          addNewCategory(parentLocalId, childCat.name);
-        } else {
-          // If parent not found, create as root category
-          addNewCategory(null, childCat.name);
+      // Process all categories (recursive function will handle the hierarchy)
+      for (const category of wpCategories) {
+        if (!processedCategories.has(category.id)) {
+          createCategory(category);
         }
       }
 
