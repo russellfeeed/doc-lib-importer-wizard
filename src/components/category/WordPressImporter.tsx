@@ -116,8 +116,16 @@ const WordPressImporter: React.FC = () => {
         }
       }
 
-      toast.success(`Successfully imported ${wpCategories.length} categories from WordPress`);
+      toast.success(`Successfully imported ${wpCategories.length} categories! Check the Category Manager below to see them.`);
       setWpCategories([]); // Clear the preview after import
+      
+      // Scroll to the category manager to show the imported categories
+      setTimeout(() => {
+        const categoryManager = document.querySelector('[data-category-manager]');
+        if (categoryManager) {
+          categoryManager.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 500);
     } catch (error) {
       console.error('Error importing categories:', error);
       toast.error('Failed to import categories');

@@ -90,7 +90,7 @@ const CategoryManager: React.FC = () => {
   };
 
   return (
-    <Card className="shadow-md">
+    <Card className="shadow-md" data-category-manager>
       <CardHeader>
         <CardTitle className="flex justify-between items-center">
           <span>Category Hierarchy</span>
@@ -159,22 +159,27 @@ const CategoryManager: React.FC = () => {
             )}
             
             {hierarchy.categories.length > 0 ? (
-              <div className="space-y-2">
-                {hierarchy.categories.map((category) => (
-                  <CategoryNode
+              <div className="space-y-2 animate-in fade-in-50 duration-300">
+                {hierarchy.categories.map((category, index) => (
+                  <div 
                     key={category.id}
-                    node={category}
-                    onAddChild={(parentId, name) => addNewCategory(parentId, name)}
-                    onDelete={handleDeleteCategory}
-                    onDragStart={handleDragStart}
-                    onDrop={handleDrop}
-                    isRoot={true}
-                  />
+                    className="animate-in slide-in-from-left-2 duration-300"
+                    style={{ animationDelay: `${index * 50}ms` }}
+                  >
+                    <CategoryNode
+                      node={category}
+                      onAddChild={(parentId, name) => addNewCategory(parentId, name)}
+                      onDelete={handleDeleteCategory}
+                      onDragStart={handleDragStart}
+                      onDrop={handleDrop}
+                      isRoot={true}
+                    />
+                  </div>
                 ))}
               </div>
             ) : (
-              <div className="text-center py-8 text-gray-500">
-                <p>No categories yet. Click 'Add Root' to create your first category.</p>
+              <div className="text-center py-8 text-muted-foreground">
+                <p>No categories yet. Click 'Add Root' to create your first category, or import from WordPress above.</p>
               </div>
             )}
           </div>
