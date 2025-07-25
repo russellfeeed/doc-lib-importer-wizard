@@ -237,11 +237,26 @@ const WordPressImporter: React.FC = () => {
             <div>
               <h4 className="font-medium mb-2">Preview: Categories to Import</h4>
               <div className="max-h-32 overflow-y-auto border rounded p-2 text-sm">
-                {wpCategories.map((cat) => (
-                  <div key={cat.id} className={`py-1 ${cat.parent !== 0 ? 'pl-4 text-muted-foreground' : ''}`}>
-                    {cat.parent !== 0 && '└─ '}{cat.name} ({cat.count} items)
-                  </div>
-                ))}
+                {(() => {
+                  // Function to build tree structure and render with proper indentation
+                  const renderCategoryTree = (categories: WordPressCategory[], parentId: number = 0, level: number = 0): JSX.Element[] => {
+                    return categories
+                      .filter(cat => cat.parent === parentId)
+                      .map(cat => (
+                        <div key={cat.id}>
+                          <div 
+                            className={`py-1 ${level > 0 ? 'text-muted-foreground' : ''}`}
+                            style={{ paddingLeft: `${level * 16}px` }}
+                          >
+                            {level > 0 && '└─ '}{cat.name} ({cat.count} items)
+                          </div>
+                          {renderCategoryTree(categories, cat.id, level + 1)}
+                        </div>
+                      ));
+                  };
+                  
+                  return renderCategoryTree(wpCategories);
+                })()}
               </div>
               
               <div className="flex justify-between items-center mt-3">
