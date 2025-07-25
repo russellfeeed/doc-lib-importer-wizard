@@ -76,10 +76,12 @@ export const findCategoryById = (
 
 // Add a new category to the hierarchy
 export const addCategory = (
-  hierarchy: CategoryHierarchy,
-  parentId: string | null,
+  hierarchy: CategoryHierarchy, 
+  parentId: string | null, 
   name: string
 ): { hierarchy: CategoryHierarchy; newCategoryId: string } => {
+  console.log('🔧 addCategory called with:', { parentId, name, currentHierarchy: hierarchy });
+  
   const newCategory: CategoryNode = {
     id: generateUniqueId(),
     name,
@@ -87,16 +89,22 @@ export const addCategory = (
     parentId
   };
   
+  console.log('🆕 Created new category object:', newCategory);
+  
   const updatedHierarchy = { ...hierarchy };
   
   if (!parentId) {
     // Add as root category
+    console.log('📁 Adding as root category');
     updatedHierarchy.categories = [...updatedHierarchy.categories, newCategory];
+    console.log('📊 Root categories after add:', updatedHierarchy.categories.length);
   } else {
     // Add as child to existing category
+    console.log('📁 Looking for parent category with ID:', parentId);
     const addChildToParent = (categories: CategoryNode[]): CategoryNode[] => {
       return categories.map(category => {
         if (category.id === parentId) {
+          console.log('✅ Found parent category:', category.name);
           return {
             ...category,
             children: [...category.children, newCategory]
@@ -117,6 +125,7 @@ export const addCategory = (
     updatedHierarchy.categories = addChildToParent(updatedHierarchy.categories);
   }
   
+  console.log('🔄 Final updated hierarchy:', JSON.stringify(updatedHierarchy, null, 2));
   return { hierarchy: updatedHierarchy, newCategoryId: newCategory.id };
 };
 

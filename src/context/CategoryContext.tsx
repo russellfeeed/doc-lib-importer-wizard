@@ -44,21 +44,37 @@ export const CategoryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
 
   // Save to localStorage whenever hierarchy changes, but only after initial load
   useEffect(() => {
+    console.log('💾 CategoryContext: Save effect triggered');
+    console.log('🔍 CategoryContext: isInitialized:', isInitialized, 'hierarchy:', hierarchy);
+    
     if (isInitialized) {
       try {
+        console.log('💾 CategoryContext: Saving to localStorage...');
         saveCategories(hierarchy);
+        console.log('✅ CategoryContext: Saved to localStorage successfully');
       } catch (error) {
-        console.error("Error saving categories:", error);
+        console.error("❌ CategoryContext: Error saving categories:", error);
       }
+    } else {
+      console.log('⏭️ CategoryContext: Skipping save - not initialized yet');
     }
   }, [hierarchy, isInitialized]);
 
   const addNewCategory = (parentId: string | null, name: string): string => {
     console.log(`➕ CategoryContext: Adding category "${name}" under parent: ${parentId || 'root'}`);
+    console.log('📊 CategoryContext: Current hierarchy before add:', JSON.stringify(hierarchy, null, 2));
+    
     const result = addCategory(hierarchy, parentId, name);
-    console.log('📊 CategoryContext: Updated hierarchy after add:', result.hierarchy);
+    console.log('📊 CategoryContext: Result from addCategory:', JSON.stringify(result, null, 2));
+    
     setHierarchy(result.hierarchy);
-    console.log(`✅ CategoryContext: Category "${name}" added with ID: ${result.newCategoryId}`);
+    console.log(`✅ CategoryContext: setHierarchy called, new category ID: ${result.newCategoryId}`);
+    
+    // Add a small delay to check if state actually updated
+    setTimeout(() => {
+      console.log('🔍 CategoryContext: Checking state after 100ms:', JSON.stringify(hierarchy, null, 2));
+    }, 100);
+    
     return result.newCategoryId;
   };
 
