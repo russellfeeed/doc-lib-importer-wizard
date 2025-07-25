@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Download, Eye, EyeOff, Globe, Lock, User } from 'lucide-react';
+import { Download, Eye, EyeOff, Globe, Lock, User, Code } from 'lucide-react';
 import { useCategories } from '@/context/CategoryContext';
 import { toast } from 'sonner';
 
@@ -30,6 +30,7 @@ const WordPressImporter: React.FC = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [wpCategories, setWpCategories] = useState<WordPressCategory[]>([]);
+  const [showJson, setShowJson] = useState(false);
 
   const saveCredentials = (newCredentials: WordPressCredentials) => {
     setCredentials(newCredentials);
@@ -229,6 +230,28 @@ const WordPressImporter: React.FC = () => {
                   </div>
                 ))}
               </div>
+              
+              <div className="flex justify-between items-center mt-3">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setShowJson(!showJson)}
+                  className="flex items-center gap-1 text-muted-foreground hover:text-foreground"
+                >
+                  <Code className="h-4 w-4" />
+                  {showJson ? 'Hide' : 'Show'} Raw JSON
+                </Button>
+              </div>
+              
+              {showJson && (
+                <div className="mt-2">
+                  <div className="max-h-64 overflow-y-auto border rounded p-3 bg-muted/50">
+                    <pre className="text-xs whitespace-pre-wrap font-mono">
+                      {JSON.stringify(wpCategories, null, 2)}
+                    </pre>
+                  </div>
+                </div>
+              )}
             </div>
           </>
         )}
