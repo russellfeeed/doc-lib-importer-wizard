@@ -1,7 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { CategoryHierarchy, CategoryNode } from "@/types/categories";
-import { loadCategories, saveCategories, addCategory, removeCategory, moveCategory, renameCategory } from "@/utils/categoryUtils";
+import { loadCategories, saveCategories, addCategory, removeCategory, moveCategory, renameCategory, clearCategories } from "@/utils/categoryUtils";
 
 interface CategoryContextType {
   hierarchy: CategoryHierarchy;
@@ -9,6 +9,7 @@ interface CategoryContextType {
   deleteCategory: (categoryId: string) => void;
   moveNode: (categoryId: string, newParentId: string | null) => void;
   updateCategoryName: (categoryId: string, newName: string) => void;
+  clearAllCategories: () => void;
 }
 
 // Create a default context with dummy implementations
@@ -17,7 +18,8 @@ const defaultContext: CategoryContextType = {
   addNewCategory: () => '',
   deleteCategory: () => {},
   moveNode: () => {},
-  updateCategoryName: () => {}
+  updateCategoryName: () => {},
+  clearAllCategories: () => {}
 };
 
 const CategoryContext = createContext<CategoryContextType>(defaultContext);
@@ -72,12 +74,18 @@ export const CategoryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     setHierarchy(updated);
   };
 
+  const clearAllCategories = () => {
+    const updated = clearCategories();
+    setHierarchy(updated);
+  };
+
   const contextValue = {
     hierarchy,
     addNewCategory,
     deleteCategory,
     moveNode,
-    updateCategoryName
+    updateCategoryName,
+    clearAllCategories
   };
 
   return (

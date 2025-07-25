@@ -233,3 +233,8 @@ export const renameCategory = (
   updatedHierarchy.categories = updateNodeName(updatedHierarchy.categories);
   return updatedHierarchy;
 };
+
+// Clear all categories (reset to empty hierarchy)
+export const clearCategories = (): CategoryHierarchy => {
+  return { categories: [] };
+};

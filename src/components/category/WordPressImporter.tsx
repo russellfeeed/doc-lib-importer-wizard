@@ -34,7 +34,7 @@ interface WordPressCategory {
 type ImportAction = 'erase' | 'merge' | null;
 
 const WordPressImporter: React.FC = () => {
-  const { addNewCategory, hierarchy } = useCategories();
+  const { addNewCategory, hierarchy, clearAllCategories } = useCategories();
   const [credentials, setCredentials] = useState<WordPressCredentials>(() => {
     const saved = localStorage.getItem('wp_credentials');
     return saved ? JSON.parse(saved) : { url: '', username: '', password: '' };
@@ -121,10 +121,9 @@ const WordPressImporter: React.FC = () => {
 
   const performImport = async (action: 'erase' | 'merge') => {
     try {
-      // If erasing, we would need to clear existing categories first
-      // For now, we'll just show a message since we don't have a clear function
+      // If erasing, clear existing categories first
       if (action === 'erase') {
-        toast.info('Note: Existing categories will be kept. Clear them manually if needed.');
+        clearAllCategories();
       }
 
       const categoryMap = new Map<number, string>(); // WordPress ID -> Local ID mapping
@@ -383,7 +382,7 @@ const WordPressImporter: React.FC = () => {
                   Clear existing and replace
                 </label>
                 <p className="text-sm text-muted-foreground">
-                  Note: Currently only supports merging. Clear existing categories manually if needed.
+                  Remove all existing categories and replace with WordPress categories
                 </p>
               </div>
             </div>
