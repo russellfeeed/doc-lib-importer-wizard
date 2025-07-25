@@ -361,7 +361,7 @@ const WordPressImporter: React.FC = () => {
               />
               <div>
                 <label htmlFor="merge" className="font-medium cursor-pointer">
-                  Merge with existing categories
+                  Keep existing and merge
                 </label>
                 <p className="text-sm text-muted-foreground">
                   Add WordPress categories alongside your existing ones
@@ -380,7 +380,7 @@ const WordPressImporter: React.FC = () => {
               />
               <div>
                 <label htmlFor="erase" className="font-medium cursor-pointer text-red-600">
-                  Keep existing and add new ones
+                  Clear existing and replace
                 </label>
                 <p className="text-sm text-muted-foreground">
                   Note: Currently only supports merging. Clear existing categories manually if needed.
