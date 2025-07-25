@@ -16,6 +16,7 @@ import {
   AlertDialogTitle 
 } from '@/components/ui/alert-dialog';
 import { useCategories } from '@/context/CategoryContext';
+import { CategoryHierarchy } from '@/types/categories';
 import { toast } from 'sonner';
 
 interface WordPressCredentials {
@@ -34,7 +35,7 @@ interface WordPressCategory {
 type ImportAction = 'erase' | 'merge' | null;
 
 const WordPressImporter: React.FC = () => {
-  const { addNewCategory, hierarchy, clearAllCategories } = useCategories();
+  const { addNewCategory, hierarchy, clearAllCategories, replaceAllCategories } = useCategories();
   const [credentials, setCredentials] = useState<WordPressCredentials>(() => {
     const saved = localStorage.getItem('wp_credentials');
     return saved ? JSON.parse(saved) : { url: '', username: '', password: '' };
@@ -124,39 +125,75 @@ const WordPressImporter: React.FC = () => {
       console.log('🚀 Starting import process with action:', action);
       console.log('📊 Current hierarchy before import:', hierarchy);
       
-      // If erasing, clear existing categories first
+      // Build the complete new hierarchy structure
+      let newHierarchy: CategoryHierarchy;
+      
       if (action === 'erase') {
-        console.log('🧹 Clearing all categories...');
-        clearAllCategories();
-        console.log('✅ Categories cleared, waiting for state update...');
-        // Add a small delay to ensure state update completes
-        await new Promise(resolve => setTimeout(resolve, 100));
+        // Start with empty hierarchy
+        newHierarchy = { categories: [] };
+        console.log('🧹 Starting with empty hierarchy for erase action');
+      } else {
+        // Start with existing hierarchy for merge
+        newHierarchy = { 
+          categories: JSON.parse(JSON.stringify(hierarchy.categories)) // Deep copy
+        };
+        console.log('🔄 Starting with existing hierarchy for merge action');
       }
 
       const categoryMap = new Map<number, string>(); // WordPress ID -> Local ID mapping
       const processedCategories = new Set<number>(); // Track processed categories
       
-      // Function to recursively create categories
-      const createCategory = (wpCategory: WordPressCategory): string => {
+      // Function to build category hierarchy locally
+      const buildCategory = (wpCategory: WordPressCategory, parentId: string | null = null): string => {
         // If already processed, return the existing local ID
         if (processedCategories.has(wpCategory.id)) {
           return categoryMap.get(wpCategory.id)!;
         }
         
-        let parentLocalId: string | null = null;
+        let actualParentId: string | null = null;
         
-        // If this category has a parent, ensure the parent is created first
+        // If this category has a parent, ensure the parent is built first
         if (wpCategory.parent !== 0) {
           const parentCategory = wpCategories.find(cat => cat.id === wpCategory.parent);
           if (parentCategory) {
-            parentLocalId = createCategory(parentCategory);
+            actualParentId = buildCategory(parentCategory);
           }
         }
         
-        // Create this category
-        console.log(`➕ Creating WordPress category: ${wpCategory.name} under parent: ${parentLocalId || 'root'}`);
-        const localId = addNewCategory(parentLocalId, wpCategory.name);
-        console.log(`✅ Created category with ID: ${localId}`);
+        // Generate a unique ID for this category
+        const localId = `wp_${wpCategory.id}_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        
+        // Create the category object
+        const newCategory = {
+          id: localId,
+          name: wpCategory.name,
+          children: [] as any[],
+          parentId: actualParentId
+        };
+        
+        console.log(`🏗️ Building WordPress category: ${wpCategory.name} with ID: ${localId} under parent: ${actualParentId || 'root'}`);
+        
+        // Add to the appropriate location in hierarchy
+        if (actualParentId === null) {
+          // Root category
+          newHierarchy.categories.push(newCategory);
+        } else {
+          // Find parent and add as child
+          const addToParent = (categories: any[], targetParentId: string) => {
+            for (const cat of categories) {
+              if (cat.id === targetParentId) {
+                cat.children.push(newCategory);
+                return true;
+              }
+              if (cat.children.length > 0 && addToParent(cat.children, targetParentId)) {
+                return true;
+              }
+            }
+            return false;
+          };
+          addToParent(newHierarchy.categories, actualParentId);
+        }
+        
         categoryMap.set(wpCategory.id, localId);
         processedCategories.add(wpCategory.id);
         
@@ -166,9 +203,13 @@ const WordPressImporter: React.FC = () => {
       // Process all categories (recursive function will handle the hierarchy)
       for (const category of wpCategories) {
         if (!processedCategories.has(category.id)) {
-          createCategory(category);
+          buildCategory(category);
         }
       }
+      
+      // Replace the entire hierarchy in one atomic operation
+      console.log('🔄 Replacing entire hierarchy with new structure:', newHierarchy);
+      replaceAllCategories(newHierarchy);
 
       const actionText = action === 'erase' ? 'replaced existing categories and imported' : 'imported';
       toast.success(`Successfully ${actionText} ${wpCategories.length} categories! Check the Category Manager below to see them.`);

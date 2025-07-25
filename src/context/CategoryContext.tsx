@@ -10,6 +10,7 @@ interface CategoryContextType {
   moveNode: (categoryId: string, newParentId: string | null) => void;
   updateCategoryName: (categoryId: string, newName: string) => void;
   clearAllCategories: () => void;
+  replaceAllCategories: (newHierarchy: CategoryHierarchy) => void;
 }
 
 // Create a default context with dummy implementations
@@ -19,7 +20,8 @@ const defaultContext: CategoryContextType = {
   deleteCategory: () => {},
   moveNode: () => {},
   updateCategoryName: () => {},
-  clearAllCategories: () => {}
+  clearAllCategories: () => {},
+  replaceAllCategories: () => {}
 };
 
 const CategoryContext = createContext<CategoryContextType>(defaultContext);
@@ -107,13 +109,21 @@ export const CategoryProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }, 100);
   };
 
+  const replaceAllCategories = (newHierarchy: CategoryHierarchy) => {
+    console.log('🔄 CategoryContext: Replacing all categories with new hierarchy...');
+    console.log('📊 New hierarchy to set:', JSON.stringify(newHierarchy, null, 2));
+    setHierarchy(newHierarchy);
+    console.log('✅ CategoryContext: setHierarchy called with new data');
+  };
+
   const contextValue = {
     hierarchy,
     addNewCategory,
     deleteCategory,
     moveNode,
     updateCategoryName,
-    clearAllCategories
+    clearAllCategories,
+    replaceAllCategories
   };
 
   return (
