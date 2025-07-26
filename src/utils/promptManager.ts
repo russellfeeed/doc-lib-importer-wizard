@@ -28,7 +28,7 @@ Here is the document content:
     systemPrompt: "You are a document categorization assistant. Your task is to analyze document content and assign it to the most appropriate category from a predefined hierarchy.",
     userPromptTemplate: `Analyze this document titled "{fileName}" and determine the most appropriate category from the following hierarchy. 
   
-Return the full category path using " > " as a separator (e.g., "Main Category > Subcategory"). If the document doesn't fit any category well, flag the document as uncategorised. Only return the category path, nothing else.
+Return the full category path using " > " as a separator (e.g., "Main Category > Subcategory"). If the document doesn't fit any category well, flag the document as uncategorised. Do not make categories up. Only return the category path, nothing else.
 
 Available categories:
 {categories}
