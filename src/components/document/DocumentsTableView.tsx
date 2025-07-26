@@ -95,8 +95,11 @@ const DocumentsTableView: React.FC<DocumentsTableViewProps> = ({
                   <Input 
                     value={doc.categories}
                     onChange={(e) => onEditDocument(index, 'categories', e.target.value)}
-                    className="w-full"
+                    className={`w-full ${doc.categories?.toLowerCase().includes('uncategorised') ? 'border-destructive bg-destructive/10' : ''}`}
                   />
+                  {doc.categories?.toLowerCase().includes('uncategorised') && (
+                    <div className="text-xs text-destructive mt-1">Categorization failed</div>
+                  )}
                 </TableCell>
                 <TableCell>
                   <Input 
