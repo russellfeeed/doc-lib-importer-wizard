@@ -1,3 +1,5 @@
+import { supabase } from "@/integrations/supabase/client";
+
 interface WordPressCredentials {
   url: string;
   username: string;
@@ -38,26 +40,21 @@ export const createWordPressCategory = async (
   categoryData: CategoryToCreate,
   credentials: WordPressCredentials
 ): Promise<WordPressCategory> => {
-  const response = await fetch('/functions/v1/wordpress-proxy', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
+  const { data, error } = await supabase.functions.invoke('wordpress-proxy', {
+    body: {
       url: credentials.url,
       username: credentials.username,
       password: credentials.password,
       action: 'create',
       categoryData
-    })
+    }
   });
 
-  if (!response.ok) {
-    const errorData = await response.json();
-    throw new Error(errorData.error || 'Failed to create WordPress category');
+  if (error) {
+    throw new Error(error.message || 'Failed to create WordPress category');
   }
 
-  return await response.json();
+  return data;
 };
 
 // Check if a category already exists in WordPress
@@ -70,26 +67,22 @@ export const findWordPressCategory = async (
   if (!creds) return null;
 
   try {
-    // Use the existing Supabase edge function to fetch categories
-    const response = await fetch('/functions/v1/wordpress-proxy', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
+    // Use the Supabase edge function to fetch categories
+    const { data, error } = await supabase.functions.invoke('wordpress-proxy', {
+      body: {
         url: creds.url,
         username: creds.username,
         password: creds.password,
         action: 'fetch',
         per_page: 100
-      })
+      }
     });
 
-    if (!response.ok) {
-      throw new Error('Failed to fetch WordPress categories');
+    if (error) {
+      throw new Error(error.message || 'Failed to fetch WordPress categories');
     }
 
-    const categories: WordPressCategory[] = await response.json();
+    const categories: WordPressCategory[] = data;
     
     // Find category by name and parent
     return categories.find(cat => 
