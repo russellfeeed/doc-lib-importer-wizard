@@ -42,6 +42,8 @@ const CategoryNode: React.FC<CategoryNodeProps> = ({
   const [isEditing, setIsEditing] = useState(false);
   const [editedName, setEditedName] = useState(node.name);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [isCtrlPressed, setIsCtrlPressed] = useState(false);
   const nodeRef = useRef<HTMLDivElement>(null);
 
   const isOnlyRootCategory = isRoot && hierarchy.categories.length <= 1;
@@ -92,6 +94,8 @@ const CategoryNode: React.FC<CategoryNodeProps> = ({
 
   const handleDragStart = (e: React.DragEvent) => {
     e.stopPropagation();
+    setIsDragging(true);
+    setIsCtrlPressed(e.ctrlKey);
     onDragStart(e, node.id);
   };
 
@@ -117,6 +121,8 @@ const CategoryNode: React.FC<CategoryNodeProps> = ({
     if (nodeRef.current) {
       nodeRef.current.classList.remove("bg-blue-100");
     }
+    setIsDragging(false);
+    setIsCtrlPressed(false);
     onDrop(e, node.id);
   };
 
@@ -133,15 +139,20 @@ const CategoryNode: React.FC<CategoryNodeProps> = ({
     <div className="category-node">
       <div
         ref={nodeRef}
-        className="flex items-center p-2 rounded-md hover:bg-gray-100 transition-colors"
-        style={{ paddingLeft: `${padding}px` }}
+        className={`flex items-center p-2 rounded-md hover:bg-gray-100 transition-colors ${
+          isDragging ? (isCtrlPressed ? 'cursor-copy' : 'cursor-move') : ''
+        }`}
+        style={{ 
+          paddingLeft: `${padding}px`,
+          cursor: isDragging ? (isCtrlPressed ? 'copy' : 'move') : 'default'
+        }}
         draggable={!isEditing}
         onDragStart={handleDragStart}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
       >
-        <div className="cursor-move mr-2 text-gray-400">
+        <div className="cursor-move mr-2 text-gray-400" title={isDragging ? (isCtrlPressed ? 'Copying...' : 'Moving...') : 'Drag to move, Ctrl+Drag to copy'}>
           <GripVertical size={16} />
         </div>
         
