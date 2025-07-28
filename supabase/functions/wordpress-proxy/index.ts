@@ -30,7 +30,9 @@ serve(async (req) => {
       username, 
       password, 
       per_page = 100, 
-      fields = 'id,name,parent,count' 
+      fields = 'id,name,parent,count',
+      action = 'fetch', // 'fetch' or 'create'
+      categoryData // for create action
     } = body;
 
     if (!url || !username || !password) {
@@ -45,9 +47,23 @@ serve(async (req) => {
 
     // Clean up URL and build WordPress API endpoint
     const baseUrl = url.replace(/\/$/, '');
-    const wordpressUrl = `${baseUrl}/wp-json/wp/v2/doc_categories?per_page=${per_page}&_fields=${fields}`;
     
-    console.log(`Making request to: ${wordpressUrl}`);
+    let wordpressUrl: string;
+    let method: string;
+    let requestBody: string | undefined;
+    
+    if (action === 'create') {
+      // Create category endpoint
+      wordpressUrl = `${baseUrl}/wp-json/wp/v2/doc_categories`;
+      method = 'POST';
+      requestBody = JSON.stringify(categoryData);
+    } else {
+      // Fetch categories endpoint (default)
+      wordpressUrl = `${baseUrl}/wp-json/wp/v2/doc_categories?per_page=${per_page}&_fields=${fields}`;
+      method = 'GET';
+    }
+    
+    console.log(`Making ${method} request to: ${wordpressUrl}`);
     
     // Prepare headers
     const headers: Record<string, string> = {
@@ -58,20 +74,26 @@ serve(async (req) => {
     // WordPress API authentication using Application Passwords method
     const authString = btoa(`${username}:${password}`);
     headers['Authorization'] = `Basic ${authString}`;
+    
     // Make request to WordPress API
     const response = await fetch(wordpressUrl, {
-      method: 'GET',
-      headers
+      method,
+      headers,
+      ...(requestBody && { body: requestBody })
     });
 
     if (!response.ok) {
       console.error(`WordPress API error: ${response.status} ${response.statusText}`);
       
-      let errorMessage = 'Failed to fetch WordPress categories';
+      let errorMessage = action === 'create' ? 'Failed to create WordPress category' : 'Failed to fetch WordPress categories';
       if (response.status === 401) {
         errorMessage = 'Invalid username or password';
+      } else if (response.status === 403) {
+        errorMessage = 'Insufficient permissions to manage categories';
       } else if (response.status === 404) {
         errorMessage = 'WordPress site not found or doc_categories taxonomy not available';
+      } else if (response.status === 400 && action === 'create') {
+        errorMessage = 'Category already exists or invalid data';
       }
       
       return new Response(
@@ -84,7 +106,12 @@ serve(async (req) => {
     }
 
     const data = await response.json();
-    console.log(`Successfully fetched ${data.length} categories from WordPress`);
+    
+    if (action === 'create') {
+      console.log(`Successfully created category in WordPress:`, data);
+    } else {
+      console.log(`Successfully fetched ${data.length} categories from WordPress`);
+    }
 
     return new Response(
       JSON.stringify(data),

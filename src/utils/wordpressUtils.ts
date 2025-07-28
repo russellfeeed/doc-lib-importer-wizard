@@ -33,39 +33,28 @@ export const getWordPressCredentials = (): WordPressCredentials | null => {
   return null;
 };
 
-// Create a category in WordPress using the WordPress REST API
+// Create a category in WordPress using the Supabase edge function
 export const createWordPressCategory = async (
   categoryData: CategoryToCreate,
   credentials: WordPressCredentials
 ): Promise<WordPressCategory> => {
-  const baseUrl = credentials.url.replace(/\/$/, '');
-  const createUrl = `${baseUrl}/wp-json/wp/v2/doc_categories`;
-  
-  const authString = btoa(`${credentials.username}:${credentials.password}`);
-  
-  const response = await fetch(createUrl, {
+  const response = await fetch('/functions/v1/wordpress-proxy', {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Basic ${authString}`,
-      'User-Agent': 'Category-Manager'
     },
-    body: JSON.stringify(categoryData)
+    body: JSON.stringify({
+      url: credentials.url,
+      username: credentials.username,
+      password: credentials.password,
+      action: 'create',
+      categoryData
+    })
   });
 
   if (!response.ok) {
-    const errorText = await response.text();
-    let errorMessage = 'Failed to create WordPress category';
-    
-    if (response.status === 401) {
-      errorMessage = 'Invalid WordPress credentials';
-    } else if (response.status === 400) {
-      errorMessage = 'Category already exists or invalid data';
-    } else if (response.status === 403) {
-      errorMessage = 'Insufficient permissions to create categories';
-    }
-    
-    throw new Error(`${errorMessage}: ${errorText}`);
+    const errorData = await response.json();
+    throw new Error(errorData.error || 'Failed to create WordPress category');
   }
 
   return await response.json();
@@ -91,6 +80,7 @@ export const findWordPressCategory = async (
         url: creds.url,
         username: creds.username,
         password: creds.password,
+        action: 'fetch',
         per_page: 100
       })
     });
