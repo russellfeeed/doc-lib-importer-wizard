@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Tag, BookCopy, FolderOpen, ChevronRight } from 'lucide-react';
+import { Tag, BookCopy, FolderOpen, ChevronRight, AlertTriangle } from 'lucide-react';
 import { DocumentFile } from '@/types/document';
 import { useCategories } from '@/context/CategoryContext';
 import { CategoryNode } from '@/types/categories';
@@ -68,6 +68,9 @@ const DocumentMetadata: React.FC<DocumentMetadataProps> = ({
     ));
   };
 
+  const isUncategorised = document.categories.toLowerCase() === 'uncategorised' || 
+                         document.categories.toLowerCase() === 'uncategorized';
+
   return (
     <div>
       <div className="mb-4">
@@ -124,12 +127,18 @@ const DocumentMetadata: React.FC<DocumentMetadataProps> = ({
             </Button>
           )}
         </div>
-        <Input 
-          value={document.categories}
-          onChange={(e) => onEdit('categories', e.target.value)}
-          placeholder="E.g., Policies > HR"
-          title="Use > to denote category hierarchy"
-        />
+        <div className="relative">
+          <Input 
+            value={document.categories}
+            onChange={(e) => onEdit('categories', e.target.value)}
+            placeholder="E.g., Policies > HR"
+            title="Use > to denote category hierarchy"
+            className={isUncategorised ? "border-red-500 text-red-600 pr-10" : ""}
+          />
+          {isUncategorised && (
+            <AlertTriangle className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-red-500" />
+          )}
+        </div>
         <p className="text-xs text-gray-500 mt-1">Use &gt; for category hierarchy (e.g., Policies &gt; HR)</p>
       </div>
       
