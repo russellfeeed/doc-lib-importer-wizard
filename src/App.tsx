@@ -7,6 +7,7 @@ import CircularLetterManager from '@/components/CircularLetterManager';
 import Index from '@/pages/Index';
 import Categories from '@/pages/Categories';
 import CircularLetters from '@/pages/CircularLetters';
+import StandardsSubscription from '@/pages/StandardsSubscription';
 import Settings from '@/pages/Settings';
 import NotFound from '@/pages/NotFound';
 import { CategoryProvider } from '@/context/CategoryContext';
@@ -19,6 +20,7 @@ function App() {
           <Route path="/" element={<Index />} />
           <Route path="/documents" element={<DocumentImporter />} />
           <Route path="/circular-letters" element={<CircularLetters />} />
+          <Route path="/standards" element={<StandardsSubscription />} />
           <Route path="/categories" element={<Categories />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="*" element={<NotFound />} />

@@ -124,6 +124,80 @@ export async function generateDocumentCategory(
   }
 }
 
+// AI service to determine standards category (fixed to "Standards > System" or "Standards > Service")
+export async function generateStandardsCategory(
+  content: string,
+  fileName: string,
+  options?: AiProcessingOptions
+): Promise<string> {
+  // Check if API key is available
+  if (!hasOpenAIKey()) {
+    toast.error("OpenAI API key is not set. Please set your API key to use AI features.");
+    throw new Error("OpenAI API key not set");
+  }
+
+  // Fixed categories for Standards on Subscription
+  const standardsCategories = [
+    { name: "Standards > System", description: "Standards related to system requirements, infrastructure, and technical specifications" },
+    { name: "Standards > Service", description: "Standards related to service delivery, processes, and quality requirements" }
+  ];
+  
+  console.log("Standards categories being used:", standardsCategories);
+
+  // Show toast to indicate processing
+  toast.info(`Analyzing standards document to determine category...`);
+  
+  try {
+    // Use a simple categorization logic based on content analysis
+    const contentLower = content.toLowerCase();
+    
+    // Keywords for system-related standards
+    const systemKeywords = [
+      'system', 'infrastructure', 'technical', 'architecture', 'platform', 
+      'hardware', 'software', 'network', 'security', 'database', 'server',
+      'api', 'interface', 'protocol', 'framework', 'specification', 'design',
+      'configuration', 'installation', 'deployment', 'maintenance'
+    ];
+    
+    // Keywords for service-related standards
+    const serviceKeywords = [
+      'service', 'process', 'procedure', 'quality', 'delivery', 'support',
+      'customer', 'user', 'business', 'workflow', 'operation', 'management',
+      'governance', 'compliance', 'audit', 'performance', 'monitoring',
+      'reporting', 'documentation', 'training', 'assessment'
+    ];
+    
+    let systemScore = 0;
+    let serviceScore = 0;
+    
+    // Count keyword matches
+    systemKeywords.forEach(keyword => {
+      const matches = (contentLower.match(new RegExp(keyword, 'g')) || []).length;
+      systemScore += matches;
+    });
+    
+    serviceKeywords.forEach(keyword => {
+      const matches = (contentLower.match(new RegExp(keyword, 'g')) || []).length;
+      serviceScore += matches;
+    });
+    
+    // Determine category based on scores
+    if (systemScore > serviceScore) {
+      return "Standards > System";
+    } else if (serviceScore > systemScore) {
+      return "Standards > Service";
+    } else {
+      // Default to System if scores are equal or both are zero
+      return "Standards > System";
+    }
+  } catch (error) {
+    console.error("Standards categorization error:", error);
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    toast.error(`Standards categorization failed: ${errorMessage}`);
+    return "Standards > System";  // Return default category on error
+  }
+}
+
 // AI service to generate tags for a document
 export async function generateDocumentTags(
   content: string,

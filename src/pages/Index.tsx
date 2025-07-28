@@ -2,7 +2,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
-import { FileText, FileSignature, BarChart3, Settings } from 'lucide-react';
+import { FileText, FileSignature, BarChart3, Settings, Shield } from 'lucide-react';
 
 const Index: React.FC = () => {
   return (
@@ -36,6 +36,20 @@ const Index: React.FC = () => {
               <h2 className="text-xl font-semibold mb-2">Circular Letters</h2>
               <p className="text-gray-600">
                 Manage circular letters and announcements with AI-powered information extraction.
+              </p>
+            </div>
+          </Card>
+        </Link>
+
+        <Link to="/standards" className="hover:no-underline">
+          <Card className="p-6 hover:shadow-md transition-shadow">
+            <div className="flex flex-col items-center text-center">
+              <div className="bg-red-100 p-4 rounded-full mb-4">
+                <Shield className="h-8 w-8 text-red-600" />
+              </div>
+              <h2 className="text-xl font-semibold mb-2">Standards on Subscription</h2>
+              <p className="text-gray-600">
+                Upload and manage standards documents with automatic categorization as System or Service standards.
               </p>
             </div>
           </Card>
