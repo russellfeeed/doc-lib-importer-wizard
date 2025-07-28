@@ -183,6 +183,9 @@ export async function categorizeWithOpenAI(
 
   const categoryHierarchy = formatCategories(categories);
   
+  console.log("Formatted category hierarchy being sent to AI:");
+  console.log(categoryHierarchy);
+  
   const config = getPromptConfig('categorization');
   const model = options.model || config.model;
   const maxTokens = options.maxTokens || config.maxTokens;

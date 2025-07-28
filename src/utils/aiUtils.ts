@@ -100,6 +100,8 @@ export async function generateDocumentCategory(
   // If no categories provided, load them from storage
   const categoryNodes = categories || loadCategories().categories;
   
+  console.log("Categories being passed to AI categorization:", categoryNodes);
+  
   if (!categoryNodes || categoryNodes.length === 0) {
     toast.warning("No categories available for AI categorization");
     return "";
