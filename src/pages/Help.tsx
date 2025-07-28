@@ -185,9 +185,19 @@ const Help: React.FC = () => {
 
           <div className="border-l-4 border-blue-500 pl-4">
             <h3 className="font-semibold mb-2">Step 2: Import CSV via Barn2 Plugin</h3>
-            <p className="text-gray-700 text-sm">
+            <p className="text-gray-700 text-sm mb-3">
               Use the Barn2 Document Library plugin's import feature to import your generated CSV file. 
               The plugin will create document entries linking to your uploaded files.
+            </p>
+            <p className="text-sm text-blue-600">
+              <a 
+                href="https://dev.members.nsi.org.uk/wp-admin/admin.php?page=dlp_import_csv" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="underline hover:text-blue-800"
+              >
+                → Import Documents CSV in WordPress
+              </a>
             </p>
           </div>
 
