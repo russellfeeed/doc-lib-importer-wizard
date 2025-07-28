@@ -1,5 +1,5 @@
 import { toast } from "sonner";
-import { hasOpenAIKey, summarizeWithOpenAI, categorizeWithOpenAI, generateTagsWithOpenAI, extractCircularLetterDataWithOpenAI } from "./openaiClient";
+import { hasOpenAIKey, summarizeWithOpenAI, categorizeWithOpenAI, generateTagsWithOpenAI, extractCircularLetterDataWithOpenAI, categorizeStandardsWithOpenAI } from "./openaiClient";
 import { AiProcessingOptions } from "@/types/document";
 import { CategoryNode } from "@/types/categories";
 import { loadCategories } from "./categoryUtils";
@@ -148,48 +148,11 @@ export async function generateStandardsCategory(
   toast.info(`Analyzing standards document to determine category...`);
   
   try {
-    // Use a simple categorization logic based on content analysis
-    const contentLower = content.toLowerCase();
+    // Use the OpenAI client with the specialized standards categorization prompt
+    const categoryPath = await categorizeStandardsWithOpenAI(content, fileName, options);
     
-    // Keywords for system-related standards
-    const systemKeywords = [
-      'system', 'infrastructure', 'technical', 'architecture', 'platform', 
-      'hardware', 'software', 'network', 'security', 'database', 'server',
-      'api', 'interface', 'protocol', 'framework', 'specification', 'design',
-      'configuration', 'installation', 'deployment', 'maintenance'
-    ];
-    
-    // Keywords for service-related standards
-    const serviceKeywords = [
-      'service', 'process', 'procedure', 'quality', 'delivery', 'support',
-      'customer', 'user', 'business', 'workflow', 'operation', 'management',
-      'governance', 'compliance', 'audit', 'performance', 'monitoring',
-      'reporting', 'documentation', 'training', 'assessment'
-    ];
-    
-    let systemScore = 0;
-    let serviceScore = 0;
-    
-    // Count keyword matches
-    systemKeywords.forEach(keyword => {
-      const matches = (contentLower.match(new RegExp(keyword, 'g')) || []).length;
-      systemScore += matches;
-    });
-    
-    serviceKeywords.forEach(keyword => {
-      const matches = (contentLower.match(new RegExp(keyword, 'g')) || []).length;
-      serviceScore += matches;
-    });
-    
-    // Determine category based on scores
-    if (systemScore > serviceScore) {
-      return "Standards > System";
-    } else if (serviceScore > systemScore) {
-      return "Standards > Service";
-    } else {
-      // Default to System if scores are equal or both are zero
-      return "Standards > System";
-    }
+    // Return the AI-determined category
+    return categoryPath;
   } catch (error) {
     console.error("Standards categorization error:", error);
     const errorMessage = error instanceof Error ? error.message : "Unknown error";

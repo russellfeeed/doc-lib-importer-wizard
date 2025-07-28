@@ -11,6 +11,7 @@ export interface AllPromptConfigs {
   categorization: PromptConfig;
   tagGeneration: PromptConfig;
   circularLetters: PromptConfig;
+  standardsCategorization: PromptConfig;
 }
 
 const DEFAULT_PROMPTS: AllPromptConfigs = {
@@ -94,6 +95,29 @@ Make sure the appendices content is NOT included in the details field.`,
     model: "gpt-4o-mini",
     temperature: 0.3,
     maxTokens: 2000
+  },
+  standardsCategorization: {
+    systemPrompt: "You are a standards document categorization specialist. Your task is to analyze standards documents and categorize them as either 'Standards > System' or 'Standards > Service' based on their content and focus.",
+    userPromptTemplate: `Analyze this standards document titled "{fileName}" and determine whether it should be categorized as "Standards > System" or "Standards > Service".
+
+CATEGORY DEFINITIONS:
+- "Standards > System": Standards that focus on technical systems, infrastructure, architecture, hardware, software, technical specifications, protocols, interfaces, security frameworks, databases, networks, platforms, APIs, technical design, configuration, installation, deployment, or technical maintenance.
+
+- "Standards > Service": Standards that focus on service delivery, business processes, procedures, quality management, customer service, user experience, operational workflows, governance, compliance, auditing, performance management, service monitoring, reporting, documentation practices, training, or service assessment.
+
+CRITICAL RULES:
+1. You MUST return EXACTLY one of these two categories: "Standards > System" OR "Standards > Service"
+2. Base your decision on the PRIMARY focus and intent of the document
+3. If a document covers both areas, choose the category that represents the MAIN emphasis
+4. Do not return any other text - only the exact category path
+
+Analyze the document content and return the appropriate category:
+
+Document content:
+{content}`,
+    model: "gpt-4o-mini",
+    temperature: 0.3,
+    maxTokens: 100
   }
 };
 
@@ -157,7 +181,7 @@ export function importPromptConfigs(jsonString: string): void {
   try {
     const configs = JSON.parse(jsonString) as AllPromptConfigs;
     // Validate the structure
-    if (configs.summarization && configs.categorization && configs.tagGeneration && configs.circularLetters) {
+    if (configs.summarization && configs.categorization && configs.tagGeneration && configs.circularLetters && configs.standardsCategorization) {
       saveAllPromptConfigs(configs);
     } else {
       throw new Error("Invalid prompt configuration format");

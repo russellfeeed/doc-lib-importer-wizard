@@ -249,6 +249,86 @@ export async function categorizeWithOpenAI(
 }
 
 /**
+ * Categorize standards documents as either "Standards > System" or "Standards > Service"
+ */
+export async function categorizeStandardsWithOpenAI(
+  content: string,
+  fileName: string,
+  options: AiProcessingOptions = {}
+): Promise<string> {
+  if (!hasOpenAIKey()) {
+    throw new Error("OpenAI API key not set");
+  }
+
+  const config = getPromptConfig('standardsCategorization');
+  const model = options.model || config.model;
+  const maxTokens = options.maxTokens || config.maxTokens;
+  const temperature = options.temperature || config.temperature;
+
+  const systemPrompt = config.systemPrompt;
+  
+  const userPrompt = config.userPromptTemplate
+    .replace('{fileName}', fileName)
+    .replace('{content}', content.substring(0, 8000));
+
+  const messages: OpenAIMessage[] = [
+    {
+      role: "system",
+      content: systemPrompt,
+    },
+    {
+      role: "user",
+      content: userPrompt,
+    },
+  ];
+
+  const requestBody: OpenAIRequestBody = {
+    model,
+    messages,
+    max_tokens: maxTokens,
+    temperature,
+  };
+
+  try {
+    const response = await fetch(OPENAI_API_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error("OpenAI API error:", errorData);
+      throw new Error(
+        `OpenAI API error: ${errorData.error?.message || response.statusText}`
+      );
+    }
+
+    const data = await response.json() as OpenAIResponse;
+    const categoryPath = data.choices[0]?.message.content.trim();
+
+    if (!categoryPath) {
+      throw new Error("OpenAI returned an empty category");
+    }
+
+    // Validate that the returned category is one of the expected values
+    const validCategories = ["Standards > System", "Standards > Service"];
+    if (!validCategories.includes(categoryPath)) {
+      console.warn(`Invalid category returned: ${categoryPath}, defaulting to Standards > System`);
+      return "Standards > System";
+    }
+
+    return categoryPath;
+  } catch (error) {
+    console.error("Error calling OpenAI API for standards categorization:", error);
+    throw error;
+  }
+}
+
+/**
  * Generate 1-5 relevant tags for a document based on its content
  */
 export async function generateTagsWithOpenAI(

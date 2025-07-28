@@ -49,7 +49,8 @@ const PROMPT_DESCRIPTIONS = {
   summarization: 'Controls how documents are summarized for quick overview',
   categorization: 'Determines how documents are automatically categorized',
   tagGeneration: 'Defines how relevant tags are generated for documents',
-  circularLetters: 'Extracts structured data from circular letters and announcements'
+  circularLetters: 'Extracts structured data from circular letters and announcements',
+  standardsCategorization: 'Categorizes standards documents as System or Service standards'
 };
 
 const Settings: React.FC = () => {
@@ -206,11 +207,12 @@ const Settings: React.FC = () => {
       </div>
 
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as keyof AllPromptConfigs)}>
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="summarization">Summarization</TabsTrigger>
           <TabsTrigger value="categorization">Categorization</TabsTrigger>
           <TabsTrigger value="tagGeneration">Tag Generation</TabsTrigger>
           <TabsTrigger value="circularLetters">Circular Letters</TabsTrigger>
+          <TabsTrigger value="standardsCategorization">Standards</TabsTrigger>
         </TabsList>
 
         {Object.entries(PROMPT_DESCRIPTIONS).map(([key, description]) => (
@@ -402,6 +404,7 @@ const Settings: React.FC = () => {
                 <strong>Available placeholders:</strong> {`{fileName}`}, {`{content}`}
                 {key === 'categorization' && ', {categories}'}
                 {key === 'circularLetters' && ' - Returns structured JSON data'}
+                {key === 'standardsCategorization' && ' - Returns either "Standards > System" or "Standards > Service"'}
               </AlertDescription>
             </Alert>
           </TabsContent>
