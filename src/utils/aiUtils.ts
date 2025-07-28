@@ -136,14 +136,6 @@ export async function generateStandardsCategory(
     throw new Error("OpenAI API key not set");
   }
 
-  // Fixed categories for Standards on Subscription
-  const standardsCategories = [
-    { name: "Standards > System", description: "Standards related to system requirements, infrastructure, and technical specifications" },
-    { name: "Standards > Service", description: "Standards related to service delivery, processes, and quality requirements" }
-  ];
-  
-  console.log("Standards categories being used:", standardsCategories);
-
   // Show toast to indicate processing
   toast.info(`Analyzing standards document to determine category...`);
   
