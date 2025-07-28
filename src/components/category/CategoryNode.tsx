@@ -1,9 +1,10 @@
 import React, { useState, useRef } from "react";
-import { Plus, Trash2, ChevronRight, ChevronDown, GripVertical, Edit, Check } from "lucide-react";
+import { Plus, Trash2, ChevronRight, ChevronDown, GripVertical, Edit, Check, Upload } from "lucide-react";
 import { CategoryNode as CategoryNodeType } from "@/types/categories";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useCategories } from "@/context/CategoryContext";
+import { pushCategoryToWordPress } from "@/utils/wordpressUtils";
 import { toast } from "sonner";
 import {
   AlertDialog,
@@ -44,6 +45,7 @@ const CategoryNode: React.FC<CategoryNodeProps> = ({
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [isCtrlPressed, setIsCtrlPressed] = useState(false);
+  const [isPushingToWP, setIsPushingToWP] = useState(false);
   const nodeRef = useRef<HTMLDivElement>(null);
 
   const isOnlyRootCategory = isRoot && hierarchy.categories.length <= 1;
@@ -133,6 +135,34 @@ const CategoryNode: React.FC<CategoryNodeProps> = ({
     toast.success(`Deleted "${categoryName}" category`);
   };
 
+  const handlePushToWordPress = async () => {
+    if (isPushingToWP) return;
+    
+    setIsPushingToWP(true);
+    
+    try {
+      // Find parent WordPress ID if this node has a parent
+      let parentWpId: number | undefined = undefined;
+      
+      if (node.parentId) {
+        // For now, we'll push this category without parent mapping
+        // In a more sophisticated implementation, we'd need to track WordPress IDs
+        toast.info('Note: Parent category should be pushed to WordPress first for proper hierarchy');
+      }
+      
+      const wpCategory = await pushCategoryToWordPress(node.name, parentWpId);
+      
+      if (wpCategory) {
+        toast.success(`Successfully pushed "${node.name}" to WordPress (ID: ${wpCategory.id})`);
+      }
+    } catch (error) {
+      console.error('Error pushing to WordPress:', error);
+      toast.error(`Failed to push "${node.name}" to WordPress: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsPushingToWP(false);
+    }
+  };
+
   const padding = level * 20;
 
   return (
@@ -214,6 +244,17 @@ const CategoryNode: React.FC<CategoryNodeProps> = ({
               onClick={handleAddClick}
             >
               <Plus size={16} />
+            </Button>
+
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-6 w-6 p-0 text-gray-500 hover:text-blue-500"
+              onClick={handlePushToWordPress}
+              disabled={isPushingToWP}
+              title="Push to WordPress"
+            >
+              <Upload size={16} className={isPushingToWP ? 'animate-spin' : ''} />
             </Button>
             
             <Button
