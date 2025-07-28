@@ -25,13 +25,23 @@ Here is the document content:
     maxTokens: 300
   },
   categorization: {
-    systemPrompt: "You are a document categorization assistant. Your task is to analyze document content and assign it to the most appropriate category from a predefined hierarchy.",
-    userPromptTemplate: `Analyze this document titled "{fileName}" and determine the most appropriate category from the following hierarchy. 
-  
-Return the full category path using " > " as a separator (e.g., "Main Category > Subcategory"). If the document doesn't fit any category well, flag the document as uncategorised. Do not make categories up. Only return the category path, nothing else.
+    systemPrompt: "You are a document categorization assistant. Your task is to analyze document content and assign it to the EXACT category path that exists in the predefined hierarchy. You must only use categories and paths that are explicitly shown in the hierarchy structure.",
+    userPromptTemplate: `Analyze this document titled "{fileName}" and determine the most appropriate category from the following hierarchy.
 
-Available categories:
+IMPORTANT RULES:
+1. You MUST only return category paths that exist exactly as shown in the hierarchy below
+2. If a document fits a top-level category, return just that category name (e.g., "Gold")
+3. If it fits a subcategory, return the full path using " > " separator (e.g., "Parent Category > Child Category")
+4. Do not create new categories or combine categories that aren't parent-child relationships
+5. Do not make categories up
+6. If the document doesn't fit any category well, flag the document as "uncategorised"
+
+AVAILABLE CATEGORY HIERARCHY:
 {categories}
+
+VALIDATION: Before returning your answer, verify that the exact path you're suggesting appears in the hierarchy above. Only return paths that you can trace from parent to child in the structure.
+
+Only return the category path, nothing else.
 
 Document content:
 {content}`,
