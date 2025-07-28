@@ -28,20 +28,30 @@ Here is the document content:
     systemPrompt: "You are a document categorization assistant. Your task is to analyze document content and assign it to the EXACT category path that exists in the predefined hierarchy. You must only use categories and paths that are explicitly shown in the hierarchy structure.",
     userPromptTemplate: `Analyze this document titled "{fileName}" and determine the most appropriate category from the following hierarchy.
 
-IMPORTANT RULES:
-1. You MUST only return category paths that exist exactly as shown in the hierarchy below
-2. If a document fits a top-level category, return just that category name (e.g., "Gold")
-3. If it fits a subcategory, return the full path using " > " separator (e.g., "Parent Category > Child Category")
-4. Do not create new categories or combine categories that aren't parent-child relationships
-5. Do not make categories up
-6. If the document doesn't fit any category well, flag the document as "uncategorised"
+CRITICAL RULES - READ CAREFULLY:
+1. You MUST only return category paths that exist EXACTLY as shown in the hierarchy below
+2. You CANNOT skip levels in the hierarchy - every level must be included in the path
+3. For top-level categories, return just the name (e.g., "Gold")
+4. For subcategories, include ALL parent levels using " > " separator (e.g., "Gold > ARC > Regulations and Approval Criteria")
+5. Do not create shortcuts or skip intermediate levels
+6. Do not make categories up or combine categories that aren't direct parent-child relationships
+7. If the document doesn't fit any category well, return "uncategorised"
+
+EXAMPLES OF CORRECT PATHS (based on the hierarchy):
+- "Gold" (top level)
+- "Gold > ARC > Regulations and Approval Criteria" (full path required)
+- "Gold > Fire > Technical Bulletins" (full path required)
+
+EXAMPLES OF INCORRECT PATHS:
+- "Gold > Regulations and Approval Criteria" (skips ARC level - WRONG)
+- "Fire > Gold" (wrong order - WRONG)
 
 AVAILABLE CATEGORY HIERARCHY:
 {categories}
 
-VALIDATION: Before returning your answer, verify that the exact path you're suggesting appears in the hierarchy above. Only return paths that you can trace from parent to child in the structure.
+VALIDATION STEP: Before answering, trace your chosen path in the hierarchy above to ensure every level exists and is connected correctly.
 
-Only return the category path, nothing else.
+Only return the exact category path, nothing else.
 
 Document content:
 {content}`,
