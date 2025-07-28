@@ -315,6 +315,37 @@ export async function processDocumentWithAI(
   }
 }
 
+// Process a standards document with AI using fixed categories
+export async function processStandardsDocumentWithAI(
+  file: File,
+  options?: AiProcessingOptions
+): Promise<{ summary: string, content: string, category?: string, tags?: string }> {
+  try {
+    // 1. Extract text from document
+    const extractedText = await extractTextFromDocument(file);
+    
+    // 2. Generate summary using OpenAI
+    const summary = await generateDocumentSummary(extractedText, file.name, options);
+    
+    // 3. Determine appropriate standards category (System or Service only)
+    const category = await generateStandardsCategory(extractedText, file.name, options);
+    
+    // 4. Generate document tags (pass category for additional tag generation)
+    const tags = await generateDocumentTags(extractedText, file.name, category, options);
+    
+    return {
+      summary,
+      content: extractedText,
+      category,
+      tags
+    };
+  } catch (error) {
+    console.error("Error processing standards document with AI:", error);
+    toast.error("Failed to process standards document with AI");
+    throw error;
+  }
+}
+
 // Process a circular letter with AI to extract specific fields
 export async function processCircularLetterWithAI(
   file: File,

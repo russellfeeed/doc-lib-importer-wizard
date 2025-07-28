@@ -2,6 +2,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { useFileUpload } from '@/hooks/useFileUpload';
+import { useStandardsFileUpload } from '@/hooks/useStandardsFileUpload';
 import { DocumentFile } from '@/types/document';
 import DropZone from './DropZone';
 import FileList from './FileList';
@@ -9,9 +10,12 @@ import AiSettings from './AiSettings';
 
 interface FileUploaderProps {
   onFilesUploaded: (files: DocumentFile[]) => void;
+  isStandards?: boolean;
 }
 
-const FileUploader: React.FC<FileUploaderProps> = ({ onFilesUploaded }) => {
+const FileUploader: React.FC<FileUploaderProps> = ({ onFilesUploaded, isStandards = false }) => {
+  const useUploadHook = isStandards ? useStandardsFileUpload : useFileUpload;
+  
   const {
     files,
     isDragging,
@@ -26,7 +30,7 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onFilesUploaded }) => {
     handleContinue,
     handleApiKeyChange,
     toggleAI
-  } = useFileUpload({ onFilesUploaded });
+  } = useUploadHook({ onFilesUploaded });
 
   return (
     <div className="space-y-6">

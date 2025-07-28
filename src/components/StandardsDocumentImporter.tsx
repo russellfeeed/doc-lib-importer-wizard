@@ -44,6 +44,7 @@ const StandardsDocumentImporter: React.FC = () => {
       component: (
         <FileUploader
           onFilesUploaded={handleFilesUploaded}
+          isStandards={true}
         />
       )
     },
