@@ -9,6 +9,7 @@ import Categories from '@/pages/Categories';
 import CircularLetters from '@/pages/CircularLetters';
 import StandardsSubscription from '@/pages/StandardsSubscription';
 import Settings from '@/pages/Settings';
+import Help from '@/pages/Help';
 import NotFound from '@/pages/NotFound';
 import { CategoryProvider } from '@/context/CategoryContext';
 
@@ -23,6 +24,7 @@ function App() {
           <Route path="/standards" element={<StandardsSubscription />} />
           <Route path="/categories" element={<Categories />} />
           <Route path="/settings" element={<Settings />} />
+          <Route path="/help" element={<Help />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
         <Toaster position="top-right" />
