@@ -249,3 +249,60 @@ export const renameCategory = (
 export const clearCategories = (): CategoryHierarchy => {
   return { categories: [] };
 };
+
+// Copy a category and all its children to a new parent (deep copy with new IDs)
+export const copyCategory = (
+  hierarchy: CategoryHierarchy,
+  categoryId: string,
+  newParentId: string | null
+): CategoryHierarchy => {
+  // Find the category to copy
+  const categoryToCopy = findCategoryById(hierarchy.categories, categoryId);
+  if (!categoryToCopy) return hierarchy;
+  
+  // Deep copy the category with new unique IDs
+  const copyNodeWithNewIds = (node: CategoryNode, parentId: string | null): CategoryNode => {
+    const newId = generateUniqueId();
+    return {
+      id: newId,
+      name: node.name,
+      parentId,
+      children: node.children.map(child => copyNodeWithNewIds(child, newId))
+    };
+  };
+  
+  const categoryClone = copyNodeWithNewIds(categoryToCopy, newParentId);
+  
+  // Add the copied category to the hierarchy
+  const updatedHierarchy = { ...hierarchy };
+  
+  if (!newParentId) {
+    // Add as root category
+    updatedHierarchy.categories = [...updatedHierarchy.categories, categoryClone];
+  } else {
+    // Add as child to existing category
+    const addToParent = (categories: CategoryNode[]): CategoryNode[] => {
+      return categories.map(category => {
+        if (category.id === newParentId) {
+          return {
+            ...category,
+            children: [...category.children, categoryClone]
+          };
+        }
+        
+        if (category.children.length > 0) {
+          return {
+            ...category,
+            children: addToParent(category.children)
+          };
+        }
+        
+        return category;
+      });
+    };
+    
+    updatedHierarchy.categories = addToParent(updatedHierarchy.categories);
+  }
+  
+  return updatedHierarchy;
+};

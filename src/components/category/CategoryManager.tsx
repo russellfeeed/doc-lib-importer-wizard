@@ -10,11 +10,12 @@ import { CategoryNode as CategoryNodeType } from "@/types/categories";
 import { toast } from "sonner";
 
 const CategoryManager: React.FC = () => {
-  const { hierarchy, addNewCategory, deleteCategory, moveNode } = useCategories();
+  const { hierarchy, addNewCategory, deleteCategory, moveNode, copyNode } = useCategories();
   const [newRootName, setNewRootName] = useState("");
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [isAddingRoot, setIsAddingRoot] = useState(false);
   const [viewMode, setViewMode] = useState<'ui' | 'json'>('ui');
+  const [isCtrlPressed, setIsCtrlPressed] = useState(false);
 
   // Helper function to find a category by ID
   const findCategoryById = (
@@ -39,8 +40,9 @@ const CategoryManager: React.FC = () => {
 
   const handleDragStart = (e: React.DragEvent, nodeId: string) => {
     setDraggingId(nodeId);
+    setIsCtrlPressed(e.ctrlKey);
     e.dataTransfer.setData("text/plain", nodeId);
-    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.effectAllowed = e.ctrlKey ? "copy" : "move";
   };
 
   const handleDrop = (e: React.DragEvent, newParentId: string | null) => {
@@ -58,8 +60,15 @@ const CategoryManager: React.FC = () => {
     
     if (newParentId && isDescendantOfDragged(newParentId)) return;
     
-    moveNode(draggingId, newParentId);
+    if (isCtrlPressed) {
+      copyNode(draggingId, newParentId);
+      toast.success("Category copied successfully");
+    } else {
+      moveNode(draggingId, newParentId);
+    }
+    
     setDraggingId(null);
+    setIsCtrlPressed(false);
   };
 
   const handleAddRoot = (e: React.FormEvent) => {
@@ -132,10 +141,16 @@ const CategoryManager: React.FC = () => {
         {viewMode === 'json' ? (
           <CategoryJsonEditor />
         ) : (
-          <div
-            onDragOver={handleRootDragOver}
-            onDrop={handleRootDrop}
-          >
+          <div>
+            <div className="mb-4 p-3 bg-muted/50 rounded-lg border-l-4 border-primary">
+              <p className="text-sm text-muted-foreground">
+                💡 <strong>Tip:</strong> Hold <kbd className="px-1.5 py-0.5 bg-background border rounded text-xs">Ctrl</kbd> while dragging to copy a category and all its children instead of moving it.
+              </p>
+            </div>
+            <div
+              onDragOver={handleRootDragOver}
+              onDrop={handleRootDrop}
+            >
             {isAddingRoot && (
               <div className="mb-4">
                 <form onSubmit={handleAddRoot} className="flex gap-2">
@@ -182,6 +197,7 @@ const CategoryManager: React.FC = () => {
                 <p>No categories yet. Click 'Add Root' to create your first category, or import from WordPress above.</p>
               </div>
             )}
+            </div>
           </div>
         )}
       </CardContent>
