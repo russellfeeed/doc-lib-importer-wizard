@@ -38,7 +38,7 @@ const WordPressImporter: React.FC = () => {
   const { addNewCategory, hierarchy, clearAllCategories, replaceAllCategories } = useCategories();
   const [credentials, setCredentials] = useState<WordPressCredentials>(() => {
     const saved = localStorage.getItem('wp_credentials');
-    return saved ? JSON.parse(saved) : { url: '', username: '', password: '' };
+    return saved ? JSON.parse(saved) : { url: 'https://dev.members.nsi.org.uk/', username: '', password: '' };
   });
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);

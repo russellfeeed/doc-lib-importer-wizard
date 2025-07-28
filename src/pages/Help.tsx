@@ -157,6 +157,42 @@ const Help: React.FC = () => {
         </div>
       </Card>
 
+      {/* Category Manager */}
+      <Card className="p-6 mb-8">
+        <h2 className="text-2xl font-semibold mb-6">Category Manager Setup</h2>
+        
+        <p className="text-gray-700 mb-4">
+          To ensure proper categorization of your documents, you can import categories directly from your WordPress site's 
+          Document Library taxonomy. This ensures consistency between your processing system and WordPress.
+        </p>
+        
+        <div className="space-y-4">
+          <div className="border-l-4 border-green-500 pl-4">
+            <h3 className="font-semibold mb-2">Step 1: Set Up WordPress Credentials</h3>
+            <p className="text-gray-700 text-sm mb-2">
+              Navigate to Categories in the main menu and locate the WordPress Category Import section.
+            </p>
+            <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
+              <li><strong>WordPress URL:</strong> https://dev.members.nsi.org.uk/ (default)</li>
+              <li><strong>Username & Password:</strong> Create these credentials in WordPress at <a href="https://dev.members.nsi.org.uk/wp-admin/users.php" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline hover:text-blue-800">User Management</a></li>
+              <li>Ensure the user has appropriate permissions to access the Document Library categories</li>
+            </ul>
+          </div>
+          
+          <div className="border-l-4 border-green-500 pl-4">
+            <h3 className="font-semibold mb-2">Step 2: Import Categories</h3>
+            <p className="text-gray-700 text-sm mb-2">
+              Once credentials are configured, fetch and import your WordPress doc_categories taxonomy.
+            </p>
+            <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
+              <li>Click "Fetch Categories" to preview available categories</li>
+              <li>Choose to merge with existing categories or replace them entirely</li>
+              <li>Categories will be imported with their hierarchical structure preserved</li>
+            </ul>
+          </div>
+        </div>
+      </Card>
+
       {/* WordPress Import */}
       <Card className="p-6 mb-8">
         <h2 className="text-2xl font-semibold mb-6">WordPress Import Process</h2>
