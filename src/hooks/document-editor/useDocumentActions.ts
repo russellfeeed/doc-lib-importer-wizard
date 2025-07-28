@@ -40,9 +40,15 @@ export function useDocumentActions({
     toast.success("Document information saved");
   };
 
+  const handleToggleAllPublished = (published: boolean) => {
+    setEditedDocuments(prev => prev.map(doc => ({ ...doc, published })));
+    toast.success(`All documents ${published ? 'published' : 'unpublished'}`);
+  };
+
   return {
     handleChange,
     handleTableChange,
-    handleSaveAll
+    handleSaveAll,
+    handleToggleAllPublished
   };
 }

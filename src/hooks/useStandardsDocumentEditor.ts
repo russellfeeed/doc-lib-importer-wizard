@@ -20,7 +20,7 @@ export function useStandardsDocumentEditor({
     currentDocument
   } = useDocumentState({ initialDocuments, onSave });
 
-  const { handleChange, handleTableChange, handleSaveAll } = useDocumentActions({
+  const { handleChange, handleTableChange, handleSaveAll, handleToggleAllPublished } = useDocumentActions({
     editedDocuments,
     currentDocIndex,
     setEditedDocuments,
@@ -67,5 +67,6 @@ export function useStandardsDocumentEditor({
     handleGenerateAllExcerpts,
     handleGenerateAllCategories,
     handleGenerateAllTags,
+    handleToggleAllPublished,
   };
 }

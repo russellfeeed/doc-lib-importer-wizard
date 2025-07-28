@@ -36,6 +36,7 @@ const DocumentEditor: React.FC<DocumentEditorProps> = ({
     handleGenerateAllExcerpts,
     handleGenerateAllCategories,
     handleGenerateAllTags,
+    handleToggleAllPublished,
   } = useDocumentEditor({
     initialDocuments: documents, 
     onSave
@@ -85,6 +86,7 @@ const DocumentEditor: React.FC<DocumentEditorProps> = ({
           onToggleView={toggleEditAll}
           onSave={handleSaveAll}
           onBack={onBack}
+          onToggleAllPublished={handleToggleAllPublished}
         />
       )}
     </div>

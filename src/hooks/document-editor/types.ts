@@ -27,4 +27,5 @@ export interface UseDocumentEditorReturn extends DocumentEditorState {
   handleGenerateAllExcerpts: () => Promise<void>;
   handleGenerateAllCategories: () => Promise<void>;
   handleGenerateAllTags: () => Promise<void>;
+  handleToggleAllPublished: (published: boolean) => void;
 }

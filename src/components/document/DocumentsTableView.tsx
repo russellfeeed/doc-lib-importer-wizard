@@ -11,6 +11,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { ChevronLeft, Edit, Check, Zap, ExternalLink } from 'lucide-react';
 import { DocumentFile } from '@/types/document';
 
@@ -22,6 +23,7 @@ interface DocumentsTableViewProps {
   onToggleView: () => void;
   onSave: () => void;
   onBack: () => void;
+  onToggleAllPublished: (published: boolean) => void;
 }
 
 const DocumentsTableView: React.FC<DocumentsTableViewProps> = ({
@@ -31,39 +33,55 @@ const DocumentsTableView: React.FC<DocumentsTableViewProps> = ({
   onGenerateAllExcerpts,
   onToggleView,
   onSave,
-  onBack
+  onBack,
+  onToggleAllPublished
 }) => {
+  // Calculate if all documents are published
+  const allPublished = documents.every(doc => doc.published);
+  const somePublished = documents.some(doc => doc.published);
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-semibold">All Documents</h3>
-        <div className="flex space-x-2">
-          <Button 
-            variant="outline" 
-            size="sm"
-            onClick={onGenerateAllExcerpts}
-            disabled={isGeneratingAI}
-          >
-            {isGeneratingAI ? (
-              <>
-                <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full mr-2" />
-                Processing...
-              </>
-            ) : (
-              <>
-                <Zap className="mr-2 h-4 w-4" />
-                Generate All Excerpts
-              </>
-            )}
-          </Button>
-          <Button 
-            variant="outline" 
-            size="sm" 
-            onClick={onToggleView}
-          >
-            <Edit className="mr-2 h-4 w-4" />
-            Edit Individual Documents
-          </Button>
+        <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2">
+            <Label htmlFor="publish-all" className="text-sm font-medium">
+              {allPublished ? 'Unpublish All' : 'Publish All'}
+            </Label>
+            <Switch
+              id="publish-all"
+              checked={allPublished}
+              onCheckedChange={(checked) => onToggleAllPublished(checked)}
+            />
+          </div>
+          <div className="flex space-x-2">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={onGenerateAllExcerpts}
+              disabled={isGeneratingAI}
+            >
+              {isGeneratingAI ? (
+                <>
+                  <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full mr-2" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <Zap className="mr-2 h-4 w-4" />
+                  Generate All Excerpts
+                </>
+              )}
+            </Button>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={onToggleView}
+            >
+              <Edit className="mr-2 h-4 w-4" />
+              Edit Individual Documents
+            </Button>
+          </div>
         </div>
       </div>
       
