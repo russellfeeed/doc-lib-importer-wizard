@@ -1,0 +1,89 @@
+import React from 'react';
+import { DocumentFile } from '@/types/document';
+import { useDocumentEditor } from '@/hooks/useDocumentEditor';
+import SingleDocumentEditor from '@/components/document/SingleDocumentEditor';
+import DocumentsTableView from '@/components/document/DocumentsTableView';
+
+interface SimpleDocumentEditorProps {
+  documents: DocumentFile[];
+  onSave: (documents: DocumentFile[]) => void;
+  onBack: () => void;
+}
+
+const SimpleDocumentEditor: React.FC<SimpleDocumentEditorProps> = ({ documents, onSave, onBack }) => {
+  const {
+    editedDocuments,
+    currentDocIndex,
+    currentDocument,
+    isEditingAll,
+    isGeneratingAI,
+    handleChange,
+    handleTableChange,
+    handleNext,
+    handlePrevious,
+    handleGenerateExcerpt,
+    handleGenerateCategory,
+    handleGenerateTags,
+    handleSaveAll,
+    toggleEditAll,
+    handleGenerateAllExcerpts,
+    handleGenerateAllCategories,
+    handleGenerateAllTags,
+    handleToggleAllPublished,
+  } = useDocumentEditor({
+    initialDocuments: documents,
+    onSave
+  });
+
+  if (editedDocuments.length === 0) {
+    return (
+      <div className="text-center py-8">
+        <p className="text-gray-500">No documents to edit.</p>
+        <button 
+          onClick={onBack}
+          className="mt-4 text-blue-600 hover:text-blue-700"
+        >
+          Go back to upload
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      {!isEditingAll ? (
+        <SingleDocumentEditor
+          currentDocument={currentDocument}
+          currentDocIndex={currentDocIndex}
+          totalDocuments={editedDocuments.length}
+          isGeneratingAI={isGeneratingAI}
+          onEdit={handleChange}
+          onPrevious={handlePrevious}
+          onNext={handleNext}
+          onGenerateExcerpt={handleGenerateExcerpt}
+          onGenerateCategory={handleGenerateCategory}
+          onGenerateTags={handleGenerateTags}
+          onGenerateAllExcerpts={handleGenerateAllExcerpts}
+          onGenerateAllCategories={handleGenerateAllCategories}
+          onGenerateAllTags={handleGenerateAllTags}
+          onToggleView={toggleEditAll}
+          onSave={handleSaveAll}
+          onBack={onBack}
+        />
+      ) : (
+        <DocumentsTableView
+          documents={editedDocuments}
+          isGeneratingAI={isGeneratingAI}
+          onEditDocument={handleTableChange}
+          onGenerateAllExcerpts={handleGenerateAllExcerpts}
+          onToggleView={toggleEditAll}
+          onSave={handleSaveAll}
+          onBack={onBack}
+          onToggleAllPublished={handleToggleAllPublished}
+        />
+      )}
+    </div>
+  );
+};
+
+export default SimpleDocumentEditor;

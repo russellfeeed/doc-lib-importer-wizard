@@ -3,6 +3,7 @@ import React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { Toaster } from 'sonner';
 import DocumentImporter from '@/components/DocumentImporter';
+import SimpleDocuments from '@/pages/SimpleDocuments';
 import CircularLetterManager from '@/components/CircularLetterManager';
 import Index from '@/pages/Index';
 import Categories from '@/pages/Categories';
@@ -20,6 +21,7 @@ function App() {
         <Routes>
           <Route path="/" element={<Index />} />
           <Route path="/documents" element={<DocumentImporter />} />
+          <Route path="/simple-documents" element={<SimpleDocuments />} />
           <Route path="/circular-letters" element={<CircularLetters />} />
           <Route path="/standards" element={<StandardsSubscription />} />
           <Route path="/categories" element={<Categories />} />
