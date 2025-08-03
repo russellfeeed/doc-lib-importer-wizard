@@ -1,6 +1,6 @@
 import { useCallback } from 'react';
 import { DocumentFile } from '@/types/document';
-import { generateDocumentSummary, generateDocumentCategory, generateDocumentTags, generateDocumentScheme } from '@/utils/aiUtils';
+import { generateDocumentSummary, generateDocumentCategoryWithContext, generateDocumentTagsWithContext, generateDocumentScheme } from '@/utils/aiUtils';
 import { toast } from 'sonner';
 import { hasWordPressSettings, promptForWordPressSettings } from '@/utils/settingsUtils';
 
@@ -50,7 +50,7 @@ export function useSimpleAiGeneration({
     
     setIsGeneratingAI(true);
     try {
-      const category = await generateDocumentCategory(currentDoc.content, currentDoc.name);
+      const category = await generateDocumentCategoryWithContext(currentDoc.content, currentDoc.name);
       
       setEditedDocuments(prev => 
         prev.map((doc, index) => 
@@ -76,7 +76,7 @@ export function useSimpleAiGeneration({
     
     setIsGeneratingAI(true);
     try {
-      const tags = await generateDocumentTags(currentDoc.content, currentDoc.name, currentDoc.categories);
+      const tags = await generateDocumentTagsWithContext(currentDoc.content, currentDoc.name, currentDoc.categories);
       
       setEditedDocuments(prev => 
         prev.map((doc, index) => 
@@ -164,7 +164,7 @@ export function useSimpleAiGeneration({
       
       for (let i = 0; i < updatedDocs.length; i++) {
         try {
-          const category = await generateDocumentCategory(updatedDocs[i].content, updatedDocs[i].name);
+          const category = await generateDocumentCategoryWithContext(updatedDocs[i].content, updatedDocs[i].name);
           updatedDocs[i] = { ...updatedDocs[i], categories: category };
         } catch (error) {
           console.error(`Error generating category for document ${i}:`, error);
@@ -188,7 +188,7 @@ export function useSimpleAiGeneration({
       
       for (let i = 0; i < updatedDocs.length; i++) {
         try {
-          const tags = await generateDocumentTags(updatedDocs[i].content, updatedDocs[i].name, updatedDocs[i].categories);
+          const tags = await generateDocumentTagsWithContext(updatedDocs[i].content, updatedDocs[i].name, updatedDocs[i].categories);
           updatedDocs[i] = { ...updatedDocs[i], tags };
         } catch (error) {
           console.error(`Error generating tags for document ${i}:`, error);

@@ -13,7 +13,7 @@ export function useSimpleFileUpload({ onFilesUploaded }: UseSimpleFileUploadProp
   const [files, setFiles] = useState<DocumentFile[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [aiEnabled, setAiEnabled] = useState(false); // AI disabled by default for simple version
+  const [aiEnabled, setAiEnabled] = useState(true); // AI enabled by default for simple version
 
   const handleFileSelection = useCallback(async (selectedFiles: FileList | null) => {
     if (!selectedFiles || selectedFiles.length === 0) return;

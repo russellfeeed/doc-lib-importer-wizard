@@ -497,3 +497,145 @@ export function convertToMarkdown(text: string): string {
   
   return markdown;
 }
+
+export async function generateDocumentCategoryWithContext(content: string, title: string): Promise<string> {
+  if (!hasOpenAIKey()) {
+    throw new Error('OpenAI API key not found');
+  }
+
+  if (!content || content.trim().length === 0) {
+    throw new Error('No content to categorize');
+  }
+
+  const apiKey = localStorage.getItem("openai_api_key");
+  if (!apiKey) {
+    throw new Error("OpenAI API key not set");
+  }
+  
+  // Get stored WordPress categories
+  const storedCategories = localStorage.getItem('doc_categories');
+  let availableCategories = '';
+  
+  if (storedCategories) {
+    try {
+      const categories = JSON.parse(storedCategories);
+      availableCategories = categories.map((cat: any) => cat.name).join(', ');
+    } catch (error) {
+      console.error('Error parsing stored categories:', error);
+    }
+  }
+  
+  const prompt = `
+Based on the following document content and title, suggest an appropriate category for this document.
+
+Title: ${title}
+Content: ${content.substring(0, 2000)}
+
+${availableCategories ? `Available categories: ${availableCategories}
+
+Please choose from the available categories above, or suggest a similar one if none fit perfectly. Return only the category name, no explanation.` : 'Please provide just the category name that best describes this document\'s content. Return only the category name, no explanation.'}
+`;
+
+  const requestBody = {
+    model: "gpt-4o-mini",
+    messages: [
+      { role: "system", content: "You are a document categorization assistant. Return only the category name, no additional text or explanation." },
+      { role: "user", content: prompt }
+    ],
+    max_tokens: 50,
+    temperature: 0.3,
+  };
+
+  try {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+      throw new Error(`OpenAI API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const category = data.choices[0]?.message?.content?.trim() || '';
+    return category;
+  } catch (error) {
+    console.error('Error generating category:', error);
+    throw new Error('Failed to generate category');
+  }
+}
+
+export async function generateDocumentTagsWithContext(content: string, title: string, categories?: string): Promise<string> {
+  if (!hasOpenAIKey()) {
+    throw new Error('OpenAI API key not found');
+  }
+
+  if (!content || content.trim().length === 0) {
+    throw new Error('No content to tag');
+  }
+
+  const apiKey = localStorage.getItem("openai_api_key");
+  if (!apiKey) {
+    throw new Error("OpenAI API key not set");
+  }
+  
+  // Get stored WordPress categories for context
+  const storedCategories = localStorage.getItem('doc_categories');
+  let categoryContext = '';
+  
+  if (storedCategories) {
+    try {
+      const cats = JSON.parse(storedCategories);
+      categoryContext = cats.map((cat: any) => cat.name).join(', ');
+    } catch (error) {
+      console.error('Error parsing stored categories:', error);
+    }
+  }
+  
+  const prompt = `
+Based on the following document content, title, and categories, suggest relevant tags for this document.
+
+Title: ${title}
+${categories ? `Categories: ${categories}` : ''}
+${categoryContext ? `Available category context: ${categoryContext}` : ''}
+Content: ${content.substring(0, 2000)}
+
+Return only 3-5 relevant tags as a comma-separated list. No explanations, just the tags.
+`;
+
+  const requestBody = {
+    model: "gpt-4o-mini",
+    messages: [
+      { role: "system", content: "You are a document tagging assistant. Return only tags as a comma-separated list, no additional text." },
+      { role: "user", content: prompt }
+    ],
+    max_tokens: 100,
+    temperature: 0.3,
+  };
+
+  try {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+      throw new Error(`OpenAI API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const tags = data.choices[0]?.message?.content?.trim() || '';
+    return tags;
+  } catch (error) {
+    console.error('Error generating tags:', error);
+    throw new Error('Failed to generate tags');
+  }
+}
