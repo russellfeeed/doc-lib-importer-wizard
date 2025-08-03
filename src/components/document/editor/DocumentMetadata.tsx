@@ -4,7 +4,8 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Tag, BookCopy, FolderOpen, ChevronRight, AlertTriangle, Building, CheckSquare, Square } from 'lucide-react';
+import { PDFViewerModal } from '@/components/ui/pdf-viewer-modal';
+import { Tag, BookCopy, FolderOpen, ChevronRight, AlertTriangle, Building, CheckSquare, Square, FileText, Eye } from 'lucide-react';
 import { DocumentFile } from '@/types/document';
 import { useCategories } from '@/context/CategoryContext';
 import { CategoryNode } from '@/types/categories';
@@ -29,6 +30,7 @@ const DocumentMetadata: React.FC<DocumentMetadataProps> = ({
   const { hierarchy } = useCategories();
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   const [isSchemePopoverOpen, setIsSchemePopoverOpen] = useState(false);
+  const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
 
   // Common NSI schemes
   const nsiSchemes = [
@@ -115,6 +117,14 @@ const DocumentMetadata: React.FC<DocumentMetadataProps> = ({
 
   const isUncategorised = document.categories.toLowerCase() === 'uncategorised' || 
                          document.categories.toLowerCase() === 'uncategorized';
+  
+  // Check for incomplete metadata
+  const isCategoriesEmpty = !document.categories || document.categories.trim() === '' || isUncategorised;
+  const isSchemesEmpty = !document.customTaxonomies?.['tax:nsi-scheme'] || document.customTaxonomies['tax:nsi-scheme'].trim() === '';
+  const isTagsEmpty = !document.tags || document.tags.trim() === '';
+  
+  // Check if PDF viewing is available
+  const hasPdfUrl = document.fileUrl && document.fileType === 'application/pdf';
 
   return (
     <div>
@@ -178,12 +188,15 @@ const DocumentMetadata: React.FC<DocumentMetadataProps> = ({
             onChange={(e) => onEdit('categories', e.target.value)}
             placeholder="E.g., Policies > HR"
             title="Use > to denote category hierarchy"
-            className={isUncategorised ? "border-red-500 text-red-600 pr-10" : ""}
+            className={isCategoriesEmpty ? "border-red-500 text-red-600 pr-10" : ""}
           />
-          {isUncategorised && (
+          {isCategoriesEmpty && (
             <AlertTriangle className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-red-500" />
           )}
         </div>
+        {isCategoriesEmpty && (
+          <p className="text-xs text-red-500 mt-1">⚠️ This document needs a category assignment</p>
+        )}
         <p className="text-xs text-gray-500 mt-1">Use &gt; for category hierarchy (e.g., Policies &gt; HR)</p>
       </div>
       
@@ -244,15 +257,24 @@ const DocumentMetadata: React.FC<DocumentMetadataProps> = ({
             </Button>
           )}
         </div>
-        <Input 
-          value={document.customTaxonomies?.['tax:nsi-scheme'] || ''}
-          onChange={(e) => {
-            const updatedTaxonomies = { ...document.customTaxonomies, 'tax:nsi-scheme': e.target.value };
-            onEdit('customTaxonomies', updatedTaxonomies as any);
-          }}
-          placeholder="E.g., Building Regulations, Health & Safety"
-          title="The scheme this document belongs to"
-        />
+        <div className="relative">
+          <Input 
+            value={document.customTaxonomies?.['tax:nsi-scheme'] || ''}
+            onChange={(e) => {
+              const updatedTaxonomies = { ...document.customTaxonomies, 'tax:nsi-scheme': e.target.value };
+              onEdit('customTaxonomies', updatedTaxonomies as any);
+            }}
+            placeholder="E.g., Building Regulations, Health & Safety"
+            title="The scheme this document belongs to"
+            className={isSchemesEmpty ? "border-red-500 text-red-600 pr-10" : ""}
+          />
+          {isSchemesEmpty && (
+            <AlertTriangle className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-red-500" />
+          )}
+        </div>
+        {isSchemesEmpty && (
+          <p className="text-xs text-red-500 mt-1">⚠️ This document needs a scheme assignment</p>
+        )}
         <p className="text-xs text-gray-500 mt-1">The compliance scheme this document relates to</p>
       </div>
       
@@ -281,12 +303,21 @@ const DocumentMetadata: React.FC<DocumentMetadataProps> = ({
             </Button>
           )}
         </div>
-        <Input 
-          value={document.tags}
-          onChange={(e) => onEdit('tags', e.target.value)}
-          placeholder="E.g., Important, Confidential"
-          title="Separate tags with commas"
-        />
+        <div className="relative">
+          <Input 
+            value={document.tags}
+            onChange={(e) => onEdit('tags', e.target.value)}
+            placeholder="E.g., Important, Confidential"
+            title="Separate tags with commas"
+            className={isTagsEmpty ? "border-red-500 text-red-600 pr-10" : ""}
+          />
+          {isTagsEmpty && (
+            <AlertTriangle className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-red-500" />
+          )}
+        </div>
+        {isTagsEmpty && (
+          <p className="text-xs text-red-500 mt-1">⚠️ This document needs tags</p>
+        )}
         <p className="text-xs text-gray-500 mt-1">Separate multiple tags with commas</p>
       </div>
       
@@ -301,6 +332,20 @@ const DocumentMetadata: React.FC<DocumentMetadataProps> = ({
         <p className="text-xs text-gray-500 mt-1">Separate multiple authors with commas</p>
       </div>
 
+      {hasPdfUrl && (
+        <div className="mb-4">
+          <label className="block text-sm font-medium mb-2">Document Viewer</label>
+          <Button 
+            variant="outline" 
+            onClick={() => setIsPdfModalOpen(true)}
+            className="w-full"
+          >
+            <Eye className="mr-2 h-4 w-4" />
+            View PDF Document
+          </Button>
+        </div>
+      )}
+
       <div className="mb-4">
         <div className="flex items-center">
           <Switch 
@@ -313,6 +358,14 @@ const DocumentMetadata: React.FC<DocumentMetadataProps> = ({
           </label>
         </div>
       </div>
+
+      {/* PDF Viewer Modal */}
+      <PDFViewerModal
+        isOpen={isPdfModalOpen}
+        onClose={() => setIsPdfModalOpen(false)}
+        pdfUrl={document.fileUrl}
+        fileName={document.name}
+      />
     </div>
   );
 };
