@@ -628,18 +628,18 @@ export async function generateDocumentCategoryWithContext(content: string, title
     console.log('No available categories from Category Manager, falling back to default behavior');
     // Instead of throwing an error, let's fall back to basic categorization
     const prompt = `
-Based on the following document content and title, suggest appropriate categories for this document.
+Based on the following document content and title, suggest an appropriate category for this document.
 
 Title: ${title}
 Content: ${content.substring(0, 2000)}
 
-Please provide category names that best describe this document's content. If multiple categories apply, separate them with commas. Return only the category names, no explanation.
+Please provide just the category name that best describes this document's content. Return only the category name, no explanation.
 `;
 
     const requestBody = {
       model: "gpt-4o-mini",
       messages: [
-        { role: "system", content: "You are a document categorization assistant. Return only the category names. If multiple categories apply, separate them with commas. No additional text or explanation." },
+        { role: "system", content: "You are a document categorization assistant. Return only the category name, no additional text or explanation." },
         { role: "user", content: prompt }
       ],
       max_tokens: 50,
@@ -674,20 +674,20 @@ Please provide category names that best describe this document's content. If mul
   }
   
   const prompt = `
-Based on the following document content and title, suggest appropriate categories for this document.
+Based on the following document content and title, suggest an appropriate category for this document.
 
 Title: ${title}
 Content: ${content.substring(0, 2000)}
 
 Available categories: ${availableCategories}
 
-Choose ONLY from the available categories above. A document can match multiple categories if relevant. If multiple categories apply, separate them with commas. Return only the exact category names, no explanation.
+Choose ONLY from the available categories above. Return only the exact category name, no explanation.
 `;
 
   const requestBody = {
     model: "gpt-4o-mini",
     messages: [
-      { role: "system", content: "You are a document categorization assistant. Return only the exact category names from the provided list. If multiple categories apply, separate them with commas. No additional text or explanation." },
+      { role: "system", content: "You are a document categorization assistant. Return only the exact category name from the provided list, no additional text or explanation." },
       { role: "user", content: prompt }
     ],
     max_tokens: 50,
