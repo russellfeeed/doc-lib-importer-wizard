@@ -93,11 +93,25 @@ export function useSimpleFileUpload({ onFilesUploaded }: UseSimpleFileUploadProp
                 // Generate excerpt
                 const excerpt = await generateDocumentSummary(content, fileObj.name);
                 updatedFile = { ...updatedFile, excerpt };
+                
+                // Update UI immediately after excerpt
+                setFiles(prevFiles => 
+                  prevFiles.map(f => 
+                    f.id === fileObj.id ? { ...f, excerpt, aiProcessing: { status: 'processing' } } : f
+                  )
+                );
 
                 // Generate category
                 try {
                   const category = await generateDocumentCategoryWithContext(content, fileObj.name);
                   updatedFile = { ...updatedFile, categories: category };
+                  
+                  // Update UI immediately after category
+                  setFiles(prevFiles => 
+                    prevFiles.map(f => 
+                      f.id === fileObj.id ? { ...f, excerpt, categories: category, aiProcessing: { status: 'processing' } } : f
+                    )
+                  );
                 } catch (error) {
                   console.warn('Category generation failed:', error);
                 }
@@ -106,6 +120,19 @@ export function useSimpleFileUpload({ onFilesUploaded }: UseSimpleFileUploadProp
                 try {
                   const tags = await generateDocumentTagsWithContext(content, fileObj.name, updatedFile.categories);
                   updatedFile = { ...updatedFile, tags };
+                  
+                  // Update UI immediately after tags
+                  setFiles(prevFiles => 
+                    prevFiles.map(f => 
+                      f.id === fileObj.id ? { 
+                        ...f, 
+                        excerpt, 
+                        categories: updatedFile.categories, 
+                        tags, 
+                        aiProcessing: { status: 'processing' } 
+                      } : f
+                    )
+                  );
                 } catch (error) {
                   console.warn('Tag generation failed:', error);
                 }
@@ -120,14 +147,46 @@ export function useSimpleFileUpload({ onFilesUploaded }: UseSimpleFileUploadProp
                       'tax:nsi-scheme': scheme
                     }
                   };
+                  
+                  // Update UI immediately after scheme
+                  setFiles(prevFiles => 
+                    prevFiles.map(f => 
+                      f.id === fileObj.id ? { 
+                        ...f, 
+                        excerpt, 
+                        categories: updatedFile.categories, 
+                        tags: updatedFile.tags,
+                        customTaxonomies: {
+                          ...f.customTaxonomies,
+                          'tax:nsi-scheme': scheme
+                        },
+                        aiProcessing: { status: 'processing' } 
+                      } : f
+                    )
+                  );
                 } catch (error) {
                   console.warn('Scheme generation failed:', error);
                 }
 
+                // Mark as completed
                 updatedFile = {
                   ...updatedFile,
                   aiProcessing: { status: 'completed' }
                 };
+
+                // Final update to show completion
+                setFiles(prevFiles => 
+                  prevFiles.map(f => 
+                    f.id === fileObj.id ? { 
+                      ...f, 
+                      excerpt, 
+                      categories: updatedFile.categories, 
+                      tags: updatedFile.tags,
+                      customTaxonomies: updatedFile.customTaxonomies,
+                      aiProcessing: { status: 'completed' } 
+                    } : f
+                  )
+                );
 
               } catch (error) {
                 console.error("AI processing error:", error);
@@ -138,6 +197,19 @@ export function useSimpleFileUpload({ onFilesUploaded }: UseSimpleFileUploadProp
                     error: error instanceof Error ? error.message : 'Unknown error' 
                   }
                 };
+                
+                // Update UI to show error
+                setFiles(prevFiles => 
+                  prevFiles.map(f => 
+                    f.id === fileObj.id ? { 
+                      ...f, 
+                      aiProcessing: { 
+                        status: 'error', 
+                        error: error instanceof Error ? error.message : 'Unknown error' 
+                      } 
+                    } : f
+                  )
+                );
               }
             }
           } catch (error) {
