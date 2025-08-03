@@ -401,6 +401,45 @@ export async function processCircularLetterWithAI(
   }
 }
 
+// AI service to determine document scheme based on content
+export async function generateDocumentScheme(
+  content: string,
+  fileName: string,
+  options?: AiProcessingOptions
+): Promise<string> {
+  // Check if API key is available
+  if (!hasOpenAIKey()) {
+    toast.error("OpenAI API key is not set. Please set your API key to use AI features.");
+    throw new Error("OpenAI API key not set");
+  }
+
+  try {
+    // Load existing categories to use as reference
+    const categories = await loadCategories();
+    
+    // Extract scheme names from available schemes
+    const schemePrompt = `Analyze the following document and determine the most appropriate NSI scheme classification. Choose from typical schemes like "Security Standards", "Risk Management", "Compliance Frameworks", "Technical Guidelines", "Policy Documents", "Training Materials", "Assessment Tools", or similar relevant categories.
+
+Document: ${fileName}
+Content: ${content.substring(0, 2000)}
+
+Return only the scheme name that best categorizes this document:`;
+
+    const scheme = await summarizeWithOpenAI(
+      schemePrompt + "\n\n" + content.substring(0, 1500), 
+      fileName, 
+      options
+    );
+    
+    return scheme || "Security Standards";
+  } catch (error) {
+    console.error("AI scheme generation error:", error);
+    const errorMessage = error instanceof Error ? error.message : "Unknown error";
+    toast.error(`AI scheme generation failed: ${errorMessage}`);
+    return "Security Standards";  // Return default scheme on error
+  }
+}
+
 // Convert plain text to Markdown format for readability
 export function convertToMarkdown(text: string): string {
   if (!text) return '';

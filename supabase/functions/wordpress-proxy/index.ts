@@ -31,8 +31,9 @@ serve(async (req) => {
       password, 
       per_page = 100, 
       fields = 'id,name,parent,count',
-      action = 'fetch', // 'fetch' or 'create'
-      categoryData // for create action
+      action = 'fetch', // 'fetch', 'create', or 'fetch-taxonomy'
+      categoryData, // for create action
+      taxonomySlug // for fetch-taxonomy action
     } = body;
 
     if (!url || !username || !password) {
@@ -57,6 +58,19 @@ serve(async (req) => {
       wordpressUrl = `${baseUrl}/wp-json/wp/v2/doc_categories`;
       method = 'POST';
       requestBody = JSON.stringify(categoryData);
+    } else if (action === 'fetch-taxonomy') {
+      // Fetch taxonomy endpoint
+      if (!taxonomySlug) {
+        return new Response(
+          JSON.stringify({ error: 'taxonomySlug is required for fetch-taxonomy action' }), 
+          { 
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        );
+      }
+      wordpressUrl = `${baseUrl}/wp-json/wp/v2/${taxonomySlug}?per_page=${per_page}&_fields=id,name,slug,description`;
+      method = 'GET';
     } else {
       // Fetch categories endpoint (default)
       wordpressUrl = `${baseUrl}/wp-json/wp/v2/doc_categories?per_page=${per_page}&_fields=${fields}`;

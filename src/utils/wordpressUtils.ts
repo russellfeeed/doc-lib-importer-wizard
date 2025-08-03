@@ -95,6 +95,39 @@ export const findWordPressCategory = async (
   }
 };
 
+// Fetch WordPress taxonomies
+export const fetchWordPressTaxonomies = async (
+  taxonomySlug: string,
+  credentials?: WordPressCredentials
+): Promise<any[]> => {
+  const creds = credentials || getWordPressCredentials();
+  if (!creds) {
+    throw new Error('WordPress credentials not found. Please configure them in the WordPress importer section.');
+  }
+
+  try {
+    const { data, error } = await supabase.functions.invoke('wordpress-proxy', {
+      body: {
+        url: creds.url,
+        username: creds.username,
+        password: creds.password,
+        action: 'fetch-taxonomy',
+        taxonomySlug,
+        per_page: 100
+      }
+    });
+
+    if (error) {
+      throw new Error(error.message || `Failed to fetch WordPress taxonomy ${taxonomySlug}`);
+    }
+
+    return data || [];
+  } catch (error) {
+    console.error(`Error fetching WordPress taxonomy ${taxonomySlug}:`, error);
+    return [];
+  }
+};
+
 // Push a single category to WordPress, creating it if it doesn't exist
 export const pushCategoryToWordPress = async (
   categoryName: string,

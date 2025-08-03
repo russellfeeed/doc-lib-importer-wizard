@@ -1,6 +1,6 @@
 import React from 'react';
 import { DocumentFile } from '@/types/document';
-import { useDocumentEditor } from '@/hooks/useDocumentEditor';
+import { useSimpleDocumentEditor } from '@/hooks/useSimpleDocumentEditor';
 import SingleDocumentEditor from '@/components/document/SingleDocumentEditor';
 import DocumentsTableView from '@/components/document/DocumentsTableView';
 
@@ -30,7 +30,7 @@ const SimpleDocumentEditor: React.FC<SimpleDocumentEditorProps> = ({ documents, 
     handleGenerateAllCategories,
     handleGenerateAllTags,
     handleToggleAllPublished,
-  } = useDocumentEditor({
+  } = useSimpleDocumentEditor({
     initialDocuments: documents,
     onSave
   });
