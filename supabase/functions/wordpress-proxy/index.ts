@@ -129,6 +129,11 @@ serve(async (req) => {
       wordpressUrl = `${baseUrl}/wp-json/wp/v2/doc_categories`;
       method = 'POST';
       requestBody = JSON.stringify(categoryData);
+    } else if (action === 'check-taxonomies') {
+      // Check what taxonomies are available
+      wordpressUrl = `${baseUrl}/wp-json/wp/v2/taxonomies`;
+      method = 'GET';
+      console.log(`Checking available taxonomies from: ${wordpressUrl}`);
     } else if (action === 'fetch-taxonomy') {
       // Fetch taxonomy endpoint
       if (!taxonomySlug) {
@@ -142,6 +147,7 @@ serve(async (req) => {
       }
       wordpressUrl = `${baseUrl}/wp-json/wp/v2/${taxonomySlug}?per_page=${per_page}&_fields=id,name,slug,description`;
       method = 'GET';
+      console.log(`Fetching taxonomy ${taxonomySlug} from: ${wordpressUrl}`);
     } else {
       // Fetch categories endpoint (default)
       wordpressUrl = `${baseUrl}/wp-json/wp/v2/doc_categories?per_page=${per_page}&_fields=${fields}`;
@@ -169,16 +175,42 @@ serve(async (req) => {
 
     if (!response.ok) {
       console.error(`WordPress API error: ${response.status} ${response.statusText}`);
+      const errorText = await response.text();
+      console.error(`WordPress API error details: ${errorText}`);
       
-      let errorMessage = action === 'create' ? 'Failed to create WordPress category' : 'Failed to fetch WordPress categories';
-      if (response.status === 401) {
-        errorMessage = 'Invalid username or password';
-      } else if (response.status === 403) {
-        errorMessage = 'Insufficient permissions to manage categories';
-      } else if (response.status === 404) {
-        errorMessage = 'WordPress site not found or doc_categories taxonomy not available';
-      } else if (response.status === 400 && action === 'create') {
-        errorMessage = 'Category already exists or invalid data';
+      let errorMessage = 'Failed to fetch WordPress data';
+      
+      if (action === 'fetch-taxonomy') {
+        if (response.status === 404) {
+          errorMessage = `Taxonomy '${taxonomySlug}' not found. This could mean:
+          1. The taxonomy slug is incorrect
+          2. The taxonomy is not exposed to the REST API
+          3. You need to register the taxonomy with REST API support`;
+        } else if (response.status === 401) {
+          errorMessage = 'Invalid credentials for taxonomy access';
+        } else if (response.status === 403) {
+          errorMessage = 'Insufficient permissions to access taxonomies';
+        }
+      } else if (action === 'create') {
+        errorMessage = 'Failed to create WordPress category';
+        if (response.status === 401) {
+          errorMessage = 'Invalid username or password';
+        } else if (response.status === 403) {
+          errorMessage = 'Insufficient permissions to manage categories';
+        } else if (response.status === 404) {
+          errorMessage = 'WordPress site not found or doc_categories taxonomy not available';
+        } else if (response.status === 400) {
+          errorMessage = 'Category already exists or invalid data';
+        }
+      } else {
+        // fetch action
+        if (response.status === 401) {
+          errorMessage = 'Invalid username or password';
+        } else if (response.status === 403) {
+          errorMessage = 'Insufficient permissions to manage categories';
+        } else if (response.status === 404) {
+          errorMessage = 'WordPress site not found or doc_categories taxonomy not available';
+        }
       }
       
       return new Response(

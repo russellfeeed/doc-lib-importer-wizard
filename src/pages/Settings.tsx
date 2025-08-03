@@ -225,6 +225,46 @@ const Settings: React.FC = () => {
     }
   };
 
+  const checkAvailableTaxonomies = async () => {
+    const wpData = wpForm.getValues();
+    if (!wpData.siteUrl || !wpData.username || !wpData.password) {
+      toast.error('Please configure WordPress settings first');
+      return;
+    }
+
+    setIsLoadingSchemes(true);
+    try {
+      // First, let's see what taxonomies are available
+      const response = await fetch('https://tcdkvxorsyqsrxolxoni.supabase.co/functions/v1/wordpress-proxy', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRjZGt2eG9yc3lxc3J4b2x4b25pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMzNzM2NjksImV4cCI6MjA2ODk0OTY2OX0.wRk17zh5W1iI_3kGVF73GeZVPB6VPppzqhYqaxtjnmU`
+        },
+        body: JSON.stringify({
+          action: 'check-taxonomies',
+          siteUrl: wpData.siteUrl,
+          username: wpData.username,
+          password: wpData.password
+        })
+      });
+
+      const result = await response.json();
+      console.log('Available taxonomies:', result);
+      
+      if (response.ok) {
+        toast.success('Check console for available taxonomies');
+      } else {
+        toast.error('Failed to check taxonomies: ' + result.error);
+      }
+    } catch (error) {
+      console.error('Error checking taxonomies:', error);
+      toast.error('Failed to check available taxonomies');
+    } finally {
+      setIsLoadingSchemes(false);
+    }
+  };
+
   const loadNsiSchemes = async () => {
     const wpData = wpForm.getValues();
     if (!wpData.siteUrl || !wpData.username || !wpData.password) {
@@ -454,6 +494,20 @@ const Settings: React.FC = () => {
                         <Eye className="mr-2 h-4 w-4" />
                       )}
                       Load NSI Schemes
+                    </Button>
+                    
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={checkAvailableTaxonomies}
+                      disabled={isLoadingSchemes}
+                    >
+                      {isLoadingSchemes ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Eye className="mr-2 h-4 w-4" />
+                      )}
+                      Check Available Taxonomies
                     </Button>
                   </div>
                 </form>
