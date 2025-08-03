@@ -518,34 +518,88 @@ export function convertToMarkdown(text: string): string {
 }
 
 export async function generateDocumentCategoryWithContext(content: string, title: string): Promise<string> {
+  console.log('generateDocumentCategoryWithContext called with:', { title, contentLength: content.length });
+  
   if (!hasOpenAIKey()) {
+    console.log('No OpenAI key found');
     throw new Error('OpenAI API key not found');
   }
 
   if (!content || content.trim().length === 0) {
+    console.log('No content provided');
     throw new Error('No content to categorize');
   }
 
   const apiKey = localStorage.getItem("openai_api_key");
   if (!apiKey) {
+    console.log('No API key in localStorage');
     throw new Error("OpenAI API key not set");
   }
   
   // Get stored WordPress categories
   const storedCategories = localStorage.getItem('doc_categories');
+  console.log('Stored categories from localStorage:', storedCategories);
+  
   let availableCategories = '';
   
   if (storedCategories) {
     try {
       const categories = JSON.parse(storedCategories);
+      console.log('Parsed categories:', categories);
       availableCategories = categories.map((cat: any) => cat.name).join(', ');
+      console.log('Available categories string:', availableCategories);
     } catch (error) {
       console.error('Error parsing stored categories:', error);
     }
   }
 
   if (!availableCategories) {
-    throw new Error('No WordPress categories available. Please load categories in Settings first.');
+    console.log('No available categories, falling back to default behavior');
+    // Instead of throwing an error, let's fall back to basic categorization
+    const prompt = `
+Based on the following document content and title, suggest an appropriate category for this document.
+
+Title: ${title}
+Content: ${content.substring(0, 2000)}
+
+Please provide just the category name that best describes this document's content. Return only the category name, no explanation.
+`;
+
+    const requestBody = {
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: "You are a document categorization assistant. Return only the category name, no additional text or explanation." },
+        { role: "user", content: prompt }
+      ],
+      max_tokens: 50,
+      temperature: 0.3,
+    };
+
+    try {
+      console.log('Making API call without category constraints...');
+      const response = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!response.ok) {
+        console.log('API response not ok:', response.status);
+        throw new Error(`OpenAI API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('API response data:', data);
+      const category = data.choices[0]?.message?.content?.trim() || '';
+      console.log('Generated category:', category);
+      return category;
+    } catch (error) {
+      console.error('Error generating category without constraints:', error);
+      throw new Error('Failed to generate category');
+    }
   }
   
   const prompt = `

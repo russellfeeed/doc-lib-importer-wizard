@@ -44,13 +44,22 @@ export function useSimpleAiGeneration({
   }, [editedDocuments, currentDocIndex, setEditedDocuments, setIsGeneratingAI]);
 
   const handleGenerateCategory = useCallback(async () => {
-    if (!editedDocuments[currentDocIndex]) return;
+    console.log('handleGenerateCategory called, currentDocIndex:', currentDocIndex);
+    console.log('editedDocuments:', editedDocuments);
+    
+    if (!editedDocuments[currentDocIndex]) {
+      console.log('No document at current index');
+      return;
+    }
     
     const currentDoc = editedDocuments[currentDocIndex];
+    console.log('Current document:', currentDoc);
     
     setIsGeneratingAI(true);
     try {
+      console.log('Calling generateDocumentCategoryWithContext...');
       const category = await generateDocumentCategoryWithContext(currentDoc.content, currentDoc.name);
+      console.log('Generated category:', category);
       
       setEditedDocuments(prev => 
         prev.map((doc, index) => 
@@ -63,7 +72,7 @@ export function useSimpleAiGeneration({
       toast.success('Category generated successfully');
     } catch (error) {
       console.error('Error generating category:', error);
-      toast.error('Failed to generate category');
+      toast.error(`Failed to generate category: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsGeneratingAI(false);
     }
