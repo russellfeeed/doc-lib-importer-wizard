@@ -105,19 +105,22 @@ export function useSimpleAiGeneration({
   }, [editedDocuments, currentDocIndex, setEditedDocuments, setIsGeneratingAI]);
 
   const handleGenerateScheme = useCallback(async () => {
-    if (!editedDocuments[currentDocIndex]) return;
+    console.log('handleGenerateScheme called, currentDocIndex:', currentDocIndex);
+    console.log('editedDocuments:', editedDocuments);
     
-    // Check if WordPress settings are configured
-    if (!hasWordPressSettings()) {
-      toast.error(promptForWordPressSettings());
+    if (!editedDocuments[currentDocIndex]) {
+      console.log('No document at current index for scheme generation');
       return;
     }
     
     const currentDoc = editedDocuments[currentDocIndex];
+    console.log('Current document for scheme:', currentDoc);
     
     setIsGeneratingAI(true);
     try {
+      console.log('Calling generateDocumentScheme...');
       const scheme = await generateDocumentScheme(currentDoc.content, currentDoc.name);
+      console.log('Generated scheme:', scheme);
       
       setEditedDocuments(prev => 
         prev.map((doc, index) => 
@@ -136,7 +139,7 @@ export function useSimpleAiGeneration({
       toast.success('Scheme generated successfully');
     } catch (error) {
       console.error('Error generating scheme:', error);
-      toast.error('Failed to generate scheme');
+      toast.error(`Failed to generate scheme: ${error instanceof Error ? error.message : 'Unknown error'}`);
     } finally {
       setIsGeneratingAI(false);
     }

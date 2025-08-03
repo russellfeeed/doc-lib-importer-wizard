@@ -402,34 +402,90 @@ export async function processCircularLetterWithAI(
 }
 
 export async function generateDocumentScheme(content: string, title: string): Promise<string> {
+  console.log('generateDocumentScheme called with:', { title, contentLength: content.length });
+  
   if (!hasOpenAIKey()) {
+    console.log('No OpenAI key found for scheme generation');
     throw new Error('OpenAI API key not found');
   }
 
   if (!content || content.trim().length === 0) {
+    console.log('No content provided for scheme generation');
     throw new Error('No content to analyze for scheme');
   }
 
   const apiKey = localStorage.getItem("openai_api_key");
   if (!apiKey) {
+    console.log('No API key in localStorage for scheme generation');
     throw new Error("OpenAI API key not set");
   }
 
   // Get stored NSI schemes
   const storedSchemes = localStorage.getItem('nsi-schemes');
+  console.log('Stored NSI schemes from localStorage:', storedSchemes);
+  
   let availableSchemes = '';
   
   if (storedSchemes) {
     try {
       const schemes = JSON.parse(storedSchemes);
+      console.log('Parsed NSI schemes:', schemes);
       availableSchemes = schemes.map((scheme: any) => scheme.name).join(', ');
+      console.log('Available schemes string:', availableSchemes);
     } catch (error) {
       console.error('Error parsing stored NSI schemes:', error);
     }
   }
 
   if (!availableSchemes) {
-    throw new Error('No NSI schemes available. Please load NSI schemes in Settings first.');
+    console.log('No NSI schemes available, falling back to default behavior');
+    // Fallback to basic scheme generation
+    const prompt = `
+Analyze the following document and determine the most appropriate scheme classification.
+
+Choose from typical schemes like "Security Standards", "Risk Management", "Compliance Frameworks", "Technical Guidelines", "Policy Documents", "Training Materials", "Assessment Tools", or similar relevant categories.
+
+Document: ${title}
+Content: ${content.substring(0, 2000)}
+
+Return only the scheme name that best categorizes this document. No explanation, just the scheme name.
+`;
+
+    const requestBody = {
+      model: "gpt-4o-mini",
+      messages: [
+        { role: "system", content: "You are a document classification assistant. Return only the scheme name, no additional text." },
+        { role: "user", content: prompt }
+      ],
+      max_tokens: 50,
+      temperature: 0.3,
+    };
+
+    try {
+      console.log('Making API call for scheme without constraints...');
+      const response = await fetch("https://api.openai.com/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      if (!response.ok) {
+        console.log('API response not ok for scheme:', response.status);
+        throw new Error(`OpenAI API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('API response data for scheme:', data);
+      const scheme = data.choices[0]?.message?.content?.trim() || '';
+      console.log('Generated scheme:', scheme);
+      return scheme;
+    } catch (error) {
+      console.error('Error generating scheme without constraints:', error);
+      throw new Error('Failed to generate scheme');
+    }
   }
 
   const prompt = `
