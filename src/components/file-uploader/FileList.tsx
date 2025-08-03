@@ -49,9 +49,35 @@ const FileList: React.FC<FileListProps> = ({ files, onRemoveFile }) => {
               <div>
                 <p className="font-medium">{file.file.name}</p>
                 <p className="text-sm text-gray-500">{file.fileSize} • {file.fileType}</p>
-                {file.categories && !file.isProcessing && file.aiProcessing?.status === 'completed' && (
-                  <p className="text-xs text-green-600">
-                    <span className="font-medium">Category:</span> {file.categories}
+                {/* Show AI-detected category and scheme */}
+                {file.aiProcessing?.status === 'completed' && (
+                  <div className="mt-1 space-y-1">
+                    {file.categories && (
+                      <p className="text-xs text-green-600">
+                        <span className="font-medium">Category:</span> {file.categories}
+                      </p>
+                    )}
+                    {file.customTaxonomies?.['tax:nsi-scheme'] && (
+                      <p className="text-xs text-blue-600">
+                        <span className="font-medium">Scheme:</span> {file.customTaxonomies['tax:nsi-scheme']}
+                      </p>
+                    )}
+                    {file.tags && (
+                      <p className="text-xs text-purple-600">
+                        <span className="font-medium">Tags:</span> {file.tags}
+                      </p>
+                    )}
+                  </div>
+                )}
+                {/* Show processing status for incomplete AI processing */}
+                {file.aiProcessing?.status === 'processing' && (
+                  <p className="text-xs text-blue-500 mt-1">
+                    <span className="font-medium">AI Processing:</span> Analyzing document...
+                  </p>
+                )}
+                {file.aiProcessing?.status === 'error' && (
+                  <p className="text-xs text-red-500 mt-1">
+                    <span className="font-medium">AI Error:</span> {file.aiProcessing.error || 'Processing failed'}
                   </p>
                 )}
               </div>
