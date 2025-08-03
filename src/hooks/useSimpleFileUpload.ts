@@ -2,7 +2,6 @@ import { useState, useCallback } from 'react';
 import { DocumentFile } from '@/types/document';
 import { toast } from 'sonner';
 import { generateUniqueId, formatFileSize, extractFileType } from '@/utils/fileUtils';
-import { uploadFileToStorage } from '@/utils/storageUtils';
 import { extractTextFromDocument, generatePdfThumbnail, generateDocumentSummary, generateDocumentCategoryWithContext, generateDocumentTagsWithContext, generateDocumentScheme } from '@/utils/aiUtils';
 import { hasOpenAIKey } from '@/utils/openaiClient';
 
@@ -52,21 +51,6 @@ export function useSimpleFileUpload({ onFilesUploaded }: UseSimpleFileUploadProp
       newFiles.map(async (fileObj) => {
         try {
           let updatedFile = { ...fileObj, isProcessing: false };
-          
-          // Upload PDF files to Supabase storage
-          if (fileObj.file.type === 'application/pdf') {
-            try {
-              const fileUrl = await uploadFileToStorage(fileObj.file, fileObj.name);
-              updatedFile = {
-                ...updatedFile,
-                fileUrl,
-                directUrl: fileUrl // Set both for compatibility
-              };
-            } catch (error) {
-              console.error("PDF upload error:", error);
-              toast.error(`Failed to upload ${fileObj.name}: ${error instanceof Error ? error.message : 'Unknown error'}`);
-            }
-          }
           
           // Generate thumbnail for PDF files
           if (fileObj.file.type === 'application/pdf') {

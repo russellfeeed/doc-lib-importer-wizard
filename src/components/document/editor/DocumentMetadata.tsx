@@ -123,8 +123,9 @@ const DocumentMetadata: React.FC<DocumentMetadataProps> = ({
   const isSchemesEmpty = !document.customTaxonomies?.['tax:nsi-scheme'] || document.customTaxonomies['tax:nsi-scheme'].trim() === '';
   const isTagsEmpty = !document.tags || document.tags.trim() === '';
   
-  // Check if PDF viewing is available
-  const hasPdfUrl = document.fileUrl && document.fileType === 'application/pdf';
+  // Check if PDF viewing is available - either from URL or file object
+  const hasPdfUrl = (document.fileUrl && document.fileType === 'application/pdf') || 
+                    (document.file && document.file.type === 'application/pdf');
 
   return (
     <div>
@@ -364,6 +365,7 @@ const DocumentMetadata: React.FC<DocumentMetadataProps> = ({
         isOpen={isPdfModalOpen}
         onClose={() => setIsPdfModalOpen(false)}
         pdfUrl={document.fileUrl}
+        pdfFile={document.file}
         fileName={document.name}
       />
     </div>

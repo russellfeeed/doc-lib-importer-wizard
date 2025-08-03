@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Download, ExternalLink } from 'lucide-react';
@@ -6,7 +6,8 @@ import { Download, ExternalLink } from 'lucide-react';
 interface PDFViewerModalProps {
   isOpen: boolean;
   onClose: () => void;
-  pdfUrl: string;
+  pdfUrl?: string;
+  pdfFile?: File;
   fileName: string;
 }
 
@@ -14,11 +15,28 @@ export const PDFViewerModal: React.FC<PDFViewerModalProps> = ({
   isOpen,
   onClose,
   pdfUrl,
+  pdfFile,
   fileName
 }) => {
+  // Create object URL for file if no URL provided
+  const viewUrl = useMemo(() => {
+    if (pdfUrl) return pdfUrl;
+    if (pdfFile) return URL.createObjectURL(pdfFile);
+    return '';
+  }, [pdfUrl, pdfFile]);
+
+  // Cleanup object URL when component unmounts or file changes
+  React.useEffect(() => {
+    return () => {
+      if (pdfFile && !pdfUrl) {
+        URL.revokeObjectURL(viewUrl);
+      }
+    };
+  }, [viewUrl, pdfFile, pdfUrl]);
+
   const handleDownload = () => {
     const link = document.createElement('a');
-    link.href = pdfUrl;
+    link.href = viewUrl;
     link.download = fileName;
     document.body.appendChild(link);
     link.click();
@@ -26,8 +44,12 @@ export const PDFViewerModal: React.FC<PDFViewerModalProps> = ({
   };
 
   const handleOpenInNewTab = () => {
-    window.open(pdfUrl, '_blank');
+    window.open(viewUrl, '_blank');
   };
+
+  if (!viewUrl) {
+    return null;
+  }
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
@@ -57,7 +79,7 @@ export const PDFViewerModal: React.FC<PDFViewerModalProps> = ({
         </DialogHeader>
         <div className="flex-1 border rounded-lg overflow-hidden">
           <iframe
-            src={`${pdfUrl}#toolbar=1&navpanes=1&scrollbar=1`}
+            src={`${viewUrl}#toolbar=1&navpanes=1&scrollbar=1`}
             className="w-full h-full"
             title={fileName}
           />
