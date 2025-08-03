@@ -146,7 +146,7 @@ const DocumentMetadata: React.FC<DocumentMetadataProps> = ({
       
       <div className="mb-4">
         <div className="flex justify-between items-center mb-1">
-          <label className="block text-sm font-medium">Scheme</label>
+          <label className="block text-sm font-medium">Scheme(s)</label>
           {onGenerateScheme && (
             <Button 
               variant="outline" 
