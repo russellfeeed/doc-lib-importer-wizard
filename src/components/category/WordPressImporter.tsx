@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
 import { Download, Globe, Code, AlertTriangle } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { 
   AlertDialog, 
   AlertDialogAction, 
@@ -246,7 +247,13 @@ const WordPressImporter: React.FC = () => {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="text-sm text-muted-foreground mb-4">
-            <p>WordPress credentials are configured in Settings. Click below to fetch categories from your WordPress site.</p>
+            <p>
+              WordPress credentials are configured in{' '}
+              <Link to="/settings" className="text-primary hover:underline font-medium">
+                Settings
+              </Link>
+              . Click below to fetch categories from your WordPress site.
+            </p>
           </div>
 
           <div className="flex gap-2">
