@@ -107,6 +107,69 @@ serve(async (req) => {
       }
     }
 
+    // Handle check taxonomies action
+    if (action === 'check-taxonomies') {
+      if (!siteUrl || !username || !password) {
+        return new Response(
+          JSON.stringify({ error: 'Missing required fields: siteUrl, username, password' }), 
+          { 
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        );
+      }
+
+      const baseUrl = siteUrl.replace(/\/$/, '');
+      const authString = btoa(`${username}:${password}`);
+      
+      try {
+        const taxonomyResponse = await fetch(`${baseUrl}/wp-json/wp/v2/taxonomies`, {
+          headers: {
+            'Authorization': `Basic ${authString}`,
+            'Content-Type': 'application/json',
+            'User-Agent': 'Supabase-Edge-Function'
+          }
+        });
+
+        console.log(`WordPress taxonomies response status: ${taxonomyResponse.status}`);
+        
+        if (taxonomyResponse.ok) {
+          const taxonomies = await taxonomyResponse.json();
+          console.log('Available taxonomies:', Object.keys(taxonomies));
+          return new Response(JSON.stringify({ 
+            success: true, 
+            taxonomies: taxonomies,
+            available_slugs: Object.keys(taxonomies)
+          }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        } else {
+          const errorText = await taxonomyResponse.text();
+          console.log('WordPress taxonomies check failed:', taxonomyResponse.status, errorText);
+          
+          return new Response(JSON.stringify({ 
+            success: false, 
+            message: 'Failed to fetch available taxonomies',
+            details: errorText 
+          }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+      } catch (error) {
+        console.error('WordPress taxonomies check error:', error);
+        return new Response(JSON.stringify({ 
+          success: false, 
+          message: 'Failed to check taxonomies',
+          details: error.message 
+        }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+    }
+
+    // For other actions, validate url/username/password
     if (!url || !username || !password) {
       return new Response(
         JSON.stringify({ error: 'Missing required fields: url, username, password' }), 
@@ -129,11 +192,6 @@ serve(async (req) => {
       wordpressUrl = `${baseUrl}/wp-json/wp/v2/doc_categories`;
       method = 'POST';
       requestBody = JSON.stringify(categoryData);
-    } else if (action === 'check-taxonomies') {
-      // Check what taxonomies are available
-      wordpressUrl = `${baseUrl}/wp-json/wp/v2/taxonomies`;
-      method = 'GET';
-      console.log(`Checking available taxonomies from: ${wordpressUrl}`);
     } else if (action === 'fetch-taxonomy') {
       // Fetch taxonomy endpoint
       if (!taxonomySlug) {

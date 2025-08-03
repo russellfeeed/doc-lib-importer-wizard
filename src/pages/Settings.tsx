@@ -250,10 +250,11 @@ const Settings: React.FC = () => {
       });
 
       const result = await response.json();
-      console.log('Available taxonomies:', result);
+      console.log('Available taxonomies result:', result);
       
-      if (response.ok) {
-        toast.success('Check console for available taxonomies');
+      if (result.success) {
+        console.log('Available taxonomy slugs:', result.available_slugs);
+        toast.success(`Found ${result.available_slugs.length} taxonomies. Check console for details.`);
       } else {
         toast.error('Failed to check taxonomies: ' + result.error);
       }
