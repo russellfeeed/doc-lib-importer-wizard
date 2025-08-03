@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Tag, BookCopy, FolderOpen, ChevronRight, AlertTriangle, Building } from 'lucide-react';
+import { Tag, BookCopy, FolderOpen, ChevronRight, AlertTriangle, Building, CheckSquare, Square } from 'lucide-react';
 import { DocumentFile } from '@/types/document';
 import { useCategories } from '@/context/CategoryContext';
 import { CategoryNode } from '@/types/categories';
@@ -28,6 +28,26 @@ const DocumentMetadata: React.FC<DocumentMetadataProps> = ({
 }) => {
   const { hierarchy } = useCategories();
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
+  const [isSchemePopoverOpen, setIsSchemePopoverOpen] = useState(false);
+
+  // Common NSI schemes
+  const nsiSchemes = [
+    'Building Regulations',
+    'Health & Safety',
+    'Guarding',
+    'Cash Services',
+    'Fire Safety',
+    'Security Systems',
+    'Close Protection',
+    'Door Supervision',
+    'CCTV',
+    'Access Control',
+    'Key Holding',
+    'Security Guarding',
+    'Event Security',
+    'Retail Security',
+    'Corporate Security'
+  ];
 
   const buildCategoryPath = (categoryId: string, categories: CategoryNode[]): string => {
     const findCategoryPath = (id: string, nodes: CategoryNode[], path: string[] = []): string[] | null => {
@@ -51,6 +71,29 @@ const DocumentMetadata: React.FC<DocumentMetadataProps> = ({
     const categoryPath = buildCategoryPath(categoryId, hierarchy.categories);
     onEdit('categories', categoryPath);
     setIsPopoverOpen(false);
+  };
+
+  const handleSchemeToggle = (scheme: string) => {
+    const currentSchemes = document.customTaxonomies?.['tax:nsi-scheme'] || '';
+    const schemesArray = currentSchemes.split(',').map(s => s.trim()).filter(Boolean);
+    
+    if (schemesArray.includes(scheme)) {
+      // Remove scheme
+      const updatedSchemes = schemesArray.filter(s => s !== scheme);
+      const updatedTaxonomies = { ...document.customTaxonomies, 'tax:nsi-scheme': updatedSchemes.join(', ') };
+      onEdit('customTaxonomies', updatedTaxonomies as any);
+    } else {
+      // Add scheme
+      const updatedSchemes = [...schemesArray, scheme];
+      const updatedTaxonomies = { ...document.customTaxonomies, 'tax:nsi-scheme': updatedSchemes.join(', ') };
+      onEdit('customTaxonomies', updatedTaxonomies as any);
+    }
+  };
+
+  const isSchemeSelected = (scheme: string) => {
+    const currentSchemes = document.customTaxonomies?.['tax:nsi-scheme'] || '';
+    const schemesArray = currentSchemes.split(',').map(s => s.trim()).filter(Boolean);
+    return schemesArray.includes(scheme);
   };
 
   const renderCategoryTree = (categories: CategoryNode[], level = 0) => {
@@ -146,7 +189,39 @@ const DocumentMetadata: React.FC<DocumentMetadataProps> = ({
       
       <div className="mb-4">
         <div className="flex justify-between items-center mb-1">
-          <label className="block text-sm font-medium">Scheme(s)</label>
+          <div className="flex items-center gap-2">
+            <label className="block text-sm font-medium">Scheme(s)</label>
+            <Popover open={isSchemePopoverOpen} onOpenChange={setIsSchemePopoverOpen}>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Building className="mr-2 h-4 w-4" />
+                  Select
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-80 max-h-96 overflow-y-auto" align="start">
+                <div className="space-y-1">
+                  <h4 className="font-medium text-sm mb-2">Select NSI Schemes</h4>
+                  <p className="text-xs text-muted-foreground mb-3">Select multiple schemes</p>
+                  {nsiSchemes.map((scheme) => (
+                    <Button
+                      key={scheme}
+                      variant="ghost"
+                      size="sm"
+                      className="w-full justify-start text-left h-8 px-2"
+                      onClick={() => handleSchemeToggle(scheme)}
+                    >
+                      {isSchemeSelected(scheme) ? (
+                        <CheckSquare className="mr-2 h-3 w-3 text-blue-600" />
+                      ) : (
+                        <Square className="mr-2 h-3 w-3" />
+                      )}
+                      {scheme}
+                    </Button>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
+          </div>
           {onGenerateScheme && (
             <Button 
               variant="outline" 
