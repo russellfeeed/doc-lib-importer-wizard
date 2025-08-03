@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { toast } from 'sonner';
-import { ArrowLeft, Download, Upload, RotateCcw, Save, Eye } from 'lucide-react';
+import { ArrowLeft, Download, Upload, RotateCcw, Save, Eye, TestTube, Globe, Check, X, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 import { Button } from '@/components/ui/button';
@@ -29,6 +29,7 @@ import {
   type PromptConfig,
   type AllPromptConfigs 
 } from '@/utils/promptManager';
+import { fetchWordPressTaxonomies } from '@/utils/wordpressUtils';
 
 const promptConfigSchema = z.object({
   systemPrompt: z.string().min(1, 'System prompt is required'),
@@ -36,6 +37,12 @@ const promptConfigSchema = z.object({
   model: z.string().min(1, 'Model is required'),
   temperature: z.number().min(0).max(2),
   maxTokens: z.number().min(1).max(4000)
+});
+
+const wordpressConfigSchema = z.object({
+  siteUrl: z.string().url('Please enter a valid URL'),
+  username: z.string().min(1, 'Username is required'),
+  password: z.string().min(1, 'Password is required')
 });
 
 const AVAILABLE_MODELS = [
@@ -56,9 +63,24 @@ const PROMPT_DESCRIPTIONS = {
 const Settings: React.FC = () => {
   const [configs, setConfigs] = useState<AllPromptConfigs>(getAllPromptConfigs());
   const [activeTab, setActiveTab] = useState<keyof AllPromptConfigs>('summarization');
+  const [activeSettingsTab, setActiveSettingsTab] = useState<'ai' | 'wordpress'>('ai');
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [previewDialogOpen, setPreviewDialogOpen] = useState(false);
   const [importText, setImportText] = useState('');
+  const [isTestingConnection, setIsTestingConnection] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<'idle' | 'success' | 'error'>('idle');
+  const [nsiSchemes, setNsiSchemes] = useState<any[]>([]);
+  const [isLoadingSchemes, setIsLoadingSchemes] = useState(false);
+
+  // WordPress configuration form
+  const wpForm = useForm<z.infer<typeof wordpressConfigSchema>>({
+    resolver: zodResolver(wordpressConfigSchema),
+    defaultValues: {
+      siteUrl: localStorage.getItem('wp_site_url') || '',
+      username: localStorage.getItem('wp_username') || '',
+      password: localStorage.getItem('wp_password') || ''
+    }
+  });
 
   const form = useForm<PromptConfig>({
     resolver: zodResolver(promptConfigSchema),
@@ -144,6 +166,102 @@ const Settings: React.FC = () => {
     return preview;
   };
 
+  // WordPress functions
+  const onWpSubmit = (data: z.infer<typeof wordpressConfigSchema>) => {
+    try {
+      localStorage.setItem('wp_site_url', data.siteUrl);
+      localStorage.setItem('wp_username', data.username);
+      localStorage.setItem('wp_password', data.password);
+      toast.success('WordPress settings saved successfully');
+      setConnectionStatus('idle');
+    } catch (error) {
+      toast.error('Failed to save WordPress settings');
+    }
+  };
+
+  const testWordPressConnection = async () => {
+    const wpData = wpForm.getValues();
+    if (!wpData.siteUrl || !wpData.username || !wpData.password) {
+      toast.error('Please fill in all WordPress credentials first');
+      return;
+    }
+
+    setIsTestingConnection(true);
+    setConnectionStatus('idle');
+
+    try {
+      // Test connection using the WordPress proxy
+      const testData = {
+        action: 'test-connection',
+        siteUrl: wpData.siteUrl,
+        username: wpData.username,
+        password: wpData.password
+      };
+
+      const response = await fetch('https://tcdkvxorsyqsrxolxoni.supabase.co/functions/v1/wordpress-proxy', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRjZGt2eG9yc3lxc3J4b2x4b25pIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTMzNzM2NjksImV4cCI6MjA2ODk0OTY2OX0.wRk17zh5W1iI_3kGVF73GeZVPB6VPppzqhYqaxtjnmU`
+        },
+        body: JSON.stringify(testData)
+      });
+
+      if (response.ok) {
+        setConnectionStatus('success');
+        toast.success('WordPress connection successful!');
+      } else {
+        setConnectionStatus('error');
+        toast.error('Failed to connect to WordPress');
+      }
+    } catch (error) {
+      setConnectionStatus('error');
+      toast.error('Connection test failed');
+    } finally {
+      setIsTestingConnection(false);
+    }
+  };
+
+  const loadNsiSchemes = async () => {
+    const wpData = wpForm.getValues();
+    if (!wpData.siteUrl || !wpData.username || !wpData.password) {
+      toast.error('Please configure WordPress settings first');
+      return;
+    }
+
+    setIsLoadingSchemes(true);
+    try {
+      const schemes = await fetchWordPressTaxonomies('nsi-scheme');
+      setNsiSchemes(schemes);
+      toast.success(`Loaded ${schemes.length} nsi-scheme terms`);
+    } catch (error) {
+      console.error('Error loading nsi-schemes:', error);
+      toast.error('Failed to load nsi-schemes from WordPress');
+      setNsiSchemes([]);
+    } finally {
+      setIsLoadingSchemes(false);
+    }
+  };
+
+  // Load nsi-schemes on component mount if WordPress is configured
+  useEffect(() => {
+    const wpData = wpForm.getValues();
+    if (wpData.siteUrl && wpData.username && wpData.password) {
+      loadNsiSchemes();
+    }
+  }, []);
+
+  const getConnectionStatusIcon = () => {
+    switch (connectionStatus) {
+      case 'success':
+        return <Check className="h-4 w-4 text-green-600" />;
+      case 'error':
+        return <X className="h-4 w-4 text-red-600" />;
+      default:
+        return <Globe className="h-4 w-4 text-gray-400" />;
+    }
+  };
+
   const currentConfig = form.getValues();
 
   return (
@@ -156,9 +274,9 @@ const Settings: React.FC = () => {
           </Button>
         </Link>
         <div>
-          <h1 className="text-3xl font-bold">AI Prompt Settings</h1>
+          <h1 className="text-3xl font-bold">Settings</h1>
           <p className="text-muted-foreground">
-            Customize how AI processes your documents across different tasks
+            Configure AI prompts and WordPress integration
           </p>
         </div>
       </div>
@@ -205,6 +323,145 @@ const Settings: React.FC = () => {
           Reset All to Defaults
         </Button>
       </div>
+      
+      <Tabs value={activeSettingsTab} onValueChange={(value) => setActiveSettingsTab(value as 'ai' | 'wordpress')}>
+        <TabsList className="grid w-full grid-cols-2 mb-6">
+          <TabsTrigger value="ai">AI Prompts</TabsTrigger>
+          <TabsTrigger value="wordpress">WordPress Integration</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="wordpress" className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Globe className="h-5 w-5" />
+                WordPress Configuration
+              </CardTitle>
+              <CardDescription>
+                Configure WordPress connection to fetch nsi-scheme taxonomy terms for document classification
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Form {...wpForm}>
+                <form onSubmit={wpForm.handleSubmit(onWpSubmit)} className="space-y-4">
+                  <FormField
+                    control={wpForm.control}
+                    name="siteUrl"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>WordPress Site URL</FormLabel>
+                        <FormControl>
+                          <Input placeholder="https://yoursite.com" {...field} />
+                        </FormControl>
+                        <FormDescription>
+                          The full URL of your WordPress site
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={wpForm.control}
+                    name="username"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Username</FormLabel>
+                        <FormControl>
+                          <Input placeholder="WordPress username" {...field} />
+                        </FormControl>
+                        <FormDescription>
+                          WordPress admin username
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <FormField
+                    control={wpForm.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Password</FormLabel>
+                        <FormControl>
+                          <Input type="password" placeholder="WordPress password" {...field} />
+                        </FormControl>
+                        <FormDescription>
+                          WordPress admin password
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="flex gap-2 pt-4">
+                    <Button type="submit">
+                      <Save className="mr-2 h-4 w-4" />
+                      Save Settings
+                    </Button>
+                    
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={testWordPressConnection}
+                      disabled={isTestingConnection}
+                    >
+                      {isTestingConnection ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <>
+                          <TestTube className="mr-2 h-4 w-4" />
+                          {getConnectionStatusIcon()}
+                        </>
+                      )}
+                      Test Connection
+                    </Button>
+                    
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={loadNsiSchemes}
+                      disabled={isLoadingSchemes}
+                    >
+                      {isLoadingSchemes ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <Eye className="mr-2 h-4 w-4" />
+                      )}
+                      Load NSI Schemes
+                    </Button>
+                  </div>
+                </form>
+              </Form>
+            </CardContent>
+          </Card>
+
+          {nsiSchemes.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Available NSI Schemes</CardTitle>
+                <CardDescription>
+                  {nsiSchemes.length} scheme terms found in WordPress
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                  {nsiSchemes.map((scheme, index) => (
+                    <div key={index} className="p-2 bg-muted rounded border">
+                      <div className="font-medium">{scheme.name}</div>
+                      {scheme.description && (
+                        <div className="text-sm text-muted-foreground">{scheme.description}</div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        <TabsContent value="ai" className="space-y-6">
 
       <Tabs value={activeTab} onValueChange={(value) => setActiveTab(value as keyof AllPromptConfigs)}>
         <TabsList className="grid w-full grid-cols-5">
@@ -409,6 +666,8 @@ const Settings: React.FC = () => {
             </Alert>
           </TabsContent>
         ))}
+      </Tabs>
+        </TabsContent>
       </Tabs>
     </div>
   );

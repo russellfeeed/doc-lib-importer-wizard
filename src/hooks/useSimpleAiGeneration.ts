@@ -2,6 +2,7 @@ import { useCallback } from 'react';
 import { DocumentFile } from '@/types/document';
 import { generateDocumentSummary, generateDocumentCategory, generateDocumentTags, generateDocumentScheme } from '@/utils/aiUtils';
 import { toast } from 'sonner';
+import { hasWordPressSettings, promptForWordPressSettings } from '@/utils/settingsUtils';
 
 interface UseSimpleAiGenerationProps {
   editedDocuments: DocumentFile[];
@@ -96,6 +97,12 @@ export function useSimpleAiGeneration({
 
   const handleGenerateScheme = useCallback(async () => {
     if (!editedDocuments[currentDocIndex]) return;
+    
+    // Check if WordPress settings are configured
+    if (!hasWordPressSettings()) {
+      toast.error(promptForWordPressSettings());
+      return;
+    }
     
     const currentDoc = editedDocuments[currentDocIndex];
     
@@ -199,6 +206,12 @@ export function useSimpleAiGeneration({
   }, [editedDocuments, setEditedDocuments, setIsGeneratingAI]);
 
   const handleGenerateAllSchemes = useCallback(async () => {
+    // Check if WordPress settings are configured
+    if (!hasWordPressSettings()) {
+      toast.error(promptForWordPressSettings());
+      return;
+    }
+    
     setIsGeneratingAI(true);
     try {
       const updatedDocs = [...editedDocuments];

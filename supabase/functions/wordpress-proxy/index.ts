@@ -31,10 +31,62 @@ serve(async (req) => {
       password, 
       per_page = 100, 
       fields = 'id,name,parent,count',
-      action = 'fetch', // 'fetch', 'create', or 'fetch-taxonomy'
+      action = 'fetch', // 'fetch', 'create', 'fetch-taxonomy', or 'test-connection'
       categoryData, // for create action
-      taxonomySlug // for fetch-taxonomy action
+      taxonomySlug, // for fetch-taxonomy action
+      siteUrl // for test-connection action
     } = body;
+
+    // Handle test connection action
+    if (action === 'test-connection') {
+      if (!siteUrl || !username || !password) {
+        return new Response(
+          JSON.stringify({ error: 'Missing required fields for test: siteUrl, username, password' }), 
+          { 
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          }
+        );
+      }
+
+      const baseUrl = siteUrl.replace(/\/$/, '');
+      const authString = btoa(`${username}:${password}`);
+      
+      try {
+        const testResponse = await fetch(`${baseUrl}/wp-json/wp/v2/users/me`, {
+          headers: {
+            'Authorization': `Basic ${authString}`,
+            'Content-Type': 'application/json',
+            'User-Agent': 'Supabase-Edge-Function'
+          }
+        });
+
+        if (testResponse.ok) {
+          console.log('WordPress connection test successful');
+          return new Response(JSON.stringify({ success: true, message: 'Connection successful' }), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        } else {
+          console.log('WordPress connection test failed:', testResponse.status);
+          return new Response(JSON.stringify({ 
+            success: false, 
+            message: testResponse.status === 401 ? 'Invalid credentials' : 'Connection failed' 
+          }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+      } catch (error) {
+        console.error('WordPress connection test error:', error);
+        return new Response(JSON.stringify({ 
+          success: false, 
+          message: 'Connection failed' 
+        }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+    }
 
     if (!url || !username || !password) {
       return new Response(
