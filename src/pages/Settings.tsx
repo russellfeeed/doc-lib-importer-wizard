@@ -234,7 +234,13 @@ const Settings: React.FC = () => {
 
     setIsLoadingSchemes(true);
     try {
-      const schemes = await fetchWordPressTaxonomies('nsi-scheme');
+      // Pass credentials directly instead of relying on localStorage lookup
+      const credentials = {
+        url: wpData.siteUrl,
+        username: wpData.username,
+        password: wpData.password
+      };
+      const schemes = await fetchWordPressTaxonomies('nsi-scheme', credentials);
       setNsiSchemes(schemes);
       toast.success(`Loaded ${schemes.length} nsi-scheme terms`);
     } catch (error) {
@@ -250,7 +256,22 @@ const Settings: React.FC = () => {
   useEffect(() => {
     const wpData = wpForm.getValues();
     if (wpData.siteUrl && wpData.username && wpData.password) {
-      loadNsiSchemes();
+      const credentials = {
+        url: wpData.siteUrl,
+        username: wpData.username,
+        password: wpData.password
+      };
+      // Auto-load schemes when component mounts if credentials are available
+      fetchWordPressTaxonomies('nsi-scheme', credentials)
+        .then(schemes => {
+          setNsiSchemes(schemes);
+          if (schemes.length > 0) {
+            console.log(`Auto-loaded ${schemes.length} nsi-scheme terms`);
+          }
+        })
+        .catch(error => {
+          console.error('Error auto-loading nsi-schemes:', error);
+        });
     }
   }, []);
 
