@@ -41,7 +41,7 @@ export function useFileUpload({ onFilesUploaded }: UseFileUploadProps) {
       directUrl: '',
       imageUrl: '',
       content: '',
-      published: false,
+      published: true,
       customFields: {},
       customTaxonomies: {},
       isProcessing: true,

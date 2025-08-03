@@ -34,7 +34,7 @@ export function useSimpleFileUpload({ onFilesUploaded }: UseSimpleFileUploadProp
       directUrl: '',
       imageUrl: '',
       content: '',
-      published: false,
+      published: true,
       customFields: {},
       customTaxonomies: {},
       isProcessing: true,

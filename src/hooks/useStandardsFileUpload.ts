@@ -40,7 +40,7 @@ export function useStandardsFileUpload({ onFilesUploaded }: UseStandardsFileUplo
       directUrl: '',
       imageUrl: '',
       content: '',
-      published: false,
+      published: true,
       customFields: {},
       customTaxonomies: {},
       isProcessing: true,
