@@ -76,7 +76,6 @@ export function useSimpleFileUpload({ onFilesUploaded }: UseSimpleFileUploadProp
 
             // Run AI processing if enabled and API key is available
             if (aiEnabled && hasOpenAIKey()) {
-              console.log('🤖 Starting AI processing for:', fileObj.name);
               try {
                 // Update file state to show AI processing started
                 updatedFile = {
@@ -84,83 +83,36 @@ export function useSimpleFileUpload({ onFilesUploaded }: UseSimpleFileUploadProp
                   aiProcessing: { status: 'processing' }
                 };
 
-                console.log('📝 Setting initial processing status for:', fileObj.name);
-                // Update files state immediately to show processing status
+                // Update files state to show processing status
                 setFiles(prevFiles => 
                   prevFiles.map(f => 
                     f.id === fileObj.id ? { ...f, aiProcessing: { status: 'processing' } } : f
                   )
                 );
 
-                console.log('⏱️ Starting excerpt generation for:', fileObj.name);
                 // Generate excerpt
                 const excerpt = await generateDocumentSummary(content, fileObj.name);
-                console.log('✅ Generated excerpt:', excerpt?.substring(0, 50) + '...');
                 updatedFile = { ...updatedFile, excerpt };
-                
-                // Update UI immediately after excerpt
-                setFiles(prevFiles => 
-                  prevFiles.map(f => 
-                    f.id === fileObj.id ? { ...f, excerpt, aiProcessing: { status: 'processing' } } : f
-                  )
-                );
 
-                // Add delay to see the update
-                await new Promise(resolve => setTimeout(resolve, 1000));
-
-                console.log('📁 Starting category generation for:', fileObj.name);
                 // Generate category
                 try {
                   const category = await generateDocumentCategoryWithContext(content, fileObj.name);
-                  console.log('✅ Generated category:', category);
                   updatedFile = { ...updatedFile, categories: category };
-                  
-                  // Update UI immediately after category
-                  console.log('🔄 Updating UI with category:', category);
-                  setFiles(prevFiles => 
-                    prevFiles.map(f => 
-                      f.id === fileObj.id ? { ...f, excerpt, categories: category, aiProcessing: { status: 'processing' } } : f
-                    )
-                  );
-
-                  // Add delay to see the update
-                  await new Promise(resolve => setTimeout(resolve, 1000));
                 } catch (error) {
-                  console.warn('❌ Category generation failed:', error);
+                  console.warn('Category generation failed:', error);
                 }
 
-                console.log('🏷️ Starting tags generation for:', fileObj.name);
                 // Generate tags
                 try {
                   const tags = await generateDocumentTagsWithContext(content, fileObj.name, updatedFile.categories);
-                  console.log('✅ Generated tags:', tags);
                   updatedFile = { ...updatedFile, tags };
-                  
-                  // Update UI immediately after tags
-                  console.log('🔄 Updating UI with tags:', tags);
-                  setFiles(prevFiles => 
-                    prevFiles.map(f => 
-                      f.id === fileObj.id ? { 
-                        ...f, 
-                        excerpt, 
-                        categories: updatedFile.categories, 
-                        tags, 
-                        aiProcessing: { status: 'processing' } 
-                      } : f
-                    )
-                  );
-
-                  // Add delay to see the update
-                  await new Promise(resolve => setTimeout(resolve, 1000));
                 } catch (error) {
-                  console.warn('❌ Tag generation failed:', error);
+                  console.warn('Tag generation failed:', error);
                 }
 
-                console.log('🎯 Starting scheme generation for:', fileObj.name);
                 // Generate scheme
                 try {
                   const scheme = await generateDocumentScheme(content, fileObj.name);
-                  console.log('✅ Generated scheme:', scheme);
                   updatedFile = { 
                     ...updatedFile, 
                     customTaxonomies: {
@@ -168,51 +120,15 @@ export function useSimpleFileUpload({ onFilesUploaded }: UseSimpleFileUploadProp
                       'tax:nsi-scheme': scheme
                     }
                   };
-                  
-                  // Update UI immediately after scheme
-                  console.log('🔄 Updating UI with scheme:', scheme);
-                  setFiles(prevFiles => 
-                    prevFiles.map(f => 
-                      f.id === fileObj.id ? { 
-                        ...f, 
-                        excerpt, 
-                        categories: updatedFile.categories, 
-                        tags: updatedFile.tags,
-                        customTaxonomies: {
-                          ...f.customTaxonomies,
-                          'tax:nsi-scheme': scheme
-                        },
-                        aiProcessing: { status: 'processing' } 
-                      } : f
-                    )
-                  );
-
-                  // Add delay to see the update
-                  await new Promise(resolve => setTimeout(resolve, 1000));
                 } catch (error) {
-                  console.warn('❌ Scheme generation failed:', error);
+                  console.warn('Scheme generation failed:', error);
                 }
 
-                console.log('🎉 AI processing completed for:', fileObj.name);
                 // Mark as completed
                 updatedFile = {
                   ...updatedFile,
                   aiProcessing: { status: 'completed' }
                 };
-
-                // Final update to show completion
-                setFiles(prevFiles => 
-                  prevFiles.map(f => 
-                    f.id === fileObj.id ? { 
-                      ...f, 
-                      excerpt, 
-                      categories: updatedFile.categories, 
-                      tags: updatedFile.tags,
-                      customTaxonomies: updatedFile.customTaxonomies,
-                      aiProcessing: { status: 'completed' } 
-                    } : f
-                  )
-                );
 
               } catch (error) {
                 console.error("AI processing error:", error);
@@ -223,19 +139,6 @@ export function useSimpleFileUpload({ onFilesUploaded }: UseSimpleFileUploadProp
                     error: error instanceof Error ? error.message : 'Unknown error' 
                   }
                 };
-                
-                // Update UI to show error
-                setFiles(prevFiles => 
-                  prevFiles.map(f => 
-                    f.id === fileObj.id ? { 
-                      ...f, 
-                      aiProcessing: { 
-                        status: 'error', 
-                        error: error instanceof Error ? error.message : 'Unknown error' 
-                      } 
-                    } : f
-                  )
-                );
               }
             }
           } catch (error) {
