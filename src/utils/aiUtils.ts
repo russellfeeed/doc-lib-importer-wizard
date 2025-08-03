@@ -401,59 +401,78 @@ export async function processCircularLetterWithAI(
   }
 }
 
-// AI service to determine document scheme based on content
-export async function generateDocumentScheme(
-  content: string,
-  fileName: string,
-  options?: AiProcessingOptions
-): Promise<string> {
-  // Check if API key is available
+export async function generateDocumentScheme(content: string, title: string): Promise<string> {
   if (!hasOpenAIKey()) {
-    toast.error("OpenAI API key is not set. Please set your API key to use AI features.");
+    throw new Error('OpenAI API key not found');
+  }
+
+  if (!content || content.trim().length === 0) {
+    throw new Error('No content to analyze for scheme');
+  }
+
+  const apiKey = localStorage.getItem("openai_api_key");
+  if (!apiKey) {
     throw new Error("OpenAI API key not set");
   }
 
-  try {
-    // Get NSI schemes from localStorage if available
-    const storedSchemes = localStorage.getItem('nsi_schemes');
-    let availableSchemes = [];
-    
-    if (storedSchemes) {
-      try {
-        const schemes = JSON.parse(storedSchemes);
-        availableSchemes = schemes.map((scheme: any) => scheme.name || scheme.slug).filter(Boolean);
-      } catch (error) {
-        console.warn('Error parsing stored NSI schemes:', error);
-      }
+  // Get stored NSI schemes
+  const storedSchemes = localStorage.getItem('nsi-schemes');
+  let availableSchemes = '';
+  
+  if (storedSchemes) {
+    try {
+      const schemes = JSON.parse(storedSchemes);
+      availableSchemes = schemes.map((scheme: any) => scheme.name).join(', ');
+    } catch (error) {
+      console.error('Error parsing stored NSI schemes:', error);
     }
-    
-    // Build scheme prompt with available schemes or fallback to default
-    let schemeOptions = '';
-    if (availableSchemes.length > 0) {
-      schemeOptions = `Choose from the following available NSI schemes:\n${availableSchemes.map((scheme: string) => `- ${scheme}`).join('\n')}\n\n`;
-    } else {
-      schemeOptions = `Choose from typical schemes like "Security Standards", "Risk Management", "Compliance Frameworks", "Technical Guidelines", "Policy Documents", "Training Materials", "Assessment Tools", or similar relevant categories.\n\n`;
-    }
-    
-    const schemePrompt = `Analyze the following document and determine the most appropriate NSI scheme classification.
+  }
 
-${schemeOptions}Document: ${fileName}
+  if (!availableSchemes) {
+    throw new Error('No NSI schemes available. Please load NSI schemes in Settings first.');
+  }
+
+  const prompt = `
+Analyze the following document and determine the most appropriate NSI scheme classification.
+
+Choose ONLY from these available NSI schemes: ${availableSchemes}
+
+Document: ${title}
 Content: ${content.substring(0, 2000)}
 
-Return only the scheme name that best categorizes this document:`;
+Return only the exact scheme name from the list above that best categorizes this document. No explanation, just the scheme name.
+`;
 
-    const scheme = await summarizeWithOpenAI(
-      schemePrompt + "\n\n" + content.substring(0, 1500), 
-      fileName, 
-      options
-    );
-    
-    return scheme || (availableSchemes.length > 0 ? availableSchemes[0] : "Security Standards");
+  const requestBody = {
+    model: "gpt-4o-mini",
+    messages: [
+      { role: "system", content: "You are a document classification assistant. Return only the exact scheme name from the provided list, no additional text." },
+      { role: "user", content: prompt }
+    ],
+    max_tokens: 50,
+    temperature: 0.3,
+  };
+
+  try {
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+      throw new Error(`OpenAI API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const scheme = data.choices[0]?.message?.content?.trim() || '';
+    return scheme;
   } catch (error) {
-    console.error("AI scheme generation error:", error);
-    const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    toast.error(`AI scheme generation failed: ${errorMessage}`);
-    return "Security Standards";  // Return default scheme on error
+    console.error('Error generating scheme:', error);
+    throw new Error('Failed to generate scheme');
   }
 }
 
@@ -524,6 +543,10 @@ export async function generateDocumentCategoryWithContext(content: string, title
       console.error('Error parsing stored categories:', error);
     }
   }
+
+  if (!availableCategories) {
+    throw new Error('No WordPress categories available. Please load categories in Settings first.');
+  }
   
   const prompt = `
 Based on the following document content and title, suggest an appropriate category for this document.
@@ -531,15 +554,15 @@ Based on the following document content and title, suggest an appropriate catego
 Title: ${title}
 Content: ${content.substring(0, 2000)}
 
-${availableCategories ? `Available categories: ${availableCategories}
+Available categories: ${availableCategories}
 
-Please choose from the available categories above, or suggest a similar one if none fit perfectly. Return only the category name, no explanation.` : 'Please provide just the category name that best describes this document\'s content. Return only the category name, no explanation.'}
+Choose ONLY from the available categories above. Return only the exact category name, no explanation.
 `;
 
   const requestBody = {
     model: "gpt-4o-mini",
     messages: [
-      { role: "system", content: "You are a document categorization assistant. Return only the category name, no additional text or explanation." },
+      { role: "system", content: "You are a document categorization assistant. Return only the exact category name from the provided list, no additional text or explanation." },
       { role: "user", content: prompt }
     ],
     max_tokens: 50,
@@ -604,13 +627,13 @@ ${categories ? `Categories: ${categories}` : ''}
 ${categoryContext ? `Available category context: ${categoryContext}` : ''}
 Content: ${content.substring(0, 2000)}
 
-Return only 3-5 relevant tags as a comma-separated list. No explanations, just the tags.
+Return only 3-5 relevant tags as a comma-separated list. All tags must be in lowercase. No explanations, just the tags.
 `;
 
   const requestBody = {
     model: "gpt-4o-mini",
     messages: [
-      { role: "system", content: "You are a document tagging assistant. Return only tags as a comma-separated list, no additional text." },
+      { role: "system", content: "You are a document tagging assistant. Return only tags as a comma-separated list in lowercase, no additional text." },
       { role: "user", content: prompt }
     ],
     max_tokens: 100,
@@ -632,7 +655,7 @@ Return only 3-5 relevant tags as a comma-separated list. No explanations, just t
     }
 
     const data = await response.json();
-    const tags = data.choices[0]?.message?.content?.trim() || '';
+    const tags = data.choices[0]?.message?.content?.trim().toLowerCase() || '';
     return tags;
   } catch (error) {
     console.error('Error generating tags:', error);

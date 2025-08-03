@@ -2,7 +2,7 @@ import { useState, useCallback } from 'react';
 import { DocumentFile } from '@/types/document';
 import { toast } from 'sonner';
 import { generateUniqueId, formatFileSize, extractFileType } from '@/utils/fileUtils';
-import { extractTextFromDocument, generatePdfThumbnail } from '@/utils/aiUtils';
+import { extractTextFromDocument, generatePdfThumbnail, generateDocumentSummary, generateDocumentCategoryWithContext, generateDocumentTagsWithContext, generateDocumentScheme } from '@/utils/aiUtils';
 import { hasOpenAIKey } from '@/utils/openaiClient';
 
 interface UseSimpleFileUploadProps {
@@ -45,7 +45,8 @@ export function useSimpleFileUpload({ onFilesUploaded }: UseSimpleFileUploadProp
     
     setFiles(prevFiles => [...prevFiles, ...newFiles]);
     
-    // Process each file (extract text and generate thumbnails only)
+    
+    // Process each file (extract text and run AI processing if enabled)
     const processedFiles = await Promise.all(
       newFiles.map(async (fileObj) => {
         try {
@@ -65,13 +66,80 @@ export function useSimpleFileUpload({ onFilesUploaded }: UseSimpleFileUploadProp
             }
           }
           
-          // Extract text content (no AI processing yet)
+          // Extract text content
           try {
             const content = await extractTextFromDocument(fileObj.file);
             updatedFile = {
               ...updatedFile,
               content
             };
+
+            // Run AI processing if enabled and API key is available
+            if (aiEnabled && hasOpenAIKey()) {
+              try {
+                // Update file state to show AI processing started
+                updatedFile = {
+                  ...updatedFile,
+                  aiProcessing: { status: 'processing' }
+                };
+
+                // Update files state immediately to show processing status
+                setFiles(prevFiles => 
+                  prevFiles.map(f => 
+                    f.id === fileObj.id ? { ...f, aiProcessing: { status: 'processing' } } : f
+                  )
+                );
+
+                // Generate excerpt
+                const excerpt = await generateDocumentSummary(content, fileObj.name);
+                updatedFile = { ...updatedFile, excerpt };
+
+                // Generate category
+                try {
+                  const category = await generateDocumentCategoryWithContext(content, fileObj.name);
+                  updatedFile = { ...updatedFile, categories: category };
+                } catch (error) {
+                  console.warn('Category generation failed:', error);
+                }
+
+                // Generate tags
+                try {
+                  const tags = await generateDocumentTagsWithContext(content, fileObj.name, updatedFile.categories);
+                  updatedFile = { ...updatedFile, tags };
+                } catch (error) {
+                  console.warn('Tag generation failed:', error);
+                }
+
+                // Generate scheme
+                try {
+                  const scheme = await generateDocumentScheme(content, fileObj.name);
+                  updatedFile = { 
+                    ...updatedFile, 
+                    customTaxonomies: {
+                      ...updatedFile.customTaxonomies,
+                      'tax:nsi-scheme': scheme
+                    }
+                  };
+                } catch (error) {
+                  console.warn('Scheme generation failed:', error);
+                }
+
+                updatedFile = {
+                  ...updatedFile,
+                  aiProcessing: { status: 'completed' }
+                };
+
+              } catch (error) {
+                console.error("AI processing error:", error);
+                updatedFile = {
+                  ...updatedFile,
+                  aiProcessing: { 
+                    status: 'error', 
+                    error: error instanceof Error ? error.message : 'Unknown error' 
+                  }
+                };
+              }
+            }
           } catch (error) {
             console.error("Text extraction error:", error);
           }
@@ -95,7 +163,12 @@ export function useSimpleFileUpload({ onFilesUploaded }: UseSimpleFileUploadProp
     );
     
     setIsLoading(false);
-    toast.success(`${newFiles.length} files added successfully`);
+    
+    if (aiEnabled && hasOpenAIKey()) {
+      toast.success(`${newFiles.length} files uploaded and processed with AI`);
+    } else {
+      toast.success(`${newFiles.length} files uploaded successfully`);
+    }
   }, []);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
