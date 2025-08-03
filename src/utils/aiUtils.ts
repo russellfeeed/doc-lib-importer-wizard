@@ -496,7 +496,8 @@ Choose ONLY from these available NSI schemes: ${availableSchemes}
 Document: ${title}
 Content: ${content.substring(0, 2000)}
 
-Return only the exact scheme name from the list above that best categorizes this document. No explanation, just the scheme name.
+If the document matches multiple schemes, you can list them separated by commas (e.g. "Guarding, Cash Services").
+Return only the exact scheme name(s) from the list above that best categorize this document. No explanation, just the scheme name(s).
 `;
 
   const requestBody = {
