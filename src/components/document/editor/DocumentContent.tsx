@@ -6,6 +6,14 @@ import { Button } from '@/components/ui/button';
 import { Zap } from 'lucide-react';
 import { DocumentFile } from '@/types/document';
 
+// Generate current year/month for WordPress upload URLs
+const getCurrentUploadPath = (): string => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = (now.getMonth() + 1).toString().padStart(2, '0');
+  return `${year}/${month}`;
+};
+
 interface DocumentContentProps {
   document: DocumentFile;
   isGeneratingAI: boolean;
@@ -66,18 +74,18 @@ const DocumentContent: React.FC<DocumentContentProps> = ({
       <div className="mb-4">
         <label className="block text-sm font-medium mb-1">File URL</label>
         <Input 
-          value={document.fileUrl || `https://dev.members.nsi.org.uk/wp-content/uploads/2025/07/${document.name}${document.name.includes('.') ? '' : '.pdf'}`}
+          value={document.fileUrl || `https://dev.members.nsi.org.uk/wp-content/uploads/${getCurrentUploadPath()}/${document.name}${document.name.includes('.') ? '' : '.pdf'}`}
           onChange={(e) => onEdit('fileUrl', e.target.value)}
-          placeholder={`https://dev.members.nsi.org.uk/wp-content/uploads/2025/07/${document.name}${document.name.includes('.') ? '' : '.pdf'}`}
+          placeholder={`https://dev.members.nsi.org.uk/wp-content/uploads/${getCurrentUploadPath()}/${document.name}${document.name.includes('.') ? '' : '.pdf'}`}
         />
       </div>
       
       <div className="mb-4">
         <label className="block text-sm font-medium mb-1">Direct URL</label>
         <Input 
-          value={document.directUrl || `https://dev.members.nsi.org.uk/wp-content/uploads/2025/07/${document.name}${document.name.includes('.') ? '' : '.pdf'}`}
+          value={document.directUrl || `https://dev.members.nsi.org.uk/wp-content/uploads/${getCurrentUploadPath()}/${document.name}${document.name.includes('.') ? '' : '.pdf'}`}
           onChange={(e) => onEdit('directUrl', e.target.value)}
-          placeholder={`https://dev.members.nsi.org.uk/wp-content/uploads/2025/07/${document.name}${document.name.includes('.') ? '' : '.pdf'}`}
+          placeholder={`https://dev.members.nsi.org.uk/wp-content/uploads/${getCurrentUploadPath()}/${document.name}${document.name.includes('.') ? '' : '.pdf'}`}
         />
       </div>
     </div>

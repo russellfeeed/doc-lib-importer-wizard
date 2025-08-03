@@ -2,6 +2,14 @@
 import { DocumentFile, CSVData } from '@/types/document';
 import { CircularLetter } from '@/types/circular-letter';
 
+// Generate current year/month for WordPress upload URLs
+const getCurrentUploadPath = (): string => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = (now.getMonth() + 1).toString().padStart(2, '0');
+  return `${year}/${month}`;
+};
+
 /**
  * Converts document data to CSV format
  */
@@ -100,8 +108,8 @@ export const generateCSV = (documents: DocumentFile[] | CircularLetter[]): strin
         'Categories': escapeCsvValue(docFile.categories),
         'Tags': escapeCsvValue(docFile.tags),
         'Document Authors': escapeCsvValue(docFile.authors),
-        'File URL': escapeCsvValue(docFile.fileUrl || `https://dev.members.nsi.org.uk/wp-content/uploads/2025/07/${docFile.name}${docFile.name.includes('.') ? '' : '.pdf'}`),
-        'Direct URL': escapeCsvValue(docFile.directUrl || `https://dev.members.nsi.org.uk/wp-content/uploads/2025/07/${docFile.name}${docFile.name.includes('.') ? '' : '.pdf'}`),
+        'File URL': escapeCsvValue(docFile.fileUrl || `https://dev.members.nsi.org.uk/wp-content/uploads/${getCurrentUploadPath()}/${docFile.name}${docFile.name.includes('.') ? '' : '.pdf'}`),
+        'Direct URL': escapeCsvValue(docFile.directUrl || `https://dev.members.nsi.org.uk/wp-content/uploads/${getCurrentUploadPath()}/${docFile.name}${docFile.name.includes('.') ? '' : '.pdf'}`),
         'Featured Image URL': escapeCsvValue(docFile.imageUrl),
         'File Size': escapeCsvValue(docFile.fileSize),
         'Excerpt': escapeCsvValue(docFile.excerpt),
