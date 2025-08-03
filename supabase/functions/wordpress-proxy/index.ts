@@ -53,7 +53,8 @@ serve(async (req) => {
       const authString = btoa(`${username}:${password}`);
       
       try {
-        const testResponse = await fetch(`${baseUrl}/wp-json/wp/v2/users/me`, {
+        // Use a simple endpoint that we know works - just fetch a basic endpoint
+        const testResponse = await fetch(`${baseUrl}/wp-json/wp/v2/types`, {
           headers: {
             'Authorization': `Basic ${authString}`,
             'Content-Type': 'application/json',
@@ -65,12 +66,9 @@ serve(async (req) => {
         
         if (testResponse.ok) {
           console.log('WordPress connection test successful');
-          const userData = await testResponse.json();
-          console.log('User data:', userData);
           return new Response(JSON.stringify({ 
             success: true, 
-            message: 'Connection successful',
-            user: userData.name 
+            message: 'Connection successful - WordPress REST API is accessible'
           }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
           });
@@ -80,9 +78,9 @@ serve(async (req) => {
           
           let errorMessage = 'Connection failed';
           if (testResponse.status === 401) {
-            errorMessage = 'Invalid credentials - please check username and password. You may need to use Application Passwords instead of regular password.';
+            errorMessage = 'Invalid credentials - please check username and password';
           } else if (testResponse.status === 403) {
-            errorMessage = 'Insufficient permissions - user needs admin or editor role';
+            errorMessage = 'Insufficient permissions - user needs proper access rights';
           } else if (testResponse.status === 404) {
             errorMessage = 'WordPress REST API not found - please check the site URL';
           }

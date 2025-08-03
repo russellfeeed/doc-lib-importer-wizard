@@ -211,7 +211,7 @@ const Settings: React.FC = () => {
       
       if (result.success) {
         setConnectionStatus('success');
-        toast.success(`WordPress connection successful! Connected as: ${result.user || 'Unknown user'}`);
+        toast.success(result.message);
       } else {
         setConnectionStatus('error');
         toast.error(result.message || 'Failed to connect to WordPress');
