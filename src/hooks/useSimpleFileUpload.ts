@@ -105,6 +105,9 @@ export function useSimpleFileUpload({ onFilesUploaded }: UseSimpleFileUploadProp
                   )
                 );
 
+                // Add delay to see the update
+                await new Promise(resolve => setTimeout(resolve, 1000));
+
                 console.log('📁 Starting category generation for:', fileObj.name);
                 // Generate category
                 try {
@@ -119,6 +122,9 @@ export function useSimpleFileUpload({ onFilesUploaded }: UseSimpleFileUploadProp
                       f.id === fileObj.id ? { ...f, excerpt, categories: category, aiProcessing: { status: 'processing' } } : f
                     )
                   );
+
+                  // Add delay to see the update
+                  await new Promise(resolve => setTimeout(resolve, 1000));
                 } catch (error) {
                   console.warn('❌ Category generation failed:', error);
                 }
@@ -143,6 +149,9 @@ export function useSimpleFileUpload({ onFilesUploaded }: UseSimpleFileUploadProp
                       } : f
                     )
                   );
+
+                  // Add delay to see the update
+                  await new Promise(resolve => setTimeout(resolve, 1000));
                 } catch (error) {
                   console.warn('❌ Tag generation failed:', error);
                 }
@@ -177,6 +186,9 @@ export function useSimpleFileUpload({ onFilesUploaded }: UseSimpleFileUploadProp
                       } : f
                     )
                   );
+
+                  // Add delay to see the update
+                  await new Promise(resolve => setTimeout(resolve, 1000));
                 } catch (error) {
                   console.warn('❌ Scheme generation failed:', error);
                 }
