@@ -207,12 +207,15 @@ const Settings: React.FC = () => {
         body: JSON.stringify(testData)
       });
 
-      if (response.ok) {
+      const result = await response.json();
+      
+      if (result.success) {
         setConnectionStatus('success');
-        toast.success('WordPress connection successful!');
+        toast.success(`WordPress connection successful! Connected as: ${result.user || 'Unknown user'}`);
       } else {
         setConnectionStatus('error');
-        toast.error('Failed to connect to WordPress');
+        toast.error(result.message || 'Failed to connect to WordPress');
+        console.error('WordPress connection error:', result.details);
       }
     } catch (error) {
       setConnectionStatus('error');
@@ -383,12 +386,12 @@ const Settings: React.FC = () => {
                     name="password"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Password</FormLabel>
+                        <FormLabel>Password / Application Password</FormLabel>
                         <FormControl>
-                          <Input type="password" placeholder="WordPress password" {...field} />
+                          <Input type="password" placeholder="WordPress password or Application Password" {...field} />
                         </FormControl>
                         <FormDescription>
-                          WordPress admin password
+                          WordPress admin password or Application Password (recommended for API access)
                         </FormDescription>
                         <FormMessage />
                       </FormItem>

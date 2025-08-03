@@ -61,16 +61,36 @@ serve(async (req) => {
           }
         });
 
+        console.log(`WordPress test response status: ${testResponse.status}`);
+        
         if (testResponse.ok) {
           console.log('WordPress connection test successful');
-          return new Response(JSON.stringify({ success: true, message: 'Connection successful' }), {
+          const userData = await testResponse.json();
+          console.log('User data:', userData);
+          return new Response(JSON.stringify({ 
+            success: true, 
+            message: 'Connection successful',
+            user: userData.name 
+          }), {
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
           });
         } else {
-          console.log('WordPress connection test failed:', testResponse.status);
+          const errorText = await testResponse.text();
+          console.log('WordPress connection test failed:', testResponse.status, errorText);
+          
+          let errorMessage = 'Connection failed';
+          if (testResponse.status === 401) {
+            errorMessage = 'Invalid credentials - please check username and password. You may need to use Application Passwords instead of regular password.';
+          } else if (testResponse.status === 403) {
+            errorMessage = 'Insufficient permissions - user needs admin or editor role';
+          } else if (testResponse.status === 404) {
+            errorMessage = 'WordPress REST API not found - please check the site URL';
+          }
+          
           return new Response(JSON.stringify({ 
             success: false, 
-            message: testResponse.status === 401 ? 'Invalid credentials' : 'Connection failed' 
+            message: errorMessage,
+            details: errorText 
           }), {
             status: 400,
             headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -80,7 +100,8 @@ serve(async (req) => {
         console.error('WordPress connection test error:', error);
         return new Response(JSON.stringify({ 
           success: false, 
-          message: 'Connection failed' 
+          message: 'Connection failed - unable to reach WordPress site',
+          details: error.message 
         }), {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
