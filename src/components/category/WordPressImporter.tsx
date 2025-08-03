@@ -1,10 +1,8 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Separator } from '@/components/ui/separator';
-import { Download, Eye, EyeOff, Globe, Lock, User, Code, AlertTriangle } from 'lucide-react';
+import { Download, Globe, Code, AlertTriangle } from 'lucide-react';
 import { 
   AlertDialog, 
   AlertDialogAction, 
@@ -36,27 +34,28 @@ type ImportAction = 'erase' | 'merge' | null;
 
 const WordPressImporter: React.FC = () => {
   const { addNewCategory, hierarchy, clearAllCategories, replaceAllCategories } = useCategories();
-  const [credentials, setCredentials] = useState<WordPressCredentials>(() => {
-    const saved = localStorage.getItem('wp_credentials');
-    return saved ? JSON.parse(saved) : { url: 'https://dev.members.nsi.org.uk/', username: '', password: '' };
-  });
-  const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [wpCategories, setWpCategories] = useState<WordPressCategory[]>([]);
   const [showJson, setShowJson] = useState(false);
   const [showImportDialog, setShowImportDialog] = useState(false);
   const [importAction, setImportAction] = useState<ImportAction>(null);
 
-  const saveCredentials = (newCredentials: WordPressCredentials) => {
-    setCredentials(newCredentials);
-    localStorage.setItem('wp_credentials', JSON.stringify(newCredentials));
-  };
-
   const fetchWordPressCategories = async () => {
-    if (!credentials.url || !credentials.username || !credentials.password) {
-      toast.error('Please fill in all WordPress credentials');
+    // Get credentials from localStorage (set in Settings page)
+    const savedCredentials = localStorage.getItem('wp_site_url') && 
+                            localStorage.getItem('wp_username') && 
+                            localStorage.getItem('wp_password');
+    
+    if (!savedCredentials) {
+      toast.error('WordPress credentials not found. Please configure them in Settings first.');
       return;
     }
+
+    const credentials = {
+      url: localStorage.getItem('wp_site_url')!,
+      username: localStorage.getItem('wp_username')!,
+      password: localStorage.getItem('wp_password')!
+    };
 
     setIsLoading(true);
     
@@ -246,64 +245,14 @@ const WordPressImporter: React.FC = () => {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="space-y-3">
-            <div>
-              <Label htmlFor="wp-url" className="flex items-center gap-1">
-                <Globe className="h-4 w-4" />
-                WordPress Site URL
-              </Label>
-              <Input
-                id="wp-url"
-                placeholder="https://yoursite.com"
-                value={credentials.url}
-                onChange={(e) => saveCredentials({ ...credentials, url: e.target.value })}
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="wp-username" className="flex items-center gap-1">
-                <User className="h-4 w-4" />
-                Username
-              </Label>
-              <Input
-                id="wp-username"
-                placeholder="WordPress username"
-                value={credentials.username}
-                onChange={(e) => saveCredentials({ ...credentials, username: e.target.value })}
-              />
-            </div>
-            
-            <div>
-              <Label htmlFor="wp-password" className="flex items-center gap-1">
-                <Lock className="h-4 w-4" />
-                Password
-              </Label>
-              <div className="relative">
-                <Input
-                  id="wp-password"
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="WordPress password"
-                  value={credentials.password}
-                  onChange={(e) => saveCredentials({ ...credentials, password: e.target.value })}
-                  className="pr-10"
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="absolute right-1 top-1 h-7 w-7 p-0"
-                  onClick={() => setShowPassword(!showPassword)}
-                >
-                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                </Button>
-              </div>
-            </div>
+          <div className="text-sm text-muted-foreground mb-4">
+            <p>WordPress credentials are configured in Settings. Click below to fetch categories from your WordPress site.</p>
           </div>
 
           <div className="flex gap-2">
             <Button 
               onClick={fetchWordPressCategories}
-              disabled={isLoading || !credentials.url || !credentials.username || !credentials.password}
+              disabled={isLoading}
               className="flex-1"
             >
               {isLoading ? 'Fetching...' : 'Fetch Categories'}
@@ -376,9 +325,8 @@ const WordPressImporter: React.FC = () => {
 
           <div className="text-xs text-muted-foreground space-y-2">
             <div>
-              <p className="font-medium">Requirements:</p>
-              <p>• Credentials are stored locally in your browser</p>
-              <p>• Requires WordPress user with appropriate permissions</p>
+              <p className="font-medium">Notes:</p>
+              <p>• Configure WordPress credentials in Settings page</p>
               <p>• Fetches from doc_categories taxonomy (Document Library Plugin)</p>
               <p>• Uses secure Supabase proxy to avoid CORS issues</p>
             </div>
