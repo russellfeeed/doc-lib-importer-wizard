@@ -3,11 +3,114 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import { Link } from 'react-router-dom';
-import FileUploader from '@/components/FileUploader';
+import { useSimpleFileUpload } from '@/hooks/useSimpleFileUpload';
 import SimpleDocumentEditor from '@/components/SimpleDocumentEditor';
 import CSVGenerator from '@/components/CSVGenerator';
 import { DocumentFile } from '@/types/document';
 import { Steps, StepType } from '@/types/steps';
+
+// Simple File Uploader Component
+const SimpleFileUploader = ({ onFilesUploaded }: { onFilesUploaded: (files: DocumentFile[]) => void }) => {
+  const {
+    files,
+    isDragging,
+    isLoading,
+    aiEnabled,
+    handleDragOver,
+    handleDragLeave,
+    handleDrop,
+    handleFileInputChange,
+    handleRemoveFile,
+    handleContinue,
+    toggleAI
+  } = useSimpleFileUpload({ onFilesUploaded });
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h3 className="text-lg font-medium text-gray-700">Upload Documents</h3>
+        <div className="flex items-center space-x-2">
+          <span className="text-sm text-gray-600">AI Features (optional)</span>
+          <button
+            onClick={toggleAI}
+            className={`w-10 h-6 rounded-full ${aiEnabled ? 'bg-blue-600' : 'bg-gray-300'} relative transition-colors`}
+          >
+            <div className={`w-4 h-4 bg-white rounded-full shadow transform transition-transform ${aiEnabled ? 'translate-x-5' : 'translate-x-1'} absolute top-1`} />
+          </button>
+        </div>
+      </div>
+
+      {/* Drop Zone */}
+      <div
+        className={`border-2 border-dashed rounded-lg p-8 text-center ${
+          isDragging ? 'border-blue-400 bg-blue-50' : 'border-gray-300'
+        }`}
+        onDragOver={handleDragOver}
+        onDragLeave={handleDragLeave}
+        onDrop={handleDrop}
+      >
+        <input
+          type="file"
+          multiple
+          accept=".pdf,.doc,.docx,.txt"
+          onChange={handleFileInputChange}
+          className="hidden"
+          id="file-input"
+        />
+        <label htmlFor="file-input" className="cursor-pointer">
+          <div className="text-gray-500">
+            <svg className="mx-auto h-12 w-12 mb-4" stroke="currentColor" fill="none" viewBox="0 0 48 48">
+              <path d="M28 8H12a4 4 0 00-4 4v20m32-12v8m0 0v8a4 4 0 01-4 4H12a4 4 0 01-4-4v-4m32-4l-3.172-3.172a4 4 0 00-5.656 0L28 28M8 32l9.172-9.172a4 4 0 015.656 0L28 28m0 0l4 4m4-24h8m-4-4v8m-12 4h.02" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            <p className="text-lg font-medium">Drop files here or click to browse</p>
+            <p className="text-sm">Support for PDF, DOC, DOCX, TXT files</p>
+          </div>
+        </label>
+      </div>
+
+      {/* File List */}
+      {files.length > 0 && (
+        <div className="space-y-2">
+          <h4 className="font-medium text-gray-700">Uploaded Files ({files.length})</h4>
+          {files.map((file) => (
+            <div key={file.id} className="flex items-center justify-between p-3 border rounded-lg">
+              <div className="flex items-center space-x-3">
+                <div className="text-blue-600">
+                  <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M4 4a2 2 0 012-2h4.586A2 2 0 0112 2.586L15.414 6A2 2 0 0116 7.414V16a2 2 0 01-2 2H6a2 2 0 01-2-2V4z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="font-medium">{file.name}</p>
+                  <p className="text-sm text-gray-500">{file.fileSize} • {file.fileType}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => handleRemoveFile(file.id)}
+                className="text-red-600 hover:text-red-700"
+              >
+                <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                </svg>
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Continue Button */}
+      <div className="flex justify-end">
+        <button
+          onClick={handleContinue}
+          disabled={files.length === 0 || isLoading || files.some(file => file.isProcessing)}
+          className="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed"
+        >
+          {isLoading ? 'Processing...' : 'Continue'}
+        </button>
+      </div>
+    </div>
+  );
+};
 
 const SimpleDocumentImporter: React.FC = () => {
   const [currentStep, setCurrentStep] = useState<StepType>('upload');
@@ -40,7 +143,7 @@ const SimpleDocumentImporter: React.FC = () => {
     upload: {
       title: 'Upload Documents',
       description: 'Upload PDFs, Word documents, or other files',
-      component: <FileUploader onFilesUploaded={handleFilesUploaded} />
+      component: <SimpleFileUploader onFilesUploaded={handleFilesUploaded} />
     },
     edit: {
       title: 'Edit Document Information',
