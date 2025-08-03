@@ -536,17 +536,32 @@ export async function generateDocumentCategoryWithContext(content: string, title
     throw new Error("OpenAI API key not set");
   }
   
-  // Get stored WordPress categories
-  const storedCategories = localStorage.getItem('doc_categories');
-  console.log('Stored categories from localStorage:', storedCategories);
+  // Get stored categories from Category Manager
+  const storedCategories = localStorage.getItem('document_categories');
+  console.log('Stored categories from Category Manager:', storedCategories);
   
   let availableCategories = '';
   
   if (storedCategories) {
     try {
-      const categories = JSON.parse(storedCategories);
-      console.log('Parsed categories:', categories);
-      availableCategories = categories.map((cat: any) => cat.name).join(', ');
+      const categoryHierarchy = JSON.parse(storedCategories);
+      console.log('Parsed category hierarchy:', categoryHierarchy);
+      
+      // Extract all category names from the hierarchy
+      const extractCategoryNames = (categories: any[]): string[] => {
+        const names: string[] = [];
+        for (const category of categories) {
+          names.push(category.name);
+          if (category.children && category.children.length > 0) {
+            names.push(...extractCategoryNames(category.children));
+          }
+        }
+        return names;
+      };
+      
+      const categoryNames = extractCategoryNames(categoryHierarchy.categories || []);
+      availableCategories = categoryNames.join(', ');
+      console.log('Extracted category names:', categoryNames);
       console.log('Available categories string:', availableCategories);
     } catch (error) {
       console.error('Error parsing stored categories:', error);
@@ -554,7 +569,7 @@ export async function generateDocumentCategoryWithContext(content: string, title
   }
 
   if (!availableCategories) {
-    console.log('No available categories, falling back to default behavior');
+    console.log('No available categories from Category Manager, falling back to default behavior');
     // Instead of throwing an error, let's fall back to basic categorization
     const prompt = `
 Based on the following document content and title, suggest an appropriate category for this document.
