@@ -283,6 +283,11 @@ const Settings: React.FC = () => {
       };
       const schemes = await fetchWordPressTaxonomies('nsi-scheme', credentials);
       setNsiSchemes(schemes);
+      
+      // Store the schemes in localStorage for use by AI generation
+      localStorage.setItem('nsi_schemes', JSON.stringify(schemes));
+      console.log('Stored NSI schemes for AI generation:', schemes);
+      
       toast.success(`Loaded ${schemes.length} nsi-scheme terms`);
     } catch (error) {
       console.error('Error loading nsi-schemes:', error);
@@ -307,6 +312,8 @@ const Settings: React.FC = () => {
         .then(schemes => {
           setNsiSchemes(schemes);
           if (schemes.length > 0) {
+            // Store the schemes in localStorage for use by AI generation
+            localStorage.setItem('nsi_schemes', JSON.stringify(schemes));
             console.log(`Auto-loaded ${schemes.length} nsi-scheme terms`);
           }
         })

@@ -414,13 +414,30 @@ export async function generateDocumentScheme(
   }
 
   try {
-    // Load existing categories to use as reference
-    const categories = await loadCategories();
+    // Get NSI schemes from localStorage if available
+    const storedSchemes = localStorage.getItem('nsi_schemes');
+    let availableSchemes = [];
     
-    // Extract scheme names from available schemes
-    const schemePrompt = `Analyze the following document and determine the most appropriate NSI scheme classification. Choose from typical schemes like "Security Standards", "Risk Management", "Compliance Frameworks", "Technical Guidelines", "Policy Documents", "Training Materials", "Assessment Tools", or similar relevant categories.
+    if (storedSchemes) {
+      try {
+        const schemes = JSON.parse(storedSchemes);
+        availableSchemes = schemes.map((scheme: any) => scheme.name || scheme.slug).filter(Boolean);
+      } catch (error) {
+        console.warn('Error parsing stored NSI schemes:', error);
+      }
+    }
+    
+    // Build scheme prompt with available schemes or fallback to default
+    let schemeOptions = '';
+    if (availableSchemes.length > 0) {
+      schemeOptions = `Choose from the following available NSI schemes:\n${availableSchemes.map((scheme: string) => `- ${scheme}`).join('\n')}\n\n`;
+    } else {
+      schemeOptions = `Choose from typical schemes like "Security Standards", "Risk Management", "Compliance Frameworks", "Technical Guidelines", "Policy Documents", "Training Materials", "Assessment Tools", or similar relevant categories.\n\n`;
+    }
+    
+    const schemePrompt = `Analyze the following document and determine the most appropriate NSI scheme classification.
 
-Document: ${fileName}
+${schemeOptions}Document: ${fileName}
 Content: ${content.substring(0, 2000)}
 
 Return only the scheme name that best categorizes this document:`;
@@ -431,7 +448,7 @@ Return only the scheme name that best categorizes this document:`;
       options
     );
     
-    return scheme || "Security Standards";
+    return scheme || (availableSchemes.length > 0 ? availableSchemes[0] : "Security Standards");
   } catch (error) {
     console.error("AI scheme generation error:", error);
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
