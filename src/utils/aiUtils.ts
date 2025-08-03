@@ -421,7 +421,7 @@ export async function generateDocumentScheme(content: string, title: string): Pr
   }
 
   // Get stored NSI schemes
-  const storedSchemes = localStorage.getItem('nsi-schemes');
+  const storedSchemes = localStorage.getItem('nsi_schemes');
   console.log('Stored NSI schemes from localStorage:', storedSchemes);
   
   let availableSchemes = '';
