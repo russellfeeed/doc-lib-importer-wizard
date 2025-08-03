@@ -18,7 +18,17 @@ const FileList: React.FC<FileListProps> = ({ files, onRemoveFile }) => {
     <div className="mt-6">
       <h3 className="text-lg font-medium text-gray-700 mb-3">Uploaded Files ({files.length})</h3>
       <div className="space-y-2">
-        {files.map(file => (
+        {files.map(file => {
+          // Debug logging
+          console.log('FileList - File data:', {
+            name: file.file.name,
+            categories: file.categories,
+            scheme: file.customTaxonomies?.['tax:nsi-scheme'],
+            tags: file.tags,
+            aiProcessing: file.aiProcessing
+          });
+          
+          return (
           <div key={file.id} className="flex items-center justify-between p-3 bg-white rounded-lg border shadow-sm">
             <div className="flex items-center space-x-3">
               {file.thumbnail ? (
@@ -119,7 +129,8 @@ const FileList: React.FC<FileListProps> = ({ files, onRemoveFile }) => {
               </Button>
             </div>
           </div>
-        ))}
+          );
+        })}
       </div>
     </div>
   );
