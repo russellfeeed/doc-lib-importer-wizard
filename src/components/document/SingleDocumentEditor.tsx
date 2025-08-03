@@ -11,7 +11,7 @@ interface SingleDocumentEditorProps {
   currentDocIndex: number;
   totalDocuments: number;
   isGeneratingAI: boolean;
-  onEdit: (field: keyof DocumentFile, value: string | boolean) => void;
+  onEdit: (field: keyof DocumentFile, value: string | boolean | Record<string, string>) => void;
   onPrevious: () => void;
   onNext: () => void;
   onGenerateExcerpt: () => void;

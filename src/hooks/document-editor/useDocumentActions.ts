@@ -18,13 +18,13 @@ export function useDocumentActions({
   setIsGeneratingAI,
   onSave
 }: UseDocumentActionsProps) {
-  const handleChange = (field: keyof DocumentFile, value: string | boolean) => {
+  const handleChange = (field: keyof DocumentFile, value: string | boolean | Record<string, string>) => {
     setEditedDocuments(prev => prev.map((doc, index) =>
       index === currentDocIndex ? { ...doc, [field]: value } : doc
     ));
   };
 
-  const handleTableChange = (index: number, field: keyof DocumentFile, value: string | boolean) => {
+  const handleTableChange = (index: number, field: keyof DocumentFile, value: string | boolean | Record<string, string>) => {
     setEditedDocuments(prev => prev.map((doc, i) =>
       i === index ? { ...doc, [field]: value } : doc
     ));

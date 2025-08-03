@@ -12,7 +12,7 @@ import { CategoryNode } from '@/types/categories';
 interface DocumentMetadataProps {
   document: DocumentFile;
   isGeneratingAI: boolean;
-  onEdit: (field: keyof DocumentFile, value: string | boolean) => void;
+  onEdit: (field: keyof DocumentFile, value: string | boolean | Record<string, string>) => void;
   onGenerateCategory?: () => void;
   onGenerateTags?: () => void;
   onGenerateScheme?: () => void;

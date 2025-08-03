@@ -9,7 +9,7 @@ import { DocumentFile } from '@/types/document';
 interface DocumentContentProps {
   document: DocumentFile;
   isGeneratingAI: boolean;
-  onEdit: (field: keyof DocumentFile, value: string | boolean) => void;
+  onEdit: (field: keyof DocumentFile, value: string | boolean | Record<string, string>) => void;
   onGenerateExcerpt: () => void;
 }
 

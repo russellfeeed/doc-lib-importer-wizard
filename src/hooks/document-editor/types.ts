@@ -15,8 +15,8 @@ export interface UseDocumentEditorProps {
 
 export interface UseDocumentEditorReturn extends DocumentEditorState {
   currentDocument: DocumentFile;
-  handleChange: (field: keyof DocumentFile, value: string | boolean) => void;
-  handleTableChange: (index: number, field: keyof DocumentFile, value: string | boolean) => void;
+  handleChange: (field: keyof DocumentFile, value: string | boolean | Record<string, string>) => void;
+  handleTableChange: (index: number, field: keyof DocumentFile, value: string | boolean | Record<string, string>) => void;
   handleNext: () => void;
   handlePrevious: () => void;
   handleGenerateExcerpt: () => Promise<void>;

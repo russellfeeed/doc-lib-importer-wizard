@@ -18,7 +18,7 @@ import { DocumentFile } from '@/types/document';
 interface DocumentsTableViewProps {
   documents: DocumentFile[];
   isGeneratingAI: boolean;
-  onEditDocument: (index: number, field: keyof DocumentFile, value: string | boolean) => void;
+  onEditDocument: (index: number, field: keyof DocumentFile, value: string | boolean | Record<string, string>) => void;
   onGenerateAllExcerpts: () => void;
   onToggleView: () => void;
   onSave: () => void;
