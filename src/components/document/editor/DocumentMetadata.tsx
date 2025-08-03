@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Tag, BookCopy, FolderOpen, ChevronRight, AlertTriangle } from 'lucide-react';
+import { Tag, BookCopy, FolderOpen, ChevronRight, AlertTriangle, Building } from 'lucide-react';
 import { DocumentFile } from '@/types/document';
 import { useCategories } from '@/context/CategoryContext';
 import { CategoryNode } from '@/types/categories';
@@ -15,6 +15,7 @@ interface DocumentMetadataProps {
   onEdit: (field: keyof DocumentFile, value: string | boolean) => void;
   onGenerateCategory?: () => void;
   onGenerateTags?: () => void;
+  onGenerateScheme?: () => void;
 }
 
 const DocumentMetadata: React.FC<DocumentMetadataProps> = ({
@@ -22,7 +23,8 @@ const DocumentMetadata: React.FC<DocumentMetadataProps> = ({
   isGeneratingAI,
   onEdit,
   onGenerateCategory,
-  onGenerateTags
+  onGenerateTags,
+  onGenerateScheme
 }) => {
   const { hierarchy } = useCategories();
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
@@ -140,6 +142,43 @@ const DocumentMetadata: React.FC<DocumentMetadataProps> = ({
           )}
         </div>
         <p className="text-xs text-gray-500 mt-1">Use &gt; for category hierarchy (e.g., Policies &gt; HR)</p>
+      </div>
+      
+      <div className="mb-4">
+        <div className="flex justify-between items-center mb-1">
+          <label className="block text-sm font-medium">Scheme</label>
+          {onGenerateScheme && (
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={onGenerateScheme}
+              disabled={isGeneratingAI}
+              className={document.aiProcessing?.status === 'processing' ? "opacity-50" : ""}
+            >
+              {document.aiProcessing?.status === 'processing' ? (
+                <>
+                  <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full mr-2" />
+                  Processing...
+                </>
+              ) : (
+                <>
+                  <Building className="mr-2 h-4 w-4" /> 
+                  Detect Scheme
+                </>
+              )}
+            </Button>
+          )}
+        </div>
+        <Input 
+          value={document.customTaxonomies?.['tax:nsi-scheme'] || ''}
+          onChange={(e) => {
+            const updatedTaxonomies = { ...document.customTaxonomies, 'tax:nsi-scheme': e.target.value };
+            onEdit('customTaxonomies', updatedTaxonomies as any);
+          }}
+          placeholder="E.g., Building Regulations, Health & Safety"
+          title="The scheme this document belongs to"
+        />
+        <p className="text-xs text-gray-500 mt-1">The compliance scheme this document relates to</p>
       </div>
       
       <div className="mb-4">

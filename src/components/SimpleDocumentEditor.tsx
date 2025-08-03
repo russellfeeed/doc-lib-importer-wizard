@@ -24,11 +24,13 @@ const SimpleDocumentEditor: React.FC<SimpleDocumentEditorProps> = ({ documents, 
     handleGenerateExcerpt,
     handleGenerateCategory,
     handleGenerateTags,
+    handleGenerateScheme,
     handleSaveAll,
     toggleEditAll,
     handleGenerateAllExcerpts,
     handleGenerateAllCategories,
     handleGenerateAllTags,
+    handleGenerateAllSchemes,
     handleToggleAllPublished,
   } = useSimpleDocumentEditor({
     initialDocuments: documents,
@@ -63,9 +65,11 @@ const SimpleDocumentEditor: React.FC<SimpleDocumentEditorProps> = ({ documents, 
           onGenerateExcerpt={handleGenerateExcerpt}
           onGenerateCategory={handleGenerateCategory}
           onGenerateTags={handleGenerateTags}
+          onGenerateScheme={handleGenerateScheme}
           onGenerateAllExcerpts={handleGenerateAllExcerpts}
           onGenerateAllCategories={handleGenerateAllCategories}
           onGenerateAllTags={handleGenerateAllTags}
+          onGenerateAllSchemes={handleGenerateAllSchemes}
           onToggleView={toggleEditAll}
           onSave={handleSaveAll}
           onBack={onBack}

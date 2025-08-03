@@ -22,10 +22,12 @@ export interface UseDocumentEditorReturn extends DocumentEditorState {
   handleGenerateExcerpt: () => Promise<void>;
   handleGenerateCategory: () => Promise<void>;
   handleGenerateTags: () => Promise<void>;
+  handleGenerateScheme?: () => Promise<void>;
   handleSaveAll: () => void;
   toggleEditAll: () => void;
   handleGenerateAllExcerpts: () => Promise<void>;
   handleGenerateAllCategories: () => Promise<void>;
   handleGenerateAllTags: () => Promise<void>;
+  handleGenerateAllSchemes?: () => Promise<void>;
   handleToggleAllPublished: (published: boolean) => void;
 }

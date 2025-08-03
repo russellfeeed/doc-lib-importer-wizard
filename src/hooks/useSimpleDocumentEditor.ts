@@ -39,9 +39,11 @@ export function useSimpleDocumentEditor({
     handleGenerateExcerpt,
     handleGenerateCategory,
     handleGenerateTags,
+    handleGenerateScheme,
     handleGenerateAllExcerpts,
     handleGenerateAllCategories,
-    handleGenerateAllTags
+    handleGenerateAllTags,
+    handleGenerateAllSchemes
   } = useSimpleAiGeneration({
     editedDocuments,
     currentDocIndex,
@@ -62,11 +64,13 @@ export function useSimpleDocumentEditor({
     handleGenerateExcerpt,
     handleGenerateCategory,
     handleGenerateTags,
+    handleGenerateScheme,
     handleSaveAll,
     toggleEditAll,
     handleGenerateAllExcerpts,
     handleGenerateAllCategories,
     handleGenerateAllTags,
+    handleGenerateAllSchemes,
     handleToggleAllPublished,
   };
 }

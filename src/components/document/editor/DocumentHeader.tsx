@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { FileText, Edit, Zap, Tag } from 'lucide-react';
+import { FileText, Edit, Zap, Tag, Building } from 'lucide-react';
 import { DocumentFile } from '@/types/document';
 
 interface DocumentHeaderProps {
@@ -11,6 +11,7 @@ interface DocumentHeaderProps {
   onGenerateAllExcerpts: () => void;
   onGenerateAllCategories?: () => void;
   onGenerateAllTags?: () => void;
+  onGenerateAllSchemes?: () => void;
   onToggleView: () => void;
 }
 
@@ -21,6 +22,7 @@ const DocumentHeader: React.FC<DocumentHeaderProps> = ({
   onGenerateAllExcerpts,
   onGenerateAllCategories,
   onGenerateAllTags,
+  onGenerateAllSchemes,
   onToggleView
 }) => {
   return (
@@ -59,6 +61,17 @@ const DocumentHeader: React.FC<DocumentHeaderProps> = ({
           >
             <Tag className="mr-2 h-4 w-4" />
             Tag All
+          </Button>
+        )}
+        {onGenerateAllSchemes && (
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={onGenerateAllSchemes}
+            disabled={isGeneratingAI}
+          >
+            <Building className="mr-2 h-4 w-4" />
+            Detect All Schemes
           </Button>
         )}
         <Button 
