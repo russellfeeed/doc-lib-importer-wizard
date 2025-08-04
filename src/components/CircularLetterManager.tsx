@@ -4,6 +4,7 @@ import { Card } from '@/components/ui/card';
 import CircularLetterUploader from '@/components/circular-letter/CircularLetterUploader';
 import CircularLetterEditor from '@/components/circular-letter/CircularLetterEditor';
 import CSVGenerator from '@/components/CSVGenerator';
+import WordPressUploader from '@/components/WordPressUploader';
 import { CircularLetter } from '@/types/circular-letter';
 import { Steps, StepType } from '@/types/steps';
 import { CategoryProvider } from '@/context/CategoryContext';
@@ -28,6 +29,14 @@ const CircularLetterManager: React.FC = () => {
 
   const handleBackToUpload = () => {
     setCurrentStep('upload');
+  };
+
+  const handleWordPressUpload = () => {
+    setCurrentStep('wordpress-upload');
+  };
+
+  const handleBackToCSV = () => {
+    setCurrentStep('generate');
   };
 
   const handleReset = () => {
@@ -60,6 +69,18 @@ const CircularLetterManager: React.FC = () => {
           documents={letters} 
           onBack={handleBackToEdit}
           onReset={handleReset}
+          onWordPressUpload={handleWordPressUpload}
+        />
+      )
+    },
+    'wordpress-upload': {
+      title: 'Upload to WordPress',
+      description: 'Upload selected circular letters to WordPress media library',
+      component: (
+        <WordPressUploader
+          documents={letters}
+          onBack={handleBackToCSV}
+          onComplete={handleReset}
         />
       )
     }

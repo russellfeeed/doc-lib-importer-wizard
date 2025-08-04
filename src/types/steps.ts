@@ -1,7 +1,7 @@
 
 import { ReactNode } from 'react';
 
-export type StepType = 'upload' | 'edit' | 'generate';
+export type StepType = 'upload' | 'edit' | 'generate' | 'wordpress-upload';
 
 export interface Step {
   title: string;

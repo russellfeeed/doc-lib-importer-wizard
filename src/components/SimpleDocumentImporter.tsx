@@ -6,6 +6,7 @@ import { Link } from 'react-router-dom';
 import { useSimpleFileUpload } from '@/hooks/useSimpleFileUpload';
 import SimpleDocumentEditor from '@/components/SimpleDocumentEditor';
 import CSVGenerator from '@/components/CSVGenerator';
+import WordPressUploader from '@/components/WordPressUploader';
 import { DocumentFile } from '@/types/document';
 import { Steps, StepType } from '@/types/steps';
 
@@ -134,6 +135,9 @@ const SimpleDocumentImporter: React.FC = () => {
     setCurrentStep('upload');
   };
 
+  const handleWordPressUpload = () => setCurrentStep('wordpress-upload');
+  const handleBackToCSV = () => setCurrentStep('generate');
+
   const handleReset = () => {
     setDocuments([]);
     setCurrentStep('upload');
@@ -164,6 +168,18 @@ const SimpleDocumentImporter: React.FC = () => {
           documents={documents} 
           onBack={handleBackToEdit}
           onReset={handleReset}
+          onWordPressUpload={handleWordPressUpload}
+        />
+      )
+    },
+    'wordpress-upload': {
+      title: 'Upload to WordPress',
+      description: 'Upload selected documents to WordPress media library',
+      component: (
+        <WordPressUploader
+          documents={documents}
+          onBack={handleBackToCSV}
+          onComplete={handleReset}
         />
       )
     }

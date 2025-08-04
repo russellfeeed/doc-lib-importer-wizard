@@ -8,6 +8,7 @@ import { StepType } from '@/types/steps';
 import FileUploader from '@/components/file-uploader/FileUploader';
 import StandardsDocumentEditor from '@/components/StandardsDocumentEditor';
 import CSVGenerator from '@/components/CSVGenerator';
+import WordPressUploader from '@/components/WordPressUploader';
 
 const StandardsDocumentImporter: React.FC = () => {
   const [currentStep, setCurrentStep] = useState<StepType>('upload');
@@ -29,6 +30,14 @@ const StandardsDocumentImporter: React.FC = () => {
 
   const handleBackToUpload = () => {
     setCurrentStep('upload');
+  };
+
+  const handleWordPressUpload = () => {
+    setCurrentStep('wordpress-upload');
+  };
+
+  const handleBackToCSV = () => {
+    setCurrentStep('generate');
   };
 
   const handleReset = () => {
@@ -69,6 +78,19 @@ const StandardsDocumentImporter: React.FC = () => {
           documents={documents}
           onReset={handleReset}
           onBack={handleBackToEdit}
+          onWordPressUpload={handleWordPressUpload}
+        />
+      )
+    },
+    {
+      id: 'wordpress-upload' as StepType,
+      title: 'Upload to WordPress',
+      description: 'Upload selected documents to WordPress media library',
+      component: (
+        <WordPressUploader
+          documents={documents}
+          onBack={handleBackToCSV}
+          onComplete={handleReset}
         />
       )
     }

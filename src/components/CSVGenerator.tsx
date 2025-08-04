@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, Download, Copy, Check, ArrowRight, RefreshCw } from 'lucide-react';
+import { ChevronLeft, Download, Copy, Check, ArrowRight, RefreshCw, Upload } from 'lucide-react';
 import { DocumentFile } from '@/types/document';
 import { CircularLetter } from '@/types/circular-letter';
 import { generateCSV, copyToClipboard } from '@/utils/csvUtils';
@@ -11,12 +11,14 @@ interface CSVGeneratorProps {
   documents: DocumentFile[] | CircularLetter[];
   onBack: () => void;
   onReset: () => void;
+  onWordPressUpload?: () => void;
 }
 
 const CSVGenerator: React.FC<CSVGeneratorProps> = ({ 
   documents, 
   onBack,
-  onReset
+  onReset,
+  onWordPressUpload
 }) => {
   const [csvContent, setCsvContent] = useState<string>('');
   const [isGenerating, setIsGenerating] = useState(true);
@@ -121,6 +123,17 @@ const CSVGenerator: React.FC<CSVGeneratorProps> = ({
             {isCopied ? <Check className="mr-2 h-4 w-4" /> : <Copy className="mr-2 h-4 w-4" />}
             {isCopied ? 'Copied!' : 'Copy to Clipboard'}
           </Button>
+          {!isCircularLetter && (
+            <Button
+              variant="default"
+              onClick={onWordPressUpload}
+              disabled={isGenerating || !!error}
+              className="bg-green-600 hover:bg-green-700"
+            >
+              <Upload className="mr-2 h-4 w-4" />
+              Upload to WordPress
+            </Button>
+          )}
         </div>
       </div>
       
