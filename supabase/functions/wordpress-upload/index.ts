@@ -43,7 +43,10 @@ serve(async (req) => {
     // Function to check if file already exists in WordPress Media Library
     const checkFileExists = async (filename: string): Promise<{ exists: boolean; mediaId?: number; url?: string }> => {
       try {
-        const searchResponse = await fetch(`${wpUrl}/wp-json/wp/v2/media?search=${encodeURIComponent(filename)}`, {
+        console.log(`Checking for duplicate file: ${filename}`);
+        
+        // Get all media items (we'll check more thoroughly)
+        const searchResponse = await fetch(`${wpUrl}/wp-json/wp/v2/media?per_page=100`, {
           method: 'GET',
           headers: {
             'Authorization': `Basic ${authHeader}`,
@@ -52,23 +55,52 @@ serve(async (req) => {
 
         if (searchResponse.ok) {
           const existingMedia = await searchResponse.json();
+          console.log(`Found ${existingMedia.length} media items to check against`);
+          
           if (Array.isArray(existingMedia) && existingMedia.length > 0) {
-            // Check for exact filename match
-            const exactMatch = existingMedia.find(media => 
-              media.title?.rendered === filename || 
-              media.slug === filename.toLowerCase().replace(/[^a-z0-9]/g, '-')
-            );
+            // Extract filename without extension for comparison
+            const baseFilename = filename.replace(/\.[^/.]+$/, "");
+            const fileExtension = filename.split('.').pop();
             
-            if (exactMatch) {
-              return {
-                exists: true,
-                mediaId: exactMatch.id,
-                url: exactMatch.source_url
-              };
+            console.log(`Looking for matches of: ${filename} (base: ${baseFilename}, ext: ${fileExtension})`);
+            
+            for (const media of existingMedia) {
+              const sourceUrl = media.source_url || '';
+              const urlFilename = sourceUrl.split('/').pop() || '';
+              const urlBaseFilename = urlFilename.replace(/\.[^/.]+$/, "");
+              
+              // Check multiple criteria for duplicate detection
+              const isExactFilenameMatch = urlFilename === filename;
+              const isBaseFilenameMatch = urlBaseFilename === baseFilename;
+              const isTitleMatch = media.title?.rendered === filename || media.title?.rendered === baseFilename;
+              const isSlugMatch = media.slug === filename.toLowerCase().replace(/[^a-z0-9]/g, '-');
+              
+              // Also check for WordPress auto-renamed files (filename-1.pdf, filename-2.pdf, etc.)
+              const isAutoRenamedMatch = urlBaseFilename.match(new RegExp(`^${baseFilename.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}-\\d+$`));
+              
+              console.log(`Checking media ID ${media.id}:`);
+              console.log(`  URL filename: ${urlFilename}`);
+              console.log(`  Title: ${media.title?.rendered}`);
+              console.log(`  Slug: ${media.slug}`);
+              console.log(`  Exact match: ${isExactFilenameMatch}`);
+              console.log(`  Base match: ${isBaseFilenameMatch}`);
+              console.log(`  Auto-renamed match: ${!!isAutoRenamedMatch}`);
+              
+              if (isExactFilenameMatch || isBaseFilenameMatch || isAutoRenamedMatch) {
+                console.log(`Found duplicate! Media ID: ${media.id}, URL: ${sourceUrl}`);
+                return {
+                  exists: true,
+                  mediaId: media.id,
+                  url: sourceUrl
+                };
+              }
             }
           }
+        } else {
+          console.log(`Failed to fetch media items: ${searchResponse.status} ${searchResponse.statusText}`);
         }
         
+        console.log(`No duplicate found for: ${filename}`);
         return { exists: false };
       } catch (error) {
         console.log(`Error checking if file exists: ${error.message}`);
