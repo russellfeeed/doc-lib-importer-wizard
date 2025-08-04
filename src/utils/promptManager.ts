@@ -16,8 +16,14 @@ export interface AllPromptConfigs {
 
 const DEFAULT_PROMPTS: AllPromptConfigs = {
   summarization: {
-    systemPrompt: "You are tasked with creating concise document summaries. Your summaries should be professional, factual, and never contain meta-text about AI or instructions.",
-    userPromptTemplate: `Create a brief, professional summary of this document titled "{fileName}". The summary should be 2-3 sentences that capture the main topic and key points. Write in clear, straightforward language that would appear in a document management system. Do not include any meta-commentary about AI or summarization processes in your response.
+    systemPrompt: "You are tasked with creating concise document summaries based primarily on the document content. Your summaries should be professional, factual, and never contain meta-text about AI or instructions. If the content is unclear, incomplete, or you are uncertain about key details, indicate this in your summary to help users understand that manual review may be needed.",
+    userPromptTemplate: `Create a brief, professional summary of this document. Base your summary primarily on the document content provided below, not just the filename "{fileName}". The summary should be 2-3 sentences that capture the main topic and key points from the actual content.
+
+IMPORTANT GUIDELINES:
+- Focus on the document content, not the filename
+- If the content is incomplete, unclear, or you're uncertain about key details, mention this (e.g., "Based on available content..." or "Manual review recommended for complete details")
+- Write in clear, straightforward language that would appear in a document management system
+- Do not include any meta-commentary about AI or summarization processes
 
 Here is the document content:
 {content}`,
