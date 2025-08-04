@@ -40,6 +40,42 @@ serve(async (req) => {
     // Create basic auth header
     const authHeader = btoa(`${wpUsername}:${wpPassword}`);
 
+    // Function to check if file already exists in WordPress Media Library
+    const checkFileExists = async (filename: string): Promise<{ exists: boolean; mediaId?: number; url?: string }> => {
+      try {
+        const searchResponse = await fetch(`${wpUrl}/wp-json/wp/v2/media?search=${encodeURIComponent(filename)}`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Basic ${authHeader}`,
+          },
+        });
+
+        if (searchResponse.ok) {
+          const existingMedia = await searchResponse.json();
+          if (Array.isArray(existingMedia) && existingMedia.length > 0) {
+            // Check for exact filename match
+            const exactMatch = existingMedia.find(media => 
+              media.title?.rendered === filename || 
+              media.slug === filename.toLowerCase().replace(/[^a-z0-9]/g, '-')
+            );
+            
+            if (exactMatch) {
+              return {
+                exists: true,
+                mediaId: exactMatch.id,
+                url: exactMatch.source_url
+              };
+            }
+          }
+        }
+        
+        return { exists: false };
+      } catch (error) {
+        console.log(`Error checking if file exists: ${error.message}`);
+        return { exists: false };
+      }
+    };
+
     const uploadResults: UploadResult[] = [];
 
     for (const doc of documents) {
@@ -132,6 +168,19 @@ serve(async (req) => {
         console.log(`File extension: ${fileExtension}`);
         console.log(`Using MIME type: ${mimeType} for file type: ${doc.fileType}`);
         console.log(`Final filename: ${filename}`);
+
+        // Check if file already exists in WordPress Media Library
+        const existingFile = await checkFileExists(filename);
+        if (existingFile.exists) {
+          console.log(`File ${filename} already exists in WordPress Media Library with ID: ${existingFile.mediaId}`);
+          uploadResults.push({
+            id: doc.id,
+            success: true,
+            wpMediaId: existingFile.mediaId,
+            wpUrl: existingFile.url,
+          });
+          continue; // Skip to next document
+        }
 
         let fileBlob: Blob;
         
