@@ -35,7 +35,7 @@ const DocumentMetadata: React.FC<DocumentMetadataProps> = ({
   const [nsiSchemes, setNsiSchemes] = useState<string[]>([]);
   const [isLoadingSchemes, setIsLoadingSchemes] = useState(false);
 
-  // Fetch NSI schemes from WordPress taxonomy
+  // Fetch NSI schemes from WordPress taxonomy with fallback
   useEffect(() => {
     const loadNsiSchemes = async () => {
       setIsLoadingSchemes(true);
@@ -45,8 +45,20 @@ const DocumentMetadata: React.FC<DocumentMetadataProps> = ({
         setNsiSchemes(schemeNames);
       } catch (error) {
         console.error('Failed to fetch NSI schemes:', error);
-        // Keep empty array if WordPress fetch fails
-        setNsiSchemes([]);
+        // Fallback to common NSI schemes if WordPress is not configured
+        setNsiSchemes([
+          'ARC',
+          'Cash Services',
+          'EMS',
+          'Evacuation Alert Systems',
+          'Fire',
+          'Guarding',
+          'Health and Safety',
+          'Kitchen Fire Protection Systems',
+          'Life Safety Fire Risk Assessment',
+          'NACOSS',
+          'Specialist Services'
+        ]);
       } finally {
         setIsLoadingSchemes(false);
       }
