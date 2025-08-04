@@ -54,20 +54,6 @@ export function useStandardsAiGeneration({
     
     // Check if content is empty
     if (!currentDoc.content || currentDoc.content.trim().length === 0) {
-      setEditedDocuments(prev => 
-        prev.map((doc, index) => 
-          index === currentDocIndex 
-            ? { 
-                ...doc, 
-                aiProcessing: { 
-                  status: 'error',
-                  error: 'No content extracted from document. Cannot generate category.'
-                }
-              }
-            : doc
-        )
-      );
-      toast.error('Cannot generate category: No content extracted from document');
       return;
     }
     
@@ -99,20 +85,6 @@ export function useStandardsAiGeneration({
     
     // Check if content is empty
     if (!currentDoc.content || currentDoc.content.trim().length === 0) {
-      setEditedDocuments(prev => 
-        prev.map((doc, index) => 
-          index === currentDocIndex 
-            ? { 
-                ...doc, 
-                aiProcessing: { 
-                  status: 'error',
-                  error: 'No content extracted from document. Cannot generate tags.'
-                }
-              }
-            : doc
-        )
-      );
-      toast.error('Cannot generate tags: No content extracted from document');
       return;
     }
     
@@ -172,13 +144,6 @@ export function useStandardsAiGeneration({
       for (let i = 0; i < updatedDocs.length; i++) {
         try {
           if (!updatedDocs[i].content || updatedDocs[i].content.trim().length === 0) {
-            updatedDocs[i] = { 
-              ...updatedDocs[i], 
-              aiProcessing: { 
-                status: 'error',
-                error: 'No content extracted from document. Cannot generate category.'
-              }
-            };
             continue;
           }
           const category = await generateStandardsCategory(updatedDocs[i].content, updatedDocs[i].name);
@@ -206,13 +171,6 @@ export function useStandardsAiGeneration({
       for (let i = 0; i < updatedDocs.length; i++) {
         try {
           if (!updatedDocs[i].content || updatedDocs[i].content.trim().length === 0) {
-            updatedDocs[i] = { 
-              ...updatedDocs[i], 
-              aiProcessing: { 
-                status: 'error',
-                error: 'No content extracted from document. Cannot generate tags.'
-              }
-            };
             continue;
           }
           const tags = await generateDocumentTags(updatedDocs[i].content, updatedDocs[i].name, updatedDocs[i].categories);

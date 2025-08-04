@@ -89,16 +89,6 @@ export function useAiGeneration({
     
     // Check if content is empty
     if (!currentDocument.content || currentDocument.content.trim().length === 0) {
-      setEditedDocuments(prev => prev.map((doc, index) =>
-        index === currentDocIndex ? { 
-          ...doc, 
-          aiProcessing: { 
-            status: 'error',
-            error: 'No content extracted from document. Cannot generate category.'
-          } 
-        } : doc
-      ));
-      toast.error('Cannot generate category: No content extracted from document');
       return;
     }
     
@@ -161,16 +151,6 @@ export function useAiGeneration({
     
     // Check if content is empty
     if (!currentDocument.content || currentDocument.content.trim().length === 0) {
-      setEditedDocuments(prev => prev.map((doc, index) =>
-        index === currentDocIndex ? { 
-          ...doc, 
-          aiProcessing: { 
-            status: 'error',
-            error: 'No content extracted from document. Cannot generate tags.'
-          } 
-        } : doc
-      ));
-      toast.error('Cannot generate tags: No content extracted from document');
       return;
     }
     
@@ -314,14 +294,6 @@ export function useAiGeneration({
       
       try {
         if (!doc.content || doc.content.trim().length === 0) {
-          docsInProgress[i] = {
-            ...doc,
-            aiProcessing: { 
-              status: 'error',
-              error: 'No content extracted from document. Cannot generate category.'
-            }
-          };
-          setEditedDocuments([...docsInProgress]);
           continue;
         }
 
@@ -389,14 +361,6 @@ export function useAiGeneration({
       
       try {
         if (!doc.content || doc.content.trim().length === 0) {
-          docsInProgress[i] = {
-            ...doc,
-            aiProcessing: { 
-              status: 'error',
-              error: 'No content extracted from document. Cannot generate tags.'
-            }
-          };
-          setEditedDocuments([...docsInProgress]);
           continue;
         }
 

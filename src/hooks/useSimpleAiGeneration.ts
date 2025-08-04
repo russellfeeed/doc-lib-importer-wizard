@@ -62,20 +62,6 @@ export function useSimpleAiGeneration({
     
     // Check if content is empty
     if (!currentDoc.content || currentDoc.content.trim().length === 0) {
-      setEditedDocuments(prev => 
-        prev.map((doc, index) => 
-          index === currentDocIndex 
-            ? { 
-                ...doc, 
-                aiProcessing: { 
-                  status: 'error',
-                  error: 'No content extracted from document. Cannot generate category.'
-                }
-              }
-            : doc
-        )
-      );
-      toast.error('Cannot generate category: No content extracted from document');
       return;
     }
     
@@ -109,20 +95,6 @@ export function useSimpleAiGeneration({
     
     // Check if content is empty
     if (!currentDoc.content || currentDoc.content.trim().length === 0) {
-      setEditedDocuments(prev => 
-        prev.map((doc, index) => 
-          index === currentDocIndex 
-            ? { 
-                ...doc, 
-                aiProcessing: { 
-                  status: 'error',
-                  error: 'No content extracted from document. Cannot generate tags.'
-                }
-              }
-            : doc
-        )
-      );
-      toast.error('Cannot generate tags: No content extracted from document');
       return;
     }
     
@@ -161,20 +133,6 @@ export function useSimpleAiGeneration({
     
     // Check if content is empty
     if (!currentDoc.content || currentDoc.content.trim().length === 0) {
-      setEditedDocuments(prev => 
-        prev.map((doc, index) => 
-          index === currentDocIndex 
-            ? { 
-                ...doc, 
-                aiProcessing: { 
-                  status: 'error',
-                  error: 'No content extracted from document. Cannot generate scheme.'
-                }
-              }
-            : doc
-        )
-      );
-      toast.error('Cannot generate scheme: No content extracted from document');
       return;
     }
     
@@ -242,13 +200,6 @@ export function useSimpleAiGeneration({
       for (let i = 0; i < updatedDocs.length; i++) {
         try {
           if (!updatedDocs[i].content || updatedDocs[i].content.trim().length === 0) {
-            updatedDocs[i] = { 
-              ...updatedDocs[i], 
-              aiProcessing: { 
-                status: 'error',
-                error: 'No content extracted from document. Cannot generate category.'
-              }
-            };
             continue;
           }
           const category = await generateDocumentCategoryWithContext(updatedDocs[i].content, updatedDocs[i].name);
@@ -276,13 +227,6 @@ export function useSimpleAiGeneration({
       for (let i = 0; i < updatedDocs.length; i++) {
         try {
           if (!updatedDocs[i].content || updatedDocs[i].content.trim().length === 0) {
-            updatedDocs[i] = { 
-              ...updatedDocs[i], 
-              aiProcessing: { 
-                status: 'error',
-                error: 'No content extracted from document. Cannot generate tags.'
-              }
-            };
             continue;
           }
           const tags = await generateDocumentTagsWithContext(updatedDocs[i].content, updatedDocs[i].name, updatedDocs[i].categories);
@@ -316,13 +260,6 @@ export function useSimpleAiGeneration({
       for (let i = 0; i < updatedDocs.length; i++) {
         try {
           if (!updatedDocs[i].content || updatedDocs[i].content.trim().length === 0) {
-            updatedDocs[i] = { 
-              ...updatedDocs[i], 
-              aiProcessing: { 
-                status: 'error',
-                error: 'No content extracted from document. Cannot generate scheme.'
-              }
-            };
             continue;
           }
           const scheme = await generateDocumentScheme(updatedDocs[i].content, updatedDocs[i].name);
