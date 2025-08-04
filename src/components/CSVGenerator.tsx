@@ -22,6 +22,7 @@ const CSVGenerator: React.FC<CSVGeneratorProps> = ({
   const [isGenerating, setIsGenerating] = useState(true);
   const [isCopied, setIsCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [documentCounts, setDocumentCounts] = useState<{ included: number; excluded: number }>({ included: 0, excluded: 0 });
   
   // Determine if we're dealing with circular letters
   const isCircularLetter = documents.length > 0 && 'referenceNumber' in documents[0];
@@ -35,6 +36,16 @@ const CSVGenerator: React.FC<CSVGeneratorProps> = ({
       try {
         const csv = generateCSV(documents);
         setCsvContent(csv);
+        
+        // Calculate document counts
+        if (isCircularLetter) {
+          // All circular letters are included
+          setDocumentCounts({ included: documents.length, excluded: 0 });
+        } else {
+          const includedCount = documents.filter(doc => !(doc as DocumentFile).omitFromCSV).length;
+          const excludedCount = documents.length - includedCount;
+          setDocumentCounts({ included: includedCount, excluded: excludedCount });
+        }
       } catch (error) {
         console.error('Error generating CSV:', error);
         setError('Failed to generate CSV. Please check the console for details.');
@@ -79,12 +90,20 @@ const CSVGenerator: React.FC<CSVGeneratorProps> = ({
     <div className="space-y-6">
       <div className="bg-blue-50 rounded-lg p-6 border border-blue-100">
         <h3 className="text-lg font-semibold text-blue-700 mb-2">CSV File Ready</h3>
-        <p className="text-gray-700 mb-4">
+        <p className="text-gray-700 mb-2">
           {isCircularLetter 
             ? 'Your CSV file containing circular letter data has been generated and is ready to download.'
             : 'Your CSV file has been generated and is ready to import into Barn2\'s Document Library WordPress plugin.'
           }
         </p>
+        <div className="bg-white rounded-md p-3 border border-blue-200 mb-4">
+          <div className="flex justify-between items-center text-sm">
+            <span className="text-green-700 font-medium">✓ {documentCounts.included} documents included</span>
+            {documentCounts.excluded > 0 && (
+              <span className="text-gray-600">⚬ {documentCounts.excluded} documents excluded</span>
+            )}
+          </div>
+        </div>
         <div className="flex flex-wrap gap-3">
           <Button
             onClick={handleDownload}
