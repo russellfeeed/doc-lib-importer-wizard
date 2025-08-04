@@ -53,6 +53,58 @@ serve(async (req) => {
           throw new Error('No file data provided');
         }
 
+        // Extract file extension from filename
+        const fileExtension = doc.name.split('.').pop()?.toLowerCase() || '';
+        console.log(`File extension detected: ${fileExtension}`);
+
+        // Map display file types to proper MIME types
+        const getMimeType = (fileType: string, extension: string): string => {
+          const mimeTypeMap: Record<string, string> = {
+            'PDF Document': 'application/pdf',
+            'Word Document': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'Excel Spreadsheet': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'PowerPoint Presentation': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+            'Text Document': 'text/plain',
+            'Rich Text Document': 'application/rtf',
+            'OpenDocument Text': 'application/vnd.oasis.opendocument.text',
+          };
+
+          // First try to map by display name
+          if (mimeTypeMap[fileType]) {
+            return mimeTypeMap[fileType];
+          }
+
+          // Fall back to extension-based mapping
+          const extensionMimeMap: Record<string, string> = {
+            'pdf': 'application/pdf',
+            'doc': 'application/msword',
+            'docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+            'xls': 'application/vnd.ms-excel',
+            'xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'ppt': 'application/vnd.ms-powerpoint',
+            'pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
+            'txt': 'text/plain',
+            'rtf': 'application/rtf',
+            'odt': 'application/vnd.oasis.opendocument.text',
+          };
+
+          return extensionMimeMap[extension] || 'application/octet-stream';
+        };
+
+        // Ensure filename has proper extension
+        let filename = doc.name;
+        if (!filename.includes('.') && fileExtension) {
+          // If no extension but we detected one, add it
+          const extensionFromType = doc.fileType === 'PDF Document' ? 'pdf' : '';
+          if (extensionFromType) {
+            filename = `${filename}.${extensionFromType}`;
+          }
+        }
+
+        const mimeType = getMimeType(doc.fileType, fileExtension);
+        console.log(`Using MIME type: ${mimeType} for file type: ${doc.fileType}`);
+        console.log(`Final filename: ${filename}`);
+
         let fileBlob: Blob;
         
         // Handle different file data formats
@@ -67,10 +119,11 @@ serve(async (req) => {
           for (let i = 0; i < binaryString.length; i++) {
             bytes[i] = binaryString.charCodeAt(i);
           }
-          fileBlob = new Blob([bytes], { type: doc.fileType === 'PDF Document' ? 'application/pdf' : doc.fileType });
+          fileBlob = new Blob([bytes], { type: mimeType });
         } else if (doc.fileData instanceof File) {
-          // Handle File object
-          fileBlob = doc.fileData;
+          // Handle File object - use original MIME type if available, otherwise use our mapping
+          const finalMimeType = doc.fileData.type || mimeType;
+          fileBlob = new Blob([doc.fileData], { type: finalMimeType });
         } else if (doc.fileData && typeof doc.fileData === 'object') {
           // Handle object with file data - might be a serialized File
           if (doc.fileData.type && doc.fileData.size !== undefined) {
@@ -85,7 +138,7 @@ serve(async (req) => {
         
         // Create form data for WordPress media upload
         const formData = new FormData();
-        formData.append('file', fileBlob, doc.name);
+        formData.append('file', fileBlob, filename);
 
         // Upload to WordPress media library
         const uploadResponse = await fetch(`${wpUrl}/wp-json/wp/v2/media`, {
