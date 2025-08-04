@@ -45,24 +45,8 @@ const DocumentMetadata: React.FC<DocumentMetadataProps> = ({
         setNsiSchemes(schemeNames);
       } catch (error) {
         console.error('Failed to fetch NSI schemes:', error);
-        // Fallback to common NSI schemes if WordPress fetch fails
-        setNsiSchemes([
-          'Building Regulations',
-          'Health & Safety',
-          'Guarding',
-          'Cash Services',
-          'Fire Safety',
-          'Security Systems',
-          'Close Protection',
-          'Door Supervision',
-          'CCTV',
-          'Access Control',
-          'Key Holding',
-          'Security Guarding',
-          'Event Security',
-          'Retail Security',
-          'Corporate Security'
-        ]);
+        // Keep empty array if WordPress fetch fails
+        setNsiSchemes([]);
       } finally {
         setIsLoadingSchemes(false);
       }
