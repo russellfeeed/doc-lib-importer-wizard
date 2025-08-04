@@ -10,7 +10,7 @@ interface UploadRequest {
   documents: Array<{
     id: string;
     name: string;
-    fileData: string; // Base64 encoded file data
+    fileData: any; // Can be File object, base64 string, or other format
     fileType: string;
   }>;
   wpUrl: string;
@@ -46,34 +46,42 @@ serve(async (req) => {
       try {
         console.log(`Uploading document: ${doc.name}`);
         console.log(`File data type: ${typeof doc.fileData}`);
-        console.log(`File data preview: ${typeof doc.fileData === 'string' ? doc.fileData.substring(0, 100) : 'Not a string'}`);
+        console.log(`File data keys: ${doc.fileData && typeof doc.fileData === 'object' ? Object.keys(doc.fileData) : 'N/A'}`);
 
         // Convert file data to blob
         if (!doc.fileData) {
           throw new Error('No file data provided');
         }
 
-        let base64Data: string;
+        let fileBlob: Blob;
         
         // Handle different file data formats
         if (typeof doc.fileData === 'string') {
-          // Remove data URL prefix if present (data:application/pdf;base64,)
-          base64Data = doc.fileData.includes(',') 
+          // Handle base64 string
+          const base64Data = doc.fileData.includes(',') 
             ? doc.fileData.split(',')[1] 
             : doc.fileData;
+
+          const binaryString = atob(base64Data);
+          const bytes = new Uint8Array(binaryString.length);
+          for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
+          }
+          fileBlob = new Blob([bytes], { type: doc.fileType === 'PDF Document' ? 'application/pdf' : doc.fileType });
+        } else if (doc.fileData instanceof File) {
+          // Handle File object
+          fileBlob = doc.fileData;
+        } else if (doc.fileData && typeof doc.fileData === 'object') {
+          // Handle object with file data - might be a serialized File
+          if (doc.fileData.type && doc.fileData.size !== undefined) {
+            // This looks like a File-like object
+            throw new Error('File objects cannot be serialized through JSON. Please convert to base64 string before sending.');
+          } else {
+            throw new Error(`Unsupported file data object format`);
+          }
         } else {
-          throw new Error(`Invalid file data format: expected string, got ${typeof doc.fileData}`);
+          throw new Error(`Invalid file data format: expected string or File, got ${typeof doc.fileData}`);
         }
-
-        // Convert base64 to Uint8Array
-        const binaryString = atob(base64Data);
-        const bytes = new Uint8Array(binaryString.length);
-        for (let i = 0; i < binaryString.length; i++) {
-          bytes[i] = binaryString.charCodeAt(i);
-        }
-
-        // Create blob from bytes
-        const fileBlob = new Blob([bytes], { type: doc.fileType === 'PDF Document' ? 'application/pdf' : doc.fileType });
         
         // Create form data for WordPress media upload
         const formData = new FormData();

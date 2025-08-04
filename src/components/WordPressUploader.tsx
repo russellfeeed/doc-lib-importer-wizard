@@ -22,6 +22,22 @@ interface UploadResult {
   error?: string;
 }
 
+// Helper function to convert File to base64
+const convertFileToBase64 = (file: File): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') {
+        resolve(reader.result);
+      } else {
+        reject(new Error('Failed to convert file to base64'));
+      }
+    };
+    reader.onerror = () => reject(new Error('Error reading file'));
+    reader.readAsDataURL(file);
+  });
+};
+
 const WordPressUploader: React.FC<WordPressUploaderProps> = ({ 
   documents, 
   onBack,
@@ -82,28 +98,35 @@ const WordPressUploader: React.FC<WordPressUploaderProps> = ({
     setUploadResults([]);
 
     try {
-      const documentsToUpload = uploadableDocuments
-        .filter(doc => selectedDocuments.has(doc.id))
-        .map(doc => {
-          if ('referenceNumber' in doc) {
-            // Handle circular letters
-            return {
-              id: doc.id,
-              name: doc.name,
-              fileData: (doc as any).file, // Use file data for circular letters
-              fileType: 'application/pdf',
-            };
-          } else {
-            // Handle regular documents
-            const docFile = doc as DocumentFile;
-            return {
-              id: doc.id,
-              name: doc.name,
-              fileData: docFile.file, // Use file data instead of fileUrl
-              fileType: docFile.fileType,
-            };
-          }
-        });
+      // Convert files to base64 before uploading
+      const documentsToUpload = await Promise.all(
+        uploadableDocuments
+          .filter(doc => selectedDocuments.has(doc.id))
+          .map(async (doc) => {
+            if ('referenceNumber' in doc) {
+              // Handle circular letters
+              const file = (doc as any).file;
+              const fileData = file ? await convertFileToBase64(file) : null;
+              return {
+                id: doc.id,
+                name: doc.name,
+                fileData,
+                fileType: 'application/pdf',
+              };
+            } else {
+              // Handle regular documents
+              const docFile = doc as DocumentFile;
+              const file = docFile.file;
+              const fileData = file ? await convertFileToBase64(file) : null;
+              return {
+                id: doc.id,
+                name: doc.name,
+                fileData,
+                fileType: docFile.fileType,
+              };
+            }
+          })
+      );
 
       console.log('Uploading documents:', documentsToUpload);
 
