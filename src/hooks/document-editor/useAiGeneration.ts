@@ -31,16 +31,6 @@ export function useAiGeneration({
 
     // Check if content is empty
     if (!currentDocument.content || currentDocument.content.trim().length === 0) {
-      setEditedDocuments(prev => prev.map((doc, index) =>
-        index === currentDocIndex ? { 
-          ...doc, 
-          aiProcessing: { 
-            status: 'error',
-            error: 'No content extracted from document. Cannot generate excerpt.'
-          } 
-        } : doc
-      ));
-      toast.error('Cannot generate excerpt: No content extracted from document');
       return;
     }
     
@@ -259,14 +249,6 @@ export function useAiGeneration({
       
       try {
         if (!doc.content || doc.content.trim().length === 0) {
-          docsInProgress[i] = {
-            ...doc,
-            aiProcessing: { 
-              status: 'error',
-              error: 'No content extracted from document. Cannot generate excerpt.'
-            }
-          };
-          setEditedDocuments([...docsInProgress]);
           continue;
         }
 

@@ -24,20 +24,6 @@ export function useSimpleAiGeneration({
     
     // Check if content is empty
     if (!currentDoc.content || currentDoc.content.trim().length === 0) {
-      setEditedDocuments(prev => 
-        prev.map((doc, index) => 
-          index === currentDocIndex 
-            ? { 
-                ...doc, 
-                aiProcessing: { 
-                  status: 'error',
-                  error: 'No content extracted from document. Cannot generate excerpt.'
-                }
-              }
-            : doc
-        )
-      );
-      toast.error('Cannot generate excerpt: No content extracted from document');
       return;
     }
     
@@ -229,13 +215,6 @@ export function useSimpleAiGeneration({
       for (let i = 0; i < updatedDocs.length; i++) {
         try {
           if (!updatedDocs[i].content || updatedDocs[i].content.trim().length === 0) {
-            updatedDocs[i] = { 
-              ...updatedDocs[i], 
-              aiProcessing: { 
-                status: 'error',
-                error: 'No content extracted from document. Cannot generate excerpt.'
-              }
-            };
             continue;
           }
           const excerpt = await generateDocumentSummary(updatedDocs[i].content, updatedDocs[i].name);
