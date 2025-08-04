@@ -1,13 +1,12 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ChevronLeft, Upload, Eye, EyeOff, CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { ChevronLeft, Upload, CheckCircle, XCircle, Loader2, Settings } from 'lucide-react';
 import { DocumentFile } from '@/types/document';
 import { CircularLetter } from '@/types/circular-letter';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { getWordPressSettings, hasWordPressSettings } from '@/utils/settingsUtils';
 
 interface WordPressUploaderProps {
   documents: DocumentFile[] | CircularLetter[];
@@ -29,13 +28,14 @@ const WordPressUploader: React.FC<WordPressUploaderProps> = ({
   onComplete
 }) => {
   const [selectedDocuments, setSelectedDocuments] = useState<Set<string>>(new Set());
-  const [wpUrl, setWpUrl] = useState('https://dev.members.nsi.org.uk');
-  const [wpUsername, setWpUsername] = useState('');
-  const [wpPassword, setWpPassword] = useState('');
-  const [showPassword, setShowPassword] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadResults, setUploadResults] = useState<UploadResult[]>([]);
   const [uploadComplete, setUploadComplete] = useState(false);
+  const [wpSettings, setWpSettings] = useState(getWordPressSettings());
+
+  useEffect(() => {
+    setWpSettings(getWordPressSettings());
+  }, []);
 
   // Filter documents that have file URLs
   const uploadableDocuments = documents.filter(doc => {
@@ -73,8 +73,8 @@ const WordPressUploader: React.FC<WordPressUploaderProps> = ({
       return;
     }
 
-    if (!wpUsername || !wpPassword) {
-      toast.error('Please enter your WordPress credentials');
+    if (!wpSettings) {
+      toast.error('WordPress credentials not configured. Please configure them in Settings.');
       return;
     }
 
@@ -110,9 +110,9 @@ const WordPressUploader: React.FC<WordPressUploaderProps> = ({
       const { data, error } = await supabase.functions.invoke('wordpress-upload', {
         body: {
           documents: documentsToUpload,
-          wpUrl,
-          wpUsername,
-          wpPassword,
+          wpUrl: wpSettings.siteUrl,
+          wpUsername: wpSettings.username,
+          wpPassword: wpSettings.password,
         }
       });
 
@@ -220,61 +220,42 @@ const WordPressUploader: React.FC<WordPressUploaderProps> = ({
         </p>
       </div>
 
-      {/* WordPress Credentials */}
+      {/* WordPress Settings Status */}
       <div className="border rounded-lg p-6 space-y-4">
-        <h3 className="font-medium mb-4">WordPress Credentials</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <Label htmlFor="wp-url">WordPress Site URL</Label>
-            <Input
-              id="wp-url"
-              value={wpUrl}
-              onChange={(e) => setWpUrl(e.target.value)}
-              placeholder="https://yoursite.com"
-            />
-          </div>
-          <div>
-            <Label htmlFor="wp-username">Username</Label>
-            <Input
-              id="wp-username"
-              value={wpUsername}
-              onChange={(e) => setWpUsername(e.target.value)}
-              placeholder="WordPress username"
-            />
-          </div>
+        <div className="flex justify-between items-center">
+          <h3 className="font-medium">WordPress Settings</h3>
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => window.open('/settings', '_blank')}
+          >
+            <Settings className="mr-2 h-4 w-4" />
+            Configure Settings
+          </Button>
         </div>
-        <div>
-          <Label htmlFor="wp-password">Application Password</Label>
-          <div className="relative">
-            <Input
-              id="wp-password"
-              type={showPassword ? 'text' : 'password'}
-              value={wpPassword}
-              onChange={(e) => setWpPassword(e.target.value)}
-              placeholder="WordPress application password"
-            />
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="absolute right-2 top-1/2 -translate-y-1/2 h-auto p-1"
-              onClick={() => setShowPassword(!showPassword)}
-            >
-              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-            </Button>
+        
+        {wpSettings ? (
+          <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+            <div className="flex items-center space-x-2">
+              <CheckCircle className="h-5 w-5 text-green-600" />
+              <span className="text-green-700 font-medium">WordPress credentials configured</span>
+            </div>
+            <div className="mt-2 text-sm text-green-600">
+              <div>Site URL: {wpSettings.siteUrl}</div>
+              <div>Username: {wpSettings.username}</div>
+            </div>
           </div>
-          <p className="text-sm text-gray-500 mt-1">
-            Use an Application Password for secure authentication. 
-            <a 
-              href={`${wpUrl}/wp-admin/profile.php`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 hover:text-blue-800 underline ml-1"
-            >
-              Create one here
-            </a>
-          </p>
-        </div>
+        ) : (
+          <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="flex items-center space-x-2">
+              <XCircle className="h-5 w-5 text-red-600" />
+              <span className="text-red-700 font-medium">WordPress credentials not configured</span>
+            </div>
+            <p className="mt-2 text-sm text-red-600">
+              Please configure your WordPress settings before uploading documents.
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Document Selection */}
