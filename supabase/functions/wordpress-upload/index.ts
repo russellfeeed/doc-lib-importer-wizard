@@ -45,16 +45,25 @@ serve(async (req) => {
     for (const doc of documents) {
       try {
         console.log(`Uploading document: ${doc.name}`);
+        console.log(`File data type: ${typeof doc.fileData}`);
+        console.log(`File data preview: ${typeof doc.fileData === 'string' ? doc.fileData.substring(0, 100) : 'Not a string'}`);
 
-        // Convert base64 file data to blob
+        // Convert file data to blob
         if (!doc.fileData) {
           throw new Error('No file data provided');
         }
 
-        // Remove data URL prefix if present (data:application/pdf;base64,)
-        const base64Data = doc.fileData.includes(',') 
-          ? doc.fileData.split(',')[1] 
-          : doc.fileData;
+        let base64Data: string;
+        
+        // Handle different file data formats
+        if (typeof doc.fileData === 'string') {
+          // Remove data URL prefix if present (data:application/pdf;base64,)
+          base64Data = doc.fileData.includes(',') 
+            ? doc.fileData.split(',')[1] 
+            : doc.fileData;
+        } else {
+          throw new Error(`Invalid file data format: expected string, got ${typeof doc.fileData}`);
+        }
 
         // Convert base64 to Uint8Array
         const binaryString = atob(base64Data);
