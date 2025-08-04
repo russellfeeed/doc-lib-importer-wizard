@@ -10,7 +10,7 @@ interface UploadRequest {
   documents: Array<{
     id: string;
     name: string;
-    fileUrl: string;
+    fileData: string; // Base64 encoded file data
     fileType: string;
   }>;
   wpUrl: string;
@@ -46,13 +46,25 @@ serve(async (req) => {
       try {
         console.log(`Uploading document: ${doc.name}`);
 
-        // Download the file first
-        const fileResponse = await fetch(doc.fileUrl);
-        if (!fileResponse.ok) {
-          throw new Error(`Failed to download file: ${fileResponse.statusText}`);
+        // Convert base64 file data to blob
+        if (!doc.fileData) {
+          throw new Error('No file data provided');
         }
 
-        const fileBlob = await fileResponse.blob();
+        // Remove data URL prefix if present (data:application/pdf;base64,)
+        const base64Data = doc.fileData.includes(',') 
+          ? doc.fileData.split(',')[1] 
+          : doc.fileData;
+
+        // Convert base64 to Uint8Array
+        const binaryString = atob(base64Data);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+
+        // Create blob from bytes
+        const fileBlob = new Blob([bytes], { type: doc.fileType === 'PDF Document' ? 'application/pdf' : doc.fileType });
         
         // Create form data for WordPress media upload
         const formData = new FormData();

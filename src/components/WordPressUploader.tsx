@@ -90,7 +90,7 @@ const WordPressUploader: React.FC<WordPressUploaderProps> = ({
             return {
               id: doc.id,
               name: doc.name,
-              fileUrl: '', // Circular letters don't have direct file URLs
+              fileData: (doc as any).file, // Use file data for circular letters
               fileType: 'application/pdf',
             };
           } else {
@@ -99,7 +99,7 @@ const WordPressUploader: React.FC<WordPressUploaderProps> = ({
             return {
               id: doc.id,
               name: doc.name,
-              fileUrl: docFile.fileUrl || '',
+              fileData: docFile.file, // Use file data instead of fileUrl
               fileType: docFile.fileType,
             };
           }
