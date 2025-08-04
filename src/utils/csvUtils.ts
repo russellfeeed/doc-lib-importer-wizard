@@ -80,8 +80,16 @@ export const generateCSV = (documents: DocumentFile[] | CircularLetter[]): strin
   // Create CSV header row
   let csv = headers.join(',') + '\n';
   
-  // Add document rows
-  documents.forEach(doc => {
+  // Add document rows (excluding omitted documents)
+  documents
+    .filter(doc => {
+      // For circular letters, include all documents
+      if (isCircularLetter) return true;
+      // For regular documents, exclude if omitFromCSV is true
+      const docFile = doc as DocumentFile;
+      return !docFile.omitFromCSV;
+    })
+    .forEach(doc => {
     let row: Record<string, string> = {};
     
     if (isCircularLetter) {

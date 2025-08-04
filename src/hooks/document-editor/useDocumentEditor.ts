@@ -21,7 +21,7 @@ export function useDocumentEditor({
     currentDocument
   } = useDocumentState({ initialDocuments, onSave });
 
-  const { handleChange, handleTableChange, handleSaveAll, handleToggleAllPublished } = useDocumentActions({
+  const { handleChange, handleTableChange, handleSaveAll, handleToggleAllPublished, handleDeleteDocument } = useDocumentActions({
     editedDocuments,
     currentDocIndex,
     setEditedDocuments,
@@ -69,5 +69,6 @@ export function useDocumentEditor({
     handleGenerateAllCategories,
     handleGenerateAllTags,
     handleToggleAllPublished,
+    handleDeleteDocument,
   };
 }

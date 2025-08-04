@@ -13,6 +13,7 @@ export interface DocumentFile {
   imageUrl: string;
   content: string;
   published: boolean;
+  omitFromCSV?: boolean;
   customFields: Record<string, string>;
   customTaxonomies: Record<string, string>;
   isProcessing?: boolean;

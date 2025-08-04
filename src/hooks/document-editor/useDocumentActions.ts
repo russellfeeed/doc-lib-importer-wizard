@@ -45,10 +45,21 @@ export function useDocumentActions({
     toast.success(`All documents ${published ? 'published' : 'unpublished'}`);
   };
 
+  const handleDeleteDocument = () => {
+    if (editedDocuments.length <= 1) {
+      toast.error("Cannot delete the last document");
+      return;
+    }
+    
+    setEditedDocuments(prev => prev.filter((_, index) => index !== currentDocIndex));
+    toast.success("Document deleted");
+  };
+
   return {
     handleChange,
     handleTableChange,
     handleSaveAll,
-    handleToggleAllPublished
+    handleToggleAllPublished,
+    handleDeleteDocument
   };
 }

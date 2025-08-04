@@ -25,6 +25,7 @@ interface SingleDocumentEditorProps {
   onToggleView: () => void;
   onSave: () => void;
   onBack: () => void;
+  onDelete?: () => void;
 }
 
 const SingleDocumentEditor: React.FC<SingleDocumentEditorProps> = ({
@@ -45,7 +46,8 @@ const SingleDocumentEditor: React.FC<SingleDocumentEditorProps> = ({
   onGenerateAllSchemes,
   onToggleView,
   onSave,
-  onBack
+  onBack,
+  onDelete
 }) => {
   return (
     <div className="space-y-6">
@@ -68,6 +70,7 @@ const SingleDocumentEditor: React.FC<SingleDocumentEditorProps> = ({
           onGenerateCategory={onGenerateCategory}
           onGenerateTags={onGenerateTags}
           onGenerateScheme={onGenerateScheme}
+          onDelete={onDelete}
         />
         
         <DocumentContent 

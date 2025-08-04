@@ -36,6 +36,7 @@ const StandardsDocumentEditor: React.FC<StandardsDocumentEditorProps> = ({
     handleGenerateAllCategories,
     handleGenerateAllTags,
     handleToggleAllPublished,
+    handleDeleteDocument,
   } = useStandardsDocumentEditor({
     initialDocuments: documents, 
     onSave
@@ -75,6 +76,7 @@ const StandardsDocumentEditor: React.FC<StandardsDocumentEditorProps> = ({
           onToggleView={toggleEditAll}
           onSave={handleSaveAll}
           onBack={onBack}
+          onDelete={handleDeleteDocument}
         />
       ) : (
         <DocumentsTableView

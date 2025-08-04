@@ -32,6 +32,7 @@ const SimpleDocumentEditor: React.FC<SimpleDocumentEditorProps> = ({ documents, 
     handleGenerateAllTags,
     handleGenerateAllSchemes,
     handleToggleAllPublished,
+    handleDeleteDocument,
   } = useSimpleDocumentEditor({
     initialDocuments: documents,
     onSave
@@ -73,6 +74,7 @@ const SimpleDocumentEditor: React.FC<SimpleDocumentEditorProps> = ({ documents, 
           onToggleView={toggleEditAll}
           onSave={handleSaveAll}
           onBack={onBack}
+          onDelete={handleDeleteDocument}
         />
       ) : (
         <DocumentsTableView

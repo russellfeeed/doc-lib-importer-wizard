@@ -5,7 +5,7 @@ import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { PDFViewerModal } from '@/components/ui/pdf-viewer-modal';
-import { Tag, BookCopy, FolderOpen, ChevronRight, AlertTriangle, Building, CheckSquare, Square, FileText, Eye } from 'lucide-react';
+import { Tag, BookCopy, FolderOpen, ChevronRight, AlertTriangle, Building, CheckSquare, Square, FileText, Eye, Trash2 } from 'lucide-react';
 import { DocumentFile } from '@/types/document';
 import { useCategories } from '@/context/CategoryContext';
 import { CategoryNode } from '@/types/categories';
@@ -18,6 +18,7 @@ interface DocumentMetadataProps {
   onGenerateCategory?: () => void;
   onGenerateTags?: () => void;
   onGenerateScheme?: () => void;
+  onDelete?: () => void;
 }
 
 const DocumentMetadata: React.FC<DocumentMetadataProps> = ({
@@ -26,7 +27,8 @@ const DocumentMetadata: React.FC<DocumentMetadataProps> = ({
   onEdit,
   onGenerateCategory,
   onGenerateTags,
-  onGenerateScheme
+  onGenerateScheme,
+  onDelete
 }) => {
   const { hierarchy } = useCategories();
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
@@ -375,6 +377,20 @@ const DocumentMetadata: React.FC<DocumentMetadataProps> = ({
       <div className="mb-4">
         <div className="flex items-center">
           <Switch 
+            checked={!!document.omitFromCSV}
+            onCheckedChange={(checked) => onEdit('omitFromCSV', checked)}
+            id="omitFromCSV"
+          />
+          <label htmlFor="omitFromCSV" className="ml-2 text-sm font-medium">
+            Omit Document from CSV
+          </label>
+        </div>
+        <p className="text-xs text-gray-500 mt-1">When enabled, this document will be excluded from CSV generation</p>
+      </div>
+
+      <div className="mb-4">
+        <div className="flex items-center">
+          <Switch 
             checked={document.published}
             onCheckedChange={(checked) => onEdit('published', checked)}
             id="published"
@@ -384,6 +400,19 @@ const DocumentMetadata: React.FC<DocumentMetadataProps> = ({
           </label>
         </div>
       </div>
+
+      {onDelete && (
+        <div className="mb-4">
+          <Button 
+            variant="destructive" 
+            onClick={onDelete}
+            className="w-full"
+          >
+            <Trash2 className="mr-2 h-4 w-4" />
+            Delete Document
+          </Button>
+        </div>
+      )}
 
       {/* PDF Viewer Modal */}
       <PDFViewerModal
