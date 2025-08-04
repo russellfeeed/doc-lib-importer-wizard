@@ -53,11 +53,41 @@ serve(async (req) => {
           throw new Error('No file data provided');
         }
 
-        // Extract file extension from filename
-        const fileExtension = doc.name.split('.').pop()?.toLowerCase() || '';
-        console.log(`File extension detected: ${fileExtension}`);
+        // Define valid file extensions and their MIME types
+        const validExtensions = new Set(['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'rtf', 'odt']);
+        
+        // Function to get proper file extension from filename or file type
+        const getFileExtension = (filename: string, fileType: string): string => {
+          // Check if filename already has a valid extension
+          const parts = filename.split('.');
+          if (parts.length > 1) {
+            const lastPart = parts[parts.length - 1].toLowerCase();
+            if (validExtensions.has(lastPart)) {
+              console.log(`Valid extension found in filename: ${lastPart}`);
+              return lastPart;
+            }
+          }
+          
+          // No valid extension found, determine from file type
+          const typeToExtensionMap: Record<string, string> = {
+            'PDF Document': 'pdf',
+            'Word Document': 'docx',
+            'Excel Spreadsheet': 'xlsx',
+            'PowerPoint Presentation': 'pptx',
+            'Text Document': 'txt',
+            'Rich Text Document': 'rtf',
+            'OpenDocument Text': 'odt',
+          };
+          
+          const extension = typeToExtensionMap[fileType] || 'pdf'; // Default to pdf
+          console.log(`No valid extension in filename, using extension from file type: ${extension}`);
+          return extension;
+        };
 
-        // Map display file types to proper MIME types
+        // Get the proper file extension
+        const fileExtension = getFileExtension(doc.name, doc.fileType);
+        
+        // Map file types to proper MIME types
         const getMimeType = (fileType: string, extension: string): string => {
           const mimeTypeMap: Record<string, string> = {
             'PDF Document': 'application/pdf',
@@ -93,15 +123,13 @@ serve(async (req) => {
 
         // Ensure filename has proper extension
         let filename = doc.name;
-        if (!filename.includes('.') && fileExtension) {
-          // If no extension but we detected one, add it
-          const extensionFromType = doc.fileType === 'PDF Document' ? 'pdf' : '';
-          if (extensionFromType) {
-            filename = `${filename}.${extensionFromType}`;
-          }
+        if (!doc.name.toLowerCase().endsWith(`.${fileExtension}`)) {
+          filename = `${doc.name}.${fileExtension}`;
         }
 
         const mimeType = getMimeType(doc.fileType, fileExtension);
+        console.log(`Original filename: ${doc.name}`);
+        console.log(`File extension: ${fileExtension}`);
         console.log(`Using MIME type: ${mimeType} for file type: ${doc.fileType}`);
         console.log(`Final filename: ${filename}`);
 
