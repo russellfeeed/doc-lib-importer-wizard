@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,7 @@ import { Tag, BookCopy, FolderOpen, ChevronRight, AlertTriangle, Building, Check
 import { DocumentFile } from '@/types/document';
 import { useCategories } from '@/context/CategoryContext';
 import { CategoryNode } from '@/types/categories';
+import { fetchWordPressTaxonomies } from '@/utils/wordpressUtils';
 
 interface DocumentMetadataProps {
   document: DocumentFile;
@@ -31,25 +32,28 @@ const DocumentMetadata: React.FC<DocumentMetadataProps> = ({
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   const [isSchemePopoverOpen, setIsSchemePopoverOpen] = useState(false);
   const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
+  const [nsiSchemes, setNsiSchemes] = useState<string[]>([]);
+  const [isLoadingSchemes, setIsLoadingSchemes] = useState(false);
 
-  // Common NSI schemes
-  const nsiSchemes = [
-    'Building Regulations',
-    'Health & Safety',
-    'Guarding',
-    'Cash Services',
-    'Fire Safety',
-    'Security Systems',
-    'Close Protection',
-    'Door Supervision',
-    'CCTV',
-    'Access Control',
-    'Key Holding',
-    'Security Guarding',
-    'Event Security',
-    'Retail Security',
-    'Corporate Security'
-  ];
+  // Fetch NSI schemes from WordPress taxonomy
+  useEffect(() => {
+    const loadNsiSchemes = async () => {
+      setIsLoadingSchemes(true);
+      try {
+        const schemes = await fetchWordPressTaxonomies('nsi-scheme');
+        const schemeNames = schemes.map(scheme => scheme.name);
+        setNsiSchemes(schemeNames);
+      } catch (error) {
+        console.error('Failed to fetch NSI schemes:', error);
+        // Fallback to empty array if WordPress fetch fails
+        setNsiSchemes([]);
+      } finally {
+        setIsLoadingSchemes(false);
+      }
+    };
+
+    loadNsiSchemes();
+  }, []);
 
   const buildCategoryPath = (categoryId: string, categories: CategoryNode[]): string => {
     const findCategoryPath = (id: string, nodes: CategoryNode[], path: string[] = []): string[] | null => {
@@ -216,22 +220,31 @@ const DocumentMetadata: React.FC<DocumentMetadataProps> = ({
                 <div className="space-y-1">
                   <h4 className="font-medium text-sm mb-2">Select NSI Schemes</h4>
                   <p className="text-xs text-muted-foreground mb-3">Select multiple schemes</p>
-                  {nsiSchemes.map((scheme) => (
-                    <Button
-                      key={scheme}
-                      variant="ghost"
-                      size="sm"
-                      className="w-full justify-start text-left h-8 px-2"
-                      onClick={() => handleSchemeToggle(scheme)}
-                    >
-                      {isSchemeSelected(scheme) ? (
-                        <CheckSquare className="mr-2 h-3 w-3 text-blue-600" />
-                      ) : (
-                        <Square className="mr-2 h-3 w-3" />
-                      )}
-                      {scheme}
-                    </Button>
-                  ))}
+                  {isLoadingSchemes ? (
+                    <div className="flex items-center justify-center py-4">
+                      <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full mr-2" />
+                      Loading schemes...
+                    </div>
+                  ) : nsiSchemes.length > 0 ? (
+                    nsiSchemes.map((scheme) => (
+                      <Button
+                        key={scheme}
+                        variant="ghost"
+                        size="sm"
+                        className="w-full justify-start text-left h-8 px-2"
+                        onClick={() => handleSchemeToggle(scheme)}
+                      >
+                        {isSchemeSelected(scheme) ? (
+                          <CheckSquare className="mr-2 h-3 w-3 text-blue-600" />
+                        ) : (
+                          <Square className="mr-2 h-3 w-3" />
+                        )}
+                        {scheme}
+                      </Button>
+                    ))
+                  ) : (
+                    <p className="text-sm text-muted-foreground py-2">No NSI schemes found in WordPress taxonomy</p>
+                  )}
                 </div>
               </PopoverContent>
             </Popover>
