@@ -28,6 +28,21 @@ export function useAiGeneration({
       toast.error("OpenAI API key is required. Please set it in the API Key Manager");
       return;
     }
+
+    // Check if content is empty
+    if (!currentDocument.content || currentDocument.content.trim().length === 0) {
+      setEditedDocuments(prev => prev.map((doc, index) =>
+        index === currentDocIndex ? { 
+          ...doc, 
+          aiProcessing: { 
+            status: 'error',
+            error: 'No content extracted from document. Cannot generate excerpt.'
+          } 
+        } : doc
+      ));
+      toast.error('Cannot generate excerpt: No content extracted from document');
+      return;
+    }
     
     setIsGeneratingAI(true);
     
@@ -39,11 +54,8 @@ export function useAiGeneration({
         } : doc
       ));
       
-      const contentToSummarize = currentDocument.content || 
-        (currentDocument.file ? `Document: ${currentDocument.file.name}` : 'No content available');
-      
       const summary = await generateDocumentSummary(
-        contentToSummarize, 
+        currentDocument.content, 
         currentDocument.file?.name || currentDocument.name
       );
       
@@ -85,6 +97,21 @@ export function useAiGeneration({
       return;
     }
     
+    // Check if content is empty
+    if (!currentDocument.content || currentDocument.content.trim().length === 0) {
+      setEditedDocuments(prev => prev.map((doc, index) =>
+        index === currentDocIndex ? { 
+          ...doc, 
+          aiProcessing: { 
+            status: 'error',
+            error: 'No content extracted from document. Cannot generate category.'
+          } 
+        } : doc
+      ));
+      toast.error('Cannot generate category: No content extracted from document');
+      return;
+    }
+    
     setIsGeneratingAI(true);
     
     try {
@@ -96,7 +123,7 @@ export function useAiGeneration({
       ));
       
       const category = await generateDocumentCategory(
-        currentDocument.content || 'No content available', 
+        currentDocument.content, 
         currentDocument.file.name
       );
       
@@ -142,6 +169,21 @@ export function useAiGeneration({
       return;
     }
     
+    // Check if content is empty
+    if (!currentDocument.content || currentDocument.content.trim().length === 0) {
+      setEditedDocuments(prev => prev.map((doc, index) =>
+        index === currentDocIndex ? { 
+          ...doc, 
+          aiProcessing: { 
+            status: 'error',
+            error: 'No content extracted from document. Cannot generate tags.'
+          } 
+        } : doc
+      ));
+      toast.error('Cannot generate tags: No content extracted from document');
+      return;
+    }
+    
     setIsGeneratingAI(true);
     
     try {
@@ -153,7 +195,7 @@ export function useAiGeneration({
       ));
       
       const tags = await generateDocumentTags(
-        currentDocument.content || 'No content available', 
+        currentDocument.content, 
         currentDocument.file.name,
         currentDocument.categories
       );
@@ -216,6 +258,18 @@ export function useAiGeneration({
       if (!doc.file || (doc.excerpt && doc.excerpt.trim() !== '')) continue;
       
       try {
+        if (!doc.content || doc.content.trim().length === 0) {
+          docsInProgress[i] = {
+            ...doc,
+            aiProcessing: { 
+              status: 'error',
+              error: 'No content extracted from document. Cannot generate excerpt.'
+            }
+          };
+          setEditedDocuments([...docsInProgress]);
+          continue;
+        }
+
         docsInProgress[i] = {
           ...doc,
           aiProcessing: { status: 'processing' }
@@ -223,7 +277,7 @@ export function useAiGeneration({
         setEditedDocuments([...docsInProgress]);
         
         const summary = await generateDocumentSummary(
-          doc.content || 'No content available',
+          doc.content,
           doc.file.name
         );
         
@@ -277,6 +331,18 @@ export function useAiGeneration({
       if (!doc.file || (doc.categories && doc.categories.trim() !== '')) continue;
       
       try {
+        if (!doc.content || doc.content.trim().length === 0) {
+          docsInProgress[i] = {
+            ...doc,
+            aiProcessing: { 
+              status: 'error',
+              error: 'No content extracted from document. Cannot generate category.'
+            }
+          };
+          setEditedDocuments([...docsInProgress]);
+          continue;
+        }
+
         docsInProgress[i] = {
           ...doc,
           aiProcessing: { status: 'processing' }
@@ -284,7 +350,7 @@ export function useAiGeneration({
         setEditedDocuments([...docsInProgress]);
         
         const category = await generateDocumentCategory(
-          doc.content || 'No content available',
+          doc.content,
           doc.file.name
         );
         
@@ -340,6 +406,18 @@ export function useAiGeneration({
       if (!doc.file || (doc.tags && doc.tags.trim() !== '')) continue;
       
       try {
+        if (!doc.content || doc.content.trim().length === 0) {
+          docsInProgress[i] = {
+            ...doc,
+            aiProcessing: { 
+              status: 'error',
+              error: 'No content extracted from document. Cannot generate tags.'
+            }
+          };
+          setEditedDocuments([...docsInProgress]);
+          continue;
+        }
+
         docsInProgress[i] = {
           ...doc,
           aiProcessing: { status: 'processing' }
@@ -347,7 +425,7 @@ export function useAiGeneration({
         setEditedDocuments([...docsInProgress]);
         
         const tags = await generateDocumentTags(
-          doc.content || 'No content available',
+          doc.content,
           doc.file.name,
           doc.categories
         );
