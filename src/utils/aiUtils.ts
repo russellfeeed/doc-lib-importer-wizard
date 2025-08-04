@@ -206,23 +206,30 @@ export async function extractTextFromDocument(file: File): Promise<string> {
   console.log(`Extracting text from document: ${file.name}, type: ${file.type}, size: ${file.size} bytes`);
   
   try {
+    let extractedContent = '';
+    
     // Handle different file types
     if (file.type === 'application/pdf') {
-      return await extractTextFromPDF(file);
+      extractedContent = await extractTextFromPDF(file);
     } 
     else if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || 
              file.type === 'application/msword') {
       // For now, we'll use a placeholder for Word documents
       // In a production app, you'd use mammoth.js or similar
-      return `Content extracted from Word document: ${file.name}`;
+      extractedContent = `Content extracted from Word document: ${file.name}`;
     }
     else if (file.type === 'text/plain') {
-      return await extractTextFromTxt(file);
+      extractedContent = await extractTextFromTxt(file);
     }
     else {
       // For other file types, return a placeholder
-      return `Content from ${file.name} (${file.type})`;
+      extractedContent = `Content from ${file.name} (${file.type})`;
     }
+    
+    console.log(`Text extraction result for ${file.name}: ${extractedContent.length} characters`);
+    console.log(`First 200 characters:`, extractedContent.substring(0, 200));
+    
+    return extractedContent;
   } catch (error) {
     console.error(`Error extracting text from ${file.name}:`, error);
     return `Failed to extract content from ${file.name}. Error: ${error instanceof Error ? error.message : String(error)}`;
