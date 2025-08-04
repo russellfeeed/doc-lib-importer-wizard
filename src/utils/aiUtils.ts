@@ -250,16 +250,30 @@ async function extractTextFromPDF(file: File): Promise<string> {
     
     // Process each page of the PDF
     for (let i = 1; i <= pdf.numPages; i++) {
+      console.log(`Processing page ${i} of ${pdf.numPages}`);
+      
       // Get the page
       const page = await pdf.getPage(i);
       
       // Extract text content from the page
       const textContent = await page.getTextContent();
+      console.log(`Page ${i} has ${textContent.items.length} text items`);
       
       // Extract the text items
       const pageText = textContent.items
-        .map(item => 'str' in item ? item.str : '')
+        .map((item, index) => {
+          if ('str' in item) {
+            console.log(`Page ${i}, Item ${index}: "${item.str}"`);
+            return item.str;
+          }
+          return '';
+        })
         .join(' ');
+      
+      console.log(`Page ${i} extracted text length: ${pageText.length}`);
+      if (pageText.length > 0) {
+        console.log(`Page ${i} first 100 chars: "${pageText.substring(0, 100)}"`);
+      }
       
       extractedText += pageText + ' ';
       
@@ -268,6 +282,7 @@ async function extractTextFromPDF(file: File): Promise<string> {
     }
     
     console.log(`PDF text extraction completed for: ${file.name}`);
+    console.log(`Total extracted text length: ${extractedText.trim().length}`);
     return extractedText.trim();
   } catch (error) {
     console.error(`Error extracting PDF text from ${file.name}:`, error);
