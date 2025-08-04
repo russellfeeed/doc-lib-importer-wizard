@@ -90,38 +90,41 @@ export function useSimpleFileUpload({ onFilesUploaded }: UseSimpleFileUploadProp
                   )
                 );
 
-                // Generate excerpt
-                const excerpt = await generateDocumentSummary(content, fileObj.name);
-                updatedFile = { ...updatedFile, excerpt };
+                // Only run AI processing if content is not empty
+                if (content && content.trim().length > 0) {
+                  // Generate excerpt
+                  const excerpt = await generateDocumentSummary(content, fileObj.name);
+                  updatedFile = { ...updatedFile, excerpt };
 
-                // Generate category
-                try {
-                  const category = await generateDocumentCategoryWithContext(content, fileObj.name);
-                  updatedFile = { ...updatedFile, categories: category };
-                } catch (error) {
-                  console.warn('Category generation failed:', error);
-                }
+                  // Generate category
+                  try {
+                    const category = await generateDocumentCategoryWithContext(content, fileObj.name);
+                    updatedFile = { ...updatedFile, categories: category };
+                  } catch (error) {
+                    console.warn('Category generation failed:', error);
+                  }
 
-                // Generate tags
-                try {
-                  const tags = await generateDocumentTagsWithContext(content, fileObj.name, updatedFile.categories);
-                  updatedFile = { ...updatedFile, tags };
-                } catch (error) {
-                  console.warn('Tag generation failed:', error);
-                }
+                  // Generate tags
+                  try {
+                    const tags = await generateDocumentTagsWithContext(content, fileObj.name, updatedFile.categories);
+                    updatedFile = { ...updatedFile, tags };
+                  } catch (error) {
+                    console.warn('Tag generation failed:', error);
+                  }
 
-                // Generate scheme
-                try {
-                  const scheme = await generateDocumentScheme(content, fileObj.name);
-                  updatedFile = { 
-                    ...updatedFile, 
-                    customTaxonomies: {
-                      ...updatedFile.customTaxonomies,
-                      'tax:nsi-scheme': scheme
-                    }
-                  };
-                } catch (error) {
-                  console.warn('Scheme generation failed:', error);
+                  // Generate scheme
+                  try {
+                    const scheme = await generateDocumentScheme(content, fileObj.name);
+                    updatedFile = { 
+                      ...updatedFile, 
+                      customTaxonomies: {
+                        ...updatedFile.customTaxonomies,
+                        'tax:nsi-scheme': scheme
+                      }
+                    };
+                  } catch (error) {
+                    console.warn('Scheme generation failed:', error);
+                  }
                 }
 
                 // Mark as completed
