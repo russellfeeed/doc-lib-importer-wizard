@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { UseDocumentEditorProps, UseDocumentEditorReturn } from './document-editor/types';
 import { useDocumentState } from './document-editor/useDocumentState';
 import { useDocumentActions } from './document-editor/useDocumentActions';
@@ -19,6 +20,11 @@ export function useSimpleDocumentEditor({
     setIsGeneratingAI,
     currentDocument
   } = useDocumentState({ initialDocuments, onSave });
+
+  // Default to table view for simple document editor
+  useEffect(() => {
+    setIsEditingAll(true);
+  }, [setIsEditingAll]);
 
   const { handleChange, handleTableChange, handleSaveAll, handleToggleAllPublished, handleDeleteDocument } = useDocumentActions({
     editedDocuments,
