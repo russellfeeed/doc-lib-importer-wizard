@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { toast } from 'sonner';
-import { ArrowLeft, Download, Upload, RotateCcw, Save, Eye, TestTube, Globe, Check, X, Loader2 } from 'lucide-react';
+import { ArrowLeft, Download, Upload, RotateCcw, Save, Eye, TestTube, Globe, Check, X, Loader2, FolderTree } from 'lucide-react';
 import { Link } from 'react-router-dom';
 
 import { Button } from '@/components/ui/button';
@@ -70,6 +70,7 @@ const Settings: React.FC = () => {
   const [isTestingConnection, setIsTestingConnection] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'idle' | 'success' | 'error'>('idle');
   const [nsiSchemes, setNsiSchemes] = useState<any[]>([]);
+  const [docCategories, setDocCategories] = useState<any[]>([]);
   const [isLoadingSchemes, setIsLoadingSchemes] = useState(false);
 
   // WordPress configuration form
@@ -298,6 +299,38 @@ const Settings: React.FC = () => {
     }
   };
 
+  const loadDocCategories = async () => {
+    const wpData = wpForm.getValues();
+    if (!wpData.siteUrl || !wpData.username || !wpData.password) {
+      toast.error('Please configure WordPress settings first');
+      return;
+    }
+
+    setIsLoadingSchemes(true);
+    try {
+      // Pass credentials directly to fetch doc_categories taxonomy
+      const credentials = {
+        url: wpData.siteUrl,
+        username: wpData.username,
+        password: wpData.password
+      };
+      const categories = await fetchWordPressTaxonomies('doc_categories', credentials);
+      setDocCategories(categories);
+      
+      // Store the categories in localStorage for use by the application
+      localStorage.setItem('wordpress_categories', JSON.stringify(categories));
+      console.log('Stored WordPress doc_categories for application use:', categories);
+      
+      toast.success(`Loaded ${categories.length} doc_categories terms`);
+    } catch (error) {
+      console.error('Error loading doc_categories:', error);
+      toast.error('Failed to load doc_categories from WordPress');
+      setDocCategories([]);
+    } finally {
+      setIsLoadingSchemes(false);
+    }
+  };
+
   // Load nsi-schemes on component mount if WordPress is configured
   useEffect(() => {
     const wpData = wpForm.getValues();
@@ -517,6 +550,20 @@ const Settings: React.FC = () => {
                       )}
                       Check Available Taxonomies
                     </Button>
+                    
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={loadDocCategories}
+                      disabled={isLoadingSchemes}
+                    >
+                      {isLoadingSchemes ? (
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      ) : (
+                        <FolderTree className="mr-2 h-4 w-4" />
+                      )}
+                      Load Doc Categories
+                    </Button>
                   </div>
                 </form>
               </Form>
@@ -538,6 +585,29 @@ const Settings: React.FC = () => {
                       <div className="font-medium">{scheme.name}</div>
                       {scheme.description && (
                         <div className="text-sm text-muted-foreground">{scheme.description}</div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+            )}
+
+          {docCategories.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Available Document Categories</CardTitle>
+                <CardDescription>
+                  {docCategories.length} doc_categories terms found in WordPress
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
+                  {docCategories.map((category, index) => (
+                    <div key={index} className="p-2 bg-muted rounded border">
+                      <div className="font-medium">{category.name}</div>
+                      {category.description && (
+                        <div className="text-sm text-muted-foreground">{category.description}</div>
                       )}
                     </div>
                   ))}
