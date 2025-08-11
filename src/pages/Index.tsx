@@ -1,10 +1,44 @@
 
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
-import { FileText, FileSignature, BarChart3, Settings, Shield, HelpCircle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { FileText, FileSignature, BarChart3, Settings, Shield, HelpCircle, AlertTriangle } from 'lucide-react';
+import { hasOpenAIKey } from '@/utils/openaiClient';
+import { hasWordPressSettings } from '@/utils/settingsUtils';
 
 const Index: React.FC = () => {
+  const [showWarningModal, setShowWarningModal] = useState(false);
+  const navigate = useNavigate();
+
+  const handleSimpleDocumentsClick = (e: React.MouseEvent) => {
+    e.preventDefault();
+    
+    const hasOpenAI = hasOpenAIKey();
+    const hasWordPress = hasWordPressSettings();
+    
+    if (!hasOpenAI || !hasWordPress) {
+      setShowWarningModal(true);
+    } else {
+      navigate('/simple-documents');
+    }
+  };
+
+  const handleProceedAnyway = () => {
+    setShowWarningModal(false);
+    navigate('/simple-documents');
+  };
+
+  const handleGoToSettings = () => {
+    setShowWarningModal(false);
+    navigate('/settings');
+  };
+
+  const missingSettings = [];
+  if (!hasOpenAIKey()) missingSettings.push('OpenAI API Key');
+  if (!hasWordPressSettings()) missingSettings.push('WordPress credentials');
+
   return (
     <div className="container mx-auto px-4 py-8">
       <h1 className="text-3xl font-bold mb-4">Document Management System</h1>
@@ -27,7 +61,7 @@ const Index: React.FC = () => {
           </Card>
         </Link>
 
-        <Link to="/simple-documents" className="hover:no-underline">
+        <div onClick={handleSimpleDocumentsClick} className="hover:no-underline cursor-pointer">
           <Card className="p-6 hover:shadow-md transition-shadow">
             <div className="flex flex-col items-center text-center">
               <div className="bg-indigo-100 p-4 rounded-full mb-4">
@@ -39,7 +73,7 @@ const Index: React.FC = () => {
               </p>
             </div>
           </Card>
-        </Link>
+        </div>
 
         <Link to="/circular-letters" className="hover:no-underline">
           <Card className="p-6 hover:shadow-md transition-shadow">
@@ -111,6 +145,46 @@ const Index: React.FC = () => {
           </Card>
         </Link>
       </div>
+
+      <Dialog open={showWarningModal} onOpenChange={setShowWarningModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              Configuration Required
+            </DialogTitle>
+            <DialogDescription>
+              The following settings are missing and required for optimal functionality:
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-4">
+            <ul className="space-y-2">
+              {missingSettings.map((setting, index) => (
+                <li key={index} className="flex items-center gap-2 text-sm">
+                  <div className="w-2 h-2 bg-amber-500 rounded-full" />
+                  {setting}
+                </li>
+              ))}
+            </ul>
+            <p className="mt-4 text-sm text-muted-foreground">
+              You can proceed without these settings, but some features may not work properly.
+            </p>
+          </div>
+
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button variant="outline" onClick={() => setShowWarningModal(false)}>
+              Cancel
+            </Button>
+            <Button variant="secondary" onClick={handleProceedAnyway}>
+              Proceed Anyway
+            </Button>
+            <Button onClick={handleGoToSettings}>
+              Go to Settings
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
