@@ -47,20 +47,20 @@ export function extractPrefixTags(filename: string): string[] {
   
   console.log('Checking filename for prefix:', filename);
   
-  // Convert filename to uppercase for prefix matching
-  const upperFilename = filename.toUpperCase();
+  // Extract prefix up to first hyphen
+  const firstHyphenIndex = filename.indexOf('-');
+  const extractedPrefix = firstHyphenIndex > 0 ? filename.substring(0, firstHyphenIndex) : filename;
   
-  // Find matching prefixes
-  for (const mapping of PREFIX_MAPPINGS) {
-    // Check if filename starts with the prefix followed by a separator or number
-    const pattern = new RegExp(`^${mapping.prefix}(?:[^A-Z]|$)`, 'i');
-    if (pattern.test(filename)) {
-      console.log('Found matching prefix:', mapping.prefix, 'for filename:', filename);
-      // Add both the prefix and the full description as tags
-      tags.push(mapping.prefix);
-      tags.push(mapping.description);
-      break; // Only match the first prefix found
-    }
+  console.log('Extracted prefix:', extractedPrefix);
+  
+  // Look up in mappings table (case-insensitive)
+  const mapping = PREFIX_MAPPINGS.find(m => m.prefix.toLowerCase() === extractedPrefix.toLowerCase());
+  
+  if (mapping) {
+    console.log('Found matching prefix:', mapping.prefix, 'for filename:', filename);
+    // Add both the prefix and the full description as tags
+    tags.push(mapping.prefix);
+    tags.push(mapping.description);
   }
   
   console.log('Generated prefix tags:', tags);
