@@ -64,6 +64,11 @@ const DocumentsTableView: React.FC<DocumentsTableViewProps> = ({
       reasons.push('Needs categorization');
     }
     
+    // Check for missing scheme
+    if (!doc.customTaxonomies?.['tax:nsi-scheme'] || doc.customTaxonomies['tax:nsi-scheme'].trim() === '') {
+      reasons.push('Missing scheme');
+    }
+    
     // Check for missing tags
     if (!doc.tags || doc.tags.trim() === '') {
       reasons.push('Missing tags');
