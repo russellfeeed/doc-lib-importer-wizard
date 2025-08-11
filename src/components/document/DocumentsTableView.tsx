@@ -368,9 +368,12 @@ const DocumentsTableView: React.FC<DocumentsTableViewProps> = ({
                         const updatedTaxonomies = { ...doc.customTaxonomies, 'tax:nsi-scheme': e.target.value };
                         onEditDocument(index, 'customTaxonomies', updatedTaxonomies);
                       }}
-                      className="w-full"
+                      className={`w-full ${!doc.customTaxonomies?.['tax:nsi-scheme'] || doc.customTaxonomies['tax:nsi-scheme'].trim() === '' ? 'border-destructive bg-destructive/10' : ''}`}
                       placeholder="Scheme"
                     />
+                    {(!doc.customTaxonomies?.['tax:nsi-scheme'] || doc.customTaxonomies['tax:nsi-scheme'].trim() === '') && (
+                      <div className="text-xs text-destructive mt-1">Scheme missing</div>
+                    )}
                   </TableCell>
                   <TableCell>
                     <Input 
