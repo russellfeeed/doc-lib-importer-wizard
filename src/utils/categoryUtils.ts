@@ -306,3 +306,26 @@ export const copyCategory = (
   
   return updatedHierarchy;
 };
+
+// Get all categories in a flat list for selection dropdown
+export const getAllCategoriesFlat = (hierarchy: CategoryHierarchy): Array<{id: string, name: string, path: string}> => {
+  const flatCategories: Array<{id: string, name: string, path: string}> = [];
+  
+  const traverseCategories = (categories: CategoryNode[], path: string = '') => {
+    categories.forEach(category => {
+      const currentPath = path ? `${path} > ${category.name}` : category.name;
+      flatCategories.push({
+        id: category.id,
+        name: category.name,
+        path: currentPath
+      });
+      
+      if (category.children.length > 0) {
+        traverseCategories(category.children, currentPath);
+      }
+    });
+  };
+  
+  traverseCategories(hierarchy.categories);
+  return flatCategories;
+};

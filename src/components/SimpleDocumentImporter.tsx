@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ArrowLeft, Tag } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useSimpleFileUpload } from '@/hooks/useSimpleFileUpload';
 import SimpleDocumentEditor from '@/components/SimpleDocumentEditor';
@@ -9,6 +10,7 @@ import CSVGenerator from '@/components/CSVGenerator';
 import WordPressUploader from '@/components/WordPressUploader';
 import { DocumentFile } from '@/types/document';
 import { Steps, StepType } from '@/types/steps';
+import { loadCategories, getAllCategoriesFlat } from '@/utils/categoryUtils';
 
 // Simple File Uploader Component
 const SimpleFileUploader = ({ onFilesUploaded }: { onFilesUploaded: (files: DocumentFile[]) => void }) => {
@@ -17,14 +19,20 @@ const SimpleFileUploader = ({ onFilesUploaded }: { onFilesUploaded: (files: Docu
     isDragging,
     isLoading,
     aiEnabled,
+    forcedCategory,
     handleDragOver,
     handleDragLeave,
     handleDrop,
     handleFileInputChange,
     handleRemoveFile,
     handleContinue,
-    toggleAI
+    toggleAI,
+    setForcedCategory
   } = useSimpleFileUpload({ onFilesUploaded });
+
+  // Load available categories
+  const categoriesHierarchy = loadCategories();
+  const availableCategories = getAllCategoriesFlat(categoriesHierarchy);
 
   return (
     <div className="space-y-6">
@@ -39,6 +47,36 @@ const SimpleFileUploader = ({ onFilesUploaded }: { onFilesUploaded: (files: Docu
             <div className={`w-4 h-4 bg-white rounded-full shadow transform transition-transform ${aiEnabled ? 'translate-x-5' : 'translate-x-1'} absolute top-1`} />
           </button>
         </div>
+      </div>
+
+      {/* Category Selection */}
+      <div className="space-y-3">
+        <div className="flex items-center space-x-2">
+          <Tag className="h-5 w-5 text-gray-500" />
+          <label className="text-sm font-medium text-gray-700">
+            Force Category (optional)
+          </label>
+        </div>
+        <Select value={forcedCategory} onValueChange={setForcedCategory}>
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Select a category to apply to all documents (disables AI categorization)" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="">
+              <span className="text-gray-500">Use AI categorization (default)</span>
+            </SelectItem>
+            {availableCategories.map((category) => (
+              <SelectItem key={category.id} value={category.name}>
+                {category.path}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        {forcedCategory && (
+          <p className="text-sm text-amber-600">
+            Category "{forcedCategory}" will be applied to all uploaded documents. AI categorization is disabled.
+          </p>
+        )}
       </div>
 
       {/* Drop Zone */}

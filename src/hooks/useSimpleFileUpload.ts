@@ -14,6 +14,7 @@ export function useSimpleFileUpload({ onFilesUploaded }: UseSimpleFileUploadProp
   const [isDragging, setIsDragging] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [aiEnabled, setAiEnabled] = useState(true); // AI enabled by default for simple version
+  const [forcedCategory, setForcedCategory] = useState<string>(''); // For forcing a specific category
 
   const handleFileSelection = useCallback(async (selectedFiles: FileList | null) => {
     if (!selectedFiles || selectedFiles.length === 0) return;
@@ -74,7 +75,12 @@ export function useSimpleFileUpload({ onFilesUploaded }: UseSimpleFileUploadProp
               content
             };
 
-            // Run AI processing if enabled and API key is available
+            // Apply forced category if set, regardless of AI status
+            if (forcedCategory) {
+              updatedFile = { ...updatedFile, categories: forcedCategory };
+            }
+
+            // Run AI processing if enabled and API key is available, but skip category AI if forced category is set
             if (aiEnabled && hasOpenAIKey()) {
               try {
                 // Update file state to show AI processing started
@@ -96,12 +102,14 @@ export function useSimpleFileUpload({ onFilesUploaded }: UseSimpleFileUploadProp
                   const excerpt = await generateDocumentSummary(content, fileObj.name);
                   updatedFile = { ...updatedFile, excerpt };
 
-                  // Generate category
-                  try {
-                    const category = await generateDocumentCategoryWithContext(content, fileObj.name);
-                    updatedFile = { ...updatedFile, categories: category };
-                  } catch (error) {
-                    console.warn('Category generation failed:', error);
+                  // Generate category only if no forced category is set
+                  if (!forcedCategory) {
+                    try {
+                      const category = await generateDocumentCategoryWithContext(content, fileObj.name);
+                      updatedFile = { ...updatedFile, categories: category };
+                    } catch (error) {
+                      console.warn('Category generation failed:', error);
+                    }
                   }
 
                   // Generate tags
@@ -173,7 +181,7 @@ export function useSimpleFileUpload({ onFilesUploaded }: UseSimpleFileUploadProp
     } else {
       toast.success(`${newFiles.length} files uploaded successfully`);
     }
-  }, []);
+  }, [forcedCategory]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -235,11 +243,21 @@ export function useSimpleFileUpload({ onFilesUploaded }: UseSimpleFileUploadProp
     }
   }, [aiEnabled]);
 
+  const setForcedCategoryHandler = useCallback((categoryName: string) => {
+    setForcedCategory(categoryName);
+    if (categoryName) {
+      toast.info(`Category forced to: ${categoryName}`);
+    } else {
+      toast.info("Forced category cleared - AI categorization enabled");
+    }
+  }, []);
+
   return {
     files,
     isDragging,
     isLoading,
     aiEnabled,
+    forcedCategory,
     handleDragOver,
     handleDragLeave,
     handleDrop,
@@ -248,6 +266,7 @@ export function useSimpleFileUpload({ onFilesUploaded }: UseSimpleFileUploadProp
     handleRemoveFile,
     handleContinue,
     handleApiKeyChange,
-    toggleAI
+    toggleAI,
+    setForcedCategory: setForcedCategoryHandler
   };
 }
