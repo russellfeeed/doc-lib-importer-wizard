@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { generateUniqueId, formatFileSize, extractFileType } from '@/utils/fileUtils';
 import { extractTextFromDocument, generatePdfThumbnail, generateDocumentSummary, generateDocumentCategoryWithContext, generateDocumentTagsWithContext, generateDocumentScheme } from '@/utils/aiUtils';
 import { hasOpenAIKey } from '@/utils/openaiClient';
+import { addPrefixTags } from '@/utils/prefixTagUtils';
 
 interface UseSimpleFileUploadProps {
   onFilesUploaded: (files: DocumentFile[]) => void;
@@ -114,10 +115,17 @@ export function useSimpleFileUpload({ onFilesUploaded }: UseSimpleFileUploadProp
 
                   // Generate tags
                   try {
-                    const tags = await generateDocumentTagsWithContext(content, fileObj.name, updatedFile.categories);
-                    updatedFile = { ...updatedFile, tags };
+                    const aiTags = await generateDocumentTagsWithContext(content, fileObj.name, updatedFile.categories);
+                    // Add prefix-based tags to AI-generated tags
+                    const tagsWithPrefix = addPrefixTags(aiTags, fileObj.name);
+                    updatedFile = { ...updatedFile, tags: tagsWithPrefix };
                   } catch (error) {
                     console.warn('Tag generation failed:', error);
+                    // If AI tag generation fails, still add prefix tags
+                    const prefixTags = addPrefixTags('', fileObj.name);
+                    if (prefixTags) {
+                      updatedFile = { ...updatedFile, tags: prefixTags };
+                    }
                   }
 
                   // Generate scheme
@@ -150,6 +158,17 @@ export function useSimpleFileUpload({ onFilesUploaded }: UseSimpleFileUploadProp
                     error: error instanceof Error ? error.message : 'Unknown error' 
                   }
                 };
+                // Even if AI processing fails, add prefix tags
+                const prefixTags = addPrefixTags(updatedFile.tags || '', fileObj.name);
+                if (prefixTags !== updatedFile.tags) {
+                  updatedFile = { ...updatedFile, tags: prefixTags };
+                }
+              }
+            } else {
+              // If AI is disabled, still add prefix tags
+              const prefixTags = addPrefixTags(updatedFile.tags || '', fileObj.name);
+              if (prefixTags) {
+                updatedFile = { ...updatedFile, tags: prefixTags };
               }
             }
           } catch (error) {
