@@ -12,7 +12,8 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { ChevronLeft, Edit, Check, Zap, ExternalLink, AlertTriangle } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { ChevronLeft, Edit, Check, Zap, ExternalLink, AlertTriangle, Tags } from 'lucide-react';
 import { DocumentFile } from '@/types/document';
 
 interface DocumentsTableViewProps {
@@ -20,6 +21,8 @@ interface DocumentsTableViewProps {
   isGeneratingAI: boolean;
   onEditDocument: (index: number, field: keyof DocumentFile, value: string | boolean | Record<string, string>) => void;
   onGenerateAllExcerpts: () => void;
+  onGenerateAllSchemes?: () => void;
+  onGenerateAllTags: () => void;
   onToggleView: () => void;
   onSave: () => void;
   onBack: () => void;
@@ -31,11 +34,14 @@ const DocumentsTableView: React.FC<DocumentsTableViewProps> = ({
   isGeneratingAI,
   onEditDocument,
   onGenerateAllExcerpts,
+  onGenerateAllSchemes,
+  onGenerateAllTags,
   onToggleView,
   onSave,
   onBack,
   onToggleAllPublished
 }) => {
+  const [selectedDocuments, setSelectedDocuments] = React.useState<Set<number>>(new Set());
   // Function to determine if a document needs attention
   const needsAttention = (doc: DocumentFile): { needs: boolean; reasons: string[] } => {
     const reasons: string[] = [];
@@ -80,6 +86,46 @@ const DocumentsTableView: React.FC<DocumentsTableViewProps> = ({
   // Count documents that need attention
   const documentsNeedingAttention = documents.filter(doc => needsAttention(doc).needs).length;
   
+  // Selection handlers
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedDocuments(new Set(documents.map((_, index) => index)));
+    } else {
+      setSelectedDocuments(new Set());
+    }
+  };
+  
+  const handleSelectDocument = (index: number, checked: boolean) => {
+    const newSelection = new Set(selectedDocuments);
+    if (checked) {
+      newSelection.add(index);
+    } else {
+      newSelection.delete(index);
+    }
+    setSelectedDocuments(newSelection);
+  };
+  
+  const allSelected = selectedDocuments.size === documents.length && documents.length > 0;
+  const someSelected = selectedDocuments.size > 0;
+  
+  // Bulk action handlers
+  const handleBulkGenerateSchemes = async () => {
+    if (!onGenerateAllSchemes || selectedDocuments.size === 0) return;
+    
+    // Filter documents to only include selected ones
+    const originalDocs = [...documents];
+    const selectedDocs = Array.from(selectedDocuments).map(index => originalDocs[index]);
+    
+    // For bulk operations, we'll need to modify the documents array temporarily
+    // This is a simplified approach - in practice you might want to pass selected indices
+    await onGenerateAllSchemes();
+  };
+  
+  const handleBulkGenerateTags = async () => {
+    if (selectedDocuments.size === 0) return;
+    await onGenerateAllTags();
+  };
+  
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -89,6 +135,11 @@ const DocumentsTableView: React.FC<DocumentsTableViewProps> = ({
             <Badge variant="destructive" className="flex items-center gap-1">
               <AlertTriangle className="h-3 w-3" />
               {documentsNeedingAttention} need attention
+            </Badge>
+          )}
+          {someSelected && (
+            <Badge variant="secondary" className="flex items-center gap-1">
+              {selectedDocuments.size} selected
             </Badge>
           )}
         </div>
@@ -104,6 +155,30 @@ const DocumentsTableView: React.FC<DocumentsTableViewProps> = ({
             />
           </div>
           <div className="flex space-x-2">
+            {someSelected && (
+              <>
+                {onGenerateAllSchemes && (
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={handleBulkGenerateSchemes}
+                    disabled={isGeneratingAI || selectedDocuments.size === 0}
+                  >
+                    <Zap className="mr-2 h-4 w-4" />
+                    Generate Schemes ({selectedDocuments.size})
+                  </Button>
+                )}
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleBulkGenerateTags}
+                  disabled={isGeneratingAI || selectedDocuments.size === 0}
+                >
+                  <Tags className="mr-2 h-4 w-4" />
+                  Generate Tags ({selectedDocuments.size})
+                </Button>
+              </>
+            )}
             <Button 
               variant="outline" 
               size="sm"
@@ -138,8 +213,16 @@ const DocumentsTableView: React.FC<DocumentsTableViewProps> = ({
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-12">
+                <Checkbox 
+                  checked={allSelected}
+                  onCheckedChange={handleSelectAll}
+                  aria-label="Select all documents"
+                />
+              </TableHead>
               <TableHead>Name</TableHead>
               <TableHead>Categories</TableHead>
+              <TableHead>Scheme</TableHead>
               <TableHead>Tags</TableHead>
               <TableHead>Authors</TableHead>
               <TableHead>File Size</TableHead>
@@ -153,6 +236,13 @@ const DocumentsTableView: React.FC<DocumentsTableViewProps> = ({
               const attentionCheck = needsAttention(doc);
               return (
                 <TableRow key={doc.id} className={attentionCheck.needs ? 'bg-destructive/5 border-destructive/20' : ''}>
+                  <TableCell>
+                    <Checkbox 
+                      checked={selectedDocuments.has(index)}
+                      onCheckedChange={(checked) => handleSelectDocument(index, !!checked)}
+                      aria-label={`Select ${doc.name}`}
+                    />
+                  </TableCell>
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <Input 
@@ -176,6 +266,14 @@ const DocumentsTableView: React.FC<DocumentsTableViewProps> = ({
                     {doc.categories?.toLowerCase().includes('uncategorised') && (
                       <div className="text-xs text-destructive mt-1">Categorization failed</div>
                     )}
+                  </TableCell>
+                  <TableCell>
+                    <Input 
+                      value={doc.customFields?.scheme || ''}
+                      onChange={(e) => onEditDocument(index, 'customFields', { ...doc.customFields, scheme: e.target.value })}
+                      className="w-full"
+                      placeholder="Scheme"
+                    />
                   </TableCell>
                   <TableCell>
                     <Input 

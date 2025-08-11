@@ -83,6 +83,7 @@ const DocumentEditor: React.FC<DocumentEditorProps> = ({
           isGeneratingAI={isGeneratingAI}
           onEditDocument={handleTableChange}
           onGenerateAllExcerpts={handleGenerateAllExcerpts}
+          onGenerateAllTags={handleGenerateAllTags}
           onToggleView={toggleEditAll}
           onSave={handleSaveAll}
           onBack={onBack}
