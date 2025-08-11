@@ -82,6 +82,7 @@ export function useSimpleFileUpload({ onFilesUploaded }: UseSimpleFileUploadProp
             }
 
             // Run AI processing if enabled and API key is available, but skip category AI if forced category is set
+            console.log('🔍 AI processing check - aiEnabled:', aiEnabled, 'hasOpenAIKey:', hasOpenAIKey(), 'for file:', fileObj.name);
             if (aiEnabled && hasOpenAIKey()) {
               try {
                 // Update file state to show AI processing started
@@ -164,14 +165,18 @@ export function useSimpleFileUpload({ onFilesUploaded }: UseSimpleFileUploadProp
                   }
                 };
                 // Even if AI processing fails, add prefix tags
+                console.log('🏷️ AI processing failed, adding prefix tags for file:', fileObj.name);
                 const prefixTags = addPrefixTags(updatedFile.tags || '', fileObj.name);
+                console.log('🏷️ AI error fallback - prefix tags result:', prefixTags);
                 if (prefixTags !== updatedFile.tags) {
                   updatedFile = { ...updatedFile, tags: prefixTags };
                 }
               }
             } else {
               // If AI is disabled, still add prefix tags
+              console.log('🏷️ AI disabled or no API key, adding prefix tags for file:', fileObj.name);
               const prefixTags = addPrefixTags(updatedFile.tags || '', fileObj.name);
+              console.log('🏷️ AI disabled - prefix tags result:', prefixTags);
               if (prefixTags) {
                 updatedFile = { ...updatedFile, tags: prefixTags };
               }
