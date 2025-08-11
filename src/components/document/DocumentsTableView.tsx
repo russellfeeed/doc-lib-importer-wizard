@@ -42,6 +42,7 @@ const DocumentsTableView: React.FC<DocumentsTableViewProps> = ({
   onToggleAllPublished
 }) => {
   const [selectedDocuments, setSelectedDocuments] = React.useState<Set<number>>(new Set());
+  const [bulkOperationType, setBulkOperationType] = React.useState<'schemes' | 'tags' | null>(null);
   // Function to determine if a document needs attention
   const needsAttention = (doc: DocumentFile): { needs: boolean; reasons: string[] } => {
     const reasons: string[] = [];
@@ -122,18 +123,23 @@ const DocumentsTableView: React.FC<DocumentsTableViewProps> = ({
   const handleBulkGenerateSchemes = async () => {
     if (!onGenerateAllSchemes || selectedDocuments.size === 0) return;
     
-    // Filter documents to only include selected ones
-    const originalDocs = [...documents];
-    const selectedDocs = Array.from(selectedDocuments).map(index => originalDocs[index]);
-    
-    // For bulk operations, we'll need to modify the documents array temporarily
-    // This is a simplified approach - in practice you might want to pass selected indices
-    await onGenerateAllSchemes();
+    setBulkOperationType('schemes');
+    try {
+      await onGenerateAllSchemes();
+    } finally {
+      setBulkOperationType(null);
+    }
   };
   
   const handleBulkGenerateTags = async () => {
     if (selectedDocuments.size === 0) return;
-    await onGenerateAllTags();
+    
+    setBulkOperationType('tags');
+    try {
+      await onGenerateAllTags();
+    } finally {
+      setBulkOperationType(null);
+    }
   };
   
   return (
@@ -182,20 +188,38 @@ const DocumentsTableView: React.FC<DocumentsTableViewProps> = ({
                     variant="outline" 
                     size="sm"
                     onClick={handleBulkGenerateSchemes}
-                    disabled={isGeneratingAI || selectedDocuments.size === 0}
+                    disabled={isGeneratingAI || selectedDocuments.size === 0 || bulkOperationType === 'schemes'}
                   >
-                    <Zap className="mr-2 h-4 w-4" />
-                    Generate Schemes ({selectedDocuments.size})
+                    {(isGeneratingAI && bulkOperationType === 'schemes') ? (
+                      <>
+                        <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full mr-2" />
+                        Generating Schemes...
+                      </>
+                    ) : (
+                      <>
+                        <Zap className="mr-2 h-4 w-4" />
+                        Generate Schemes ({selectedDocuments.size})
+                      </>
+                    )}
                   </Button>
                 )}
                 <Button 
                   variant="outline" 
                   size="sm"
                   onClick={handleBulkGenerateTags}
-                  disabled={isGeneratingAI || selectedDocuments.size === 0}
+                  disabled={isGeneratingAI || selectedDocuments.size === 0 || bulkOperationType === 'tags'}
                 >
-                  <Tags className="mr-2 h-4 w-4" />
-                  Generate Tags ({selectedDocuments.size})
+                  {(isGeneratingAI && bulkOperationType === 'tags') ? (
+                    <>
+                      <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full mr-2" />
+                      Generating Tags...
+                    </>
+                  ) : (
+                    <>
+                      <Tags className="mr-2 h-4 w-4" />
+                      Generate Tags ({selectedDocuments.size})
+                    </>
+                  )}
                 </Button>
               </>
             )}
