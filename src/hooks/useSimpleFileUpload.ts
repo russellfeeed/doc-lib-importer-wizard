@@ -191,6 +191,7 @@ export function useSimpleFileUpload({ onFilesUploaded }: UseSimpleFileUploadProp
             console.error("Text extraction error:", error);
           }
           
+          console.log('📄 Final processed file result for', fileObj.name, '- tags:', updatedFile.tags);
           return updatedFile;
         } catch (error) {
           console.error("Error processing file:", error);
