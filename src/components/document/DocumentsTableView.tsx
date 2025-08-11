@@ -21,6 +21,7 @@ interface DocumentsTableViewProps {
   isGeneratingAI: boolean;
   onEditDocument: (index: number, field: keyof DocumentFile, value: string | boolean | Record<string, string>) => void;
   onGenerateAllExcerpts: () => void;
+  onGenerateAllCategories?: () => void;
   onGenerateAllSchemes?: () => void;
   onGenerateAllTags: () => void;
   onToggleView: () => void;
@@ -34,6 +35,7 @@ const DocumentsTableView: React.FC<DocumentsTableViewProps> = ({
   isGeneratingAI,
   onEditDocument,
   onGenerateAllExcerpts,
+  onGenerateAllCategories,
   onGenerateAllSchemes,
   onGenerateAllTags,
   onToggleView,
@@ -42,7 +44,7 @@ const DocumentsTableView: React.FC<DocumentsTableViewProps> = ({
   onToggleAllPublished
 }) => {
   const [selectedDocuments, setSelectedDocuments] = React.useState<Set<number>>(new Set());
-  const [bulkOperationType, setBulkOperationType] = React.useState<'schemes' | 'tags' | 'excerpts' | null>(null);
+  const [bulkOperationType, setBulkOperationType] = React.useState<'schemes' | 'tags' | 'excerpts' | 'categories' | null>(null);
   // Function to determine if a document needs attention
   const needsAttention = (doc: DocumentFile): { needs: boolean; reasons: string[] } => {
     const reasons: string[] = [];
@@ -143,6 +145,17 @@ const DocumentsTableView: React.FC<DocumentsTableViewProps> = ({
     }
   };
   
+  const handleBulkGenerateCategories = async () => {
+    if (!onGenerateAllCategories || selectedDocuments.size === 0) return;
+    
+    setBulkOperationType('categories');
+    try {
+      await onGenerateAllCategories();
+    } finally {
+      setBulkOperationType(null);
+    }
+  };
+  
   const handleBulkGenerateTags = async () => {
     if (selectedDocuments.size === 0) return;
     
@@ -213,6 +226,26 @@ const DocumentsTableView: React.FC<DocumentsTableViewProps> = ({
                     </>
                   )}
                 </Button>
+                {onGenerateAllCategories && (
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={handleBulkGenerateCategories}
+                    disabled={isGeneratingAI || selectedDocuments.size === 0 || bulkOperationType === 'categories'}
+                  >
+                    {(isGeneratingAI && bulkOperationType === 'categories') ? (
+                      <>
+                        <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full mr-2" />
+                        Detecting Categories...
+                      </>
+                    ) : (
+                      <>
+                        <Zap className="mr-2 h-4 w-4" />
+                        Detect Categories ({selectedDocuments.size})
+                      </>
+                    )}
+                  </Button>
+                )}
                 {onGenerateAllSchemes && (
                   <Button 
                     variant="outline" 
