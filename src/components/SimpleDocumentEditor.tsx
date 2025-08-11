@@ -82,6 +82,7 @@ const SimpleDocumentEditor: React.FC<SimpleDocumentEditorProps> = ({ documents, 
           isGeneratingAI={isGeneratingAI}
           onEditDocument={handleTableChange}
           onGenerateAllExcerpts={handleGenerateAllExcerpts}
+          onGenerateAllCategories={handleGenerateAllCategories}
           onGenerateAllSchemes={handleGenerateAllSchemes}
           onGenerateAllTags={handleGenerateAllTags}
           onToggleView={toggleEditAll}
