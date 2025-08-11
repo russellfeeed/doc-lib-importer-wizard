@@ -42,7 +42,7 @@ const DocumentsTableView: React.FC<DocumentsTableViewProps> = ({
   onToggleAllPublished
 }) => {
   const [selectedDocuments, setSelectedDocuments] = React.useState<Set<number>>(new Set());
-  const [bulkOperationType, setBulkOperationType] = React.useState<'schemes' | 'tags' | null>(null);
+  const [bulkOperationType, setBulkOperationType] = React.useState<'schemes' | 'tags' | 'excerpts' | null>(null);
   // Function to determine if a document needs attention
   const needsAttention = (doc: DocumentFile): { needs: boolean; reasons: string[] } => {
     const reasons: string[] = [];
@@ -131,6 +131,18 @@ const DocumentsTableView: React.FC<DocumentsTableViewProps> = ({
     }
   };
   
+  
+  const handleBulkGenerateExcerpts = async () => {
+    if (selectedDocuments.size === 0) return;
+    
+    setBulkOperationType('excerpts');
+    try {
+      await onGenerateAllExcerpts();
+    } finally {
+      setBulkOperationType(null);
+    }
+  };
+  
   const handleBulkGenerateTags = async () => {
     if (selectedDocuments.size === 0) return;
     
@@ -183,6 +195,24 @@ const DocumentsTableView: React.FC<DocumentsTableViewProps> = ({
             )}
             {someSelected && (
               <>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleBulkGenerateExcerpts}
+                  disabled={isGeneratingAI || selectedDocuments.size === 0 || bulkOperationType === 'excerpts'}
+                >
+                  {(isGeneratingAI && bulkOperationType === 'excerpts') ? (
+                    <>
+                      <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full mr-2" />
+                      Generating Excerpts...
+                    </>
+                  ) : (
+                    <>
+                      <Zap className="mr-2 h-4 w-4" />
+                      Generate Excerpts ({selectedDocuments.size})
+                    </>
+                  )}
+                </Button>
                 {onGenerateAllSchemes && (
                   <Button 
                     variant="outline" 
@@ -223,24 +253,6 @@ const DocumentsTableView: React.FC<DocumentsTableViewProps> = ({
                 </Button>
               </>
             )}
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={onGenerateAllExcerpts}
-              disabled={isGeneratingAI}
-            >
-              {isGeneratingAI ? (
-                <>
-                  <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full mr-2" />
-                  Processing...
-                </>
-              ) : (
-                <>
-                  <Zap className="mr-2 h-4 w-4" />
-                  Generate All Excerpts
-                </>
-              )}
-            </Button>
             <Button 
               variant="outline" 
               size="sm" 
