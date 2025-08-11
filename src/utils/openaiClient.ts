@@ -9,6 +9,17 @@ const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
 // Default model to use for summarization
 const DEFAULT_MODEL = "gpt-4o-mini";
 
+// Rate limiting configuration
+const MAX_RETRIES = 3;
+const BASE_DELAY = 1000; // 1 second base delay
+
+// Sleep function for delays
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+
+// Rate limit tracking
+let requestQueue: Promise<any>[] = [];
+const MAX_CONCURRENT_REQUESTS = 3;
+
 interface OpenAIMessage {
   role: "system" | "user" | "assistant";
   content: string;
@@ -74,6 +85,96 @@ export function hasOpenAIKey(): boolean {
 }
 
 /**
+ * Rate-limited OpenAI API call with retry logic
+ */
+async function makeOpenAIRequest(requestBody: OpenAIRequestBody, context: string): Promise<OpenAIResponse> {
+  if (!hasOpenAIKey()) {
+    throw new Error("OpenAI API key not set");
+  }
+
+  // Wait for available slot in request queue
+  while (requestQueue.length >= MAX_CONCURRENT_REQUESTS) {
+    await Promise.race(requestQueue);
+  }
+
+  let lastError: Error | null = null;
+
+  for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
+    try {
+      console.log(`Making OpenAI request for ${context} (attempt ${attempt + 1}/${MAX_RETRIES})`);
+      
+      const requestPromise = fetch(OPENAI_API_URL, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify(requestBody),
+      });
+
+      // Add to queue
+      requestQueue.push(requestPromise);
+      
+      // Clean up completed requests
+      requestPromise.finally(() => {
+        requestQueue = requestQueue.filter(req => req !== requestPromise);
+      });
+
+      const response = await requestPromise;
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: { message: response.statusText } }));
+        
+        // Check if it's a rate limit error
+        if (response.status === 429) {
+          const retryAfter = response.headers.get('retry-after');
+          const delayMs = retryAfter ? parseInt(retryAfter) * 1000 : BASE_DELAY * Math.pow(2, attempt);
+          
+          console.warn(`Rate limit hit for ${context}, retrying in ${delayMs}ms (attempt ${attempt + 1}/${MAX_RETRIES})`);
+          
+          if (attempt === MAX_RETRIES - 1) {
+            toast.error("OpenAI rate limit exceeded. Please try again later.");
+            throw new Error(`Rate limit exceeded: ${errorData.error?.message || 'Too many requests'}`);
+          }
+          
+          await sleep(delayMs);
+          continue;
+        }
+        
+        // For non-rate-limit errors, throw immediately
+        console.error("OpenAI API error:", errorData);
+        throw new Error(`OpenAI API error: ${errorData.error?.message || response.statusText}`);
+      }
+
+      const data = await response.json() as OpenAIResponse;
+      console.log(`Received OpenAI response for ${context}`, {
+        model: data.model,
+        usage: data.usage,
+      });
+      
+      return data;
+    } catch (error) {
+      lastError = error as Error;
+      
+      // If it's not a rate limit error, don't retry
+      if (!error.message.includes('Rate limit') && !error.message.includes('429')) {
+        throw error;
+      }
+      
+      // Wait before retry for rate limit errors
+      if (attempt < MAX_RETRIES - 1) {
+        const delayMs = BASE_DELAY * Math.pow(2, attempt);
+        console.warn(`Request failed for ${context}, retrying in ${delayMs}ms`);
+        await sleep(delayMs);
+      }
+    }
+  }
+
+  // If we exhausted all retries
+  throw lastError || new Error(`Failed to complete OpenAI request for ${context} after ${MAX_RETRIES} attempts`);
+}
+
+/**
  * Send a request to the OpenAI API for document summarization
  */
 export async function summarizeWithOpenAI(
@@ -115,31 +216,7 @@ export async function summarizeWithOpenAI(
   };
 
   try {
-    console.log(`Sending OpenAI request for document: ${fileName}`);
-    
-    const response = await fetch(OPENAI_API_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify(requestBody),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error("OpenAI API error:", errorData);
-      throw new Error(
-        `OpenAI API error: ${errorData.error?.message || response.statusText}`
-      );
-    }
-
-    const data = await response.json() as OpenAIResponse;
-    console.log(`Received OpenAI response for document: ${fileName}`, {
-      model: data.model,
-      usage: data.usage,
-    });
-    
+    const data = await makeOpenAIRequest(requestBody, `document summarization: ${fileName}`);
     const summary = data.choices[0]?.message.content.trim();
 
     if (!summary) {
@@ -217,24 +294,7 @@ export async function categorizeWithOpenAI(
   };
 
   try {
-    const response = await fetch(OPENAI_API_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify(requestBody),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error("OpenAI API error:", errorData);
-      throw new Error(
-        `OpenAI API error: ${errorData.error?.message || response.statusText}`
-      );
-    }
-
-    const data = await response.json() as OpenAIResponse;
+    const data = await makeOpenAIRequest(requestBody, `categorization: ${fileName}`);
     const categoryPath = data.choices[0]?.message.content.trim();
 
     if (!categoryPath) {
@@ -290,24 +350,7 @@ export async function categorizeStandardsWithOpenAI(
   };
 
   try {
-    const response = await fetch(OPENAI_API_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify(requestBody),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error("OpenAI API error:", errorData);
-      throw new Error(
-        `OpenAI API error: ${errorData.error?.message || response.statusText}`
-      );
-    }
-
-    const data = await response.json() as OpenAIResponse;
+    const data = await makeOpenAIRequest(requestBody, `standards categorization: ${fileName}`);
     const categoryPath = data.choices[0]?.message.content.trim();
 
     if (!categoryPath) {
@@ -370,29 +413,7 @@ export async function generateTagsWithOpenAI(
   };
 
   try {
-    const response = await fetch(OPENAI_API_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify(requestBody),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error("OpenAI API error:", errorData);
-      throw new Error(
-        `OpenAI API error: ${errorData.error?.message || response.statusText}`
-      );
-    }
-
-    const data = await response.json() as OpenAIResponse;
-    console.log(`Received OpenAI tags response for document: ${fileName}`, {
-      model: data.model,
-      usage: data.usage,
-    });
-    
+    const data = await makeOpenAIRequest(requestBody, `tag generation: ${fileName}`);
     const tags = data.choices[0]?.message.content.trim();
 
     if (!tags) {
@@ -458,31 +479,7 @@ export async function extractCircularLetterDataWithOpenAI(
   };
 
   try {
-    console.log(`Sending OpenAI request for circular letter: ${fileName}`);
-    
-    const response = await fetch(OPENAI_API_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify(requestBody),
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error("OpenAI API error:", errorData);
-      throw new Error(
-        `OpenAI API error: ${errorData.error?.message || response.statusText}`
-      );
-    }
-
-    const data = await response.json() as OpenAIResponse;
-    console.log(`Received OpenAI response for circular letter: ${fileName}`, {
-      model: data.model,
-      usage: data.usage,
-    });
-    
+    const data = await makeOpenAIRequest(requestBody, `circular letter extraction: ${fileName}`);
     const resultText = data.choices[0]?.message.content.trim();
 
     if (!resultText) {
