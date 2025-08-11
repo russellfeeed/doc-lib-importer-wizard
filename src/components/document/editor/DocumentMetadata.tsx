@@ -110,6 +110,12 @@ const DocumentMetadata: React.FC<DocumentMetadataProps> = ({
     }
   };
 
+  const handleSelectAllSchemes = () => {
+    const allSchemesString = nsiSchemes.join(', ');
+    const updatedTaxonomies = { ...document.customTaxonomies, 'tax:nsi-scheme': allSchemesString };
+    onEdit('customTaxonomies', updatedTaxonomies as any);
+  };
+
   const isSchemeSelected = (scheme: string) => {
     const currentSchemes = document.customTaxonomies?.['tax:nsi-scheme'] || '';
     const schemesArray = currentSchemes.split(',').map(s => s.trim()).filter(Boolean);
@@ -240,22 +246,32 @@ const DocumentMetadata: React.FC<DocumentMetadataProps> = ({
                       Loading schemes...
                     </div>
                   ) : nsiSchemes.length > 0 ? (
-                    nsiSchemes.map((scheme) => (
+                    <>
                       <Button
-                        key={scheme}
-                        variant="ghost"
+                        variant="outline"
                         size="sm"
-                        className="w-full justify-start text-left h-8 px-2"
-                        onClick={() => handleSchemeToggle(scheme)}
+                        className="w-full mb-2"
+                        onClick={handleSelectAllSchemes}
                       >
-                        {isSchemeSelected(scheme) ? (
-                          <CheckSquare className="mr-2 h-3 w-3 text-blue-600" />
-                        ) : (
-                          <Square className="mr-2 h-3 w-3" />
-                        )}
-                        {scheme}
+                        Select All Schemes
                       </Button>
-                    ))
+                      {nsiSchemes.map((scheme) => (
+                        <Button
+                          key={scheme}
+                          variant="ghost"
+                          size="sm"
+                          className="w-full justify-start text-left h-8 px-2"
+                          onClick={() => handleSchemeToggle(scheme)}
+                        >
+                          {isSchemeSelected(scheme) ? (
+                            <CheckSquare className="mr-2 h-3 w-3 text-blue-600" />
+                          ) : (
+                            <Square className="mr-2 h-3 w-3" />
+                          )}
+                          {scheme}
+                        </Button>
+                      ))}
+                    </>
                   ) : (
                     <p className="text-sm text-muted-foreground py-2">No NSI schemes found in WordPress taxonomy</p>
                   )}
