@@ -108,6 +108,16 @@ const DocumentsTableView: React.FC<DocumentsTableViewProps> = ({
   const allSelected = selectedDocuments.size === documents.length && documents.length > 0;
   const someSelected = selectedDocuments.size > 0;
   
+  const handleSelectDocumentsNeedingAttention = () => {
+    const indicesNeedingAttention = new Set<number>();
+    documents.forEach((doc, index) => {
+      if (needsAttention(doc).needs) {
+        indicesNeedingAttention.add(index);
+      }
+    });
+    setSelectedDocuments(indicesNeedingAttention);
+  };
+  
   // Bulk action handlers
   const handleBulkGenerateSchemes = async () => {
     if (!onGenerateAllSchemes || selectedDocuments.size === 0) return;
@@ -155,6 +165,16 @@ const DocumentsTableView: React.FC<DocumentsTableViewProps> = ({
             />
           </div>
           <div className="flex space-x-2">
+            {documentsNeedingAttention > 0 && (
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={handleSelectDocumentsNeedingAttention}
+              >
+                <AlertTriangle className="mr-2 h-4 w-4" />
+                Select Needing Attention ({documentsNeedingAttention})
+              </Button>
+            )}
             {someSelected && (
               <>
                 {onGenerateAllSchemes && (
