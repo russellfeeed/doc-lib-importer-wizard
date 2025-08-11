@@ -45,6 +45,8 @@ const PREFIX_MAPPINGS: PrefixMapping[] = [
 export function extractPrefixTags(filename: string): string[] {
   const tags: string[] = [];
   
+  console.log('Checking filename for prefix:', filename);
+  
   // Convert filename to uppercase for prefix matching
   const upperFilename = filename.toUpperCase();
   
@@ -53,6 +55,7 @@ export function extractPrefixTags(filename: string): string[] {
     // Check if filename starts with the prefix followed by a separator or number
     const pattern = new RegExp(`^${mapping.prefix}(?:[^A-Z]|$)`, 'i');
     if (pattern.test(filename)) {
+      console.log('Found matching prefix:', mapping.prefix, 'for filename:', filename);
       // Add both the prefix and the full description as tags
       tags.push(mapping.prefix);
       tags.push(mapping.description);
@@ -60,6 +63,7 @@ export function extractPrefixTags(filename: string): string[] {
     }
   }
   
+  console.log('Generated prefix tags:', tags);
   return tags;
 }
 
@@ -70,9 +74,11 @@ export function extractPrefixTags(filename: string): string[] {
  * @returns Updated tags string with prefix tags added
  */
 export function addPrefixTags(existingTags: string, filename: string): string {
+  console.log('Adding prefix tags for:', filename, 'existing tags:', existingTags);
   const prefixTags = extractPrefixTags(filename);
   
   if (prefixTags.length === 0) {
+    console.log('No prefix tags found for:', filename);
     return existingTags;
   }
   
@@ -89,5 +95,7 @@ export function addPrefixTags(existingTags: string, filename: string): string {
     }
   }
   
-  return currentTags.join(', ');
+  const result = currentTags.join(', ');
+  console.log('Final tags result:', result);
+  return result;
 }
