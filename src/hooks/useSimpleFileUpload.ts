@@ -49,8 +49,10 @@ export function useSimpleFileUpload({ onFilesUploaded }: UseSimpleFileUploadProp
     
     
     // Process each file (extract text and run AI processing if enabled)
+    console.log('🚀 Starting to process', newFiles.length, 'files');
     const processedFiles = await Promise.all(
       newFiles.map(async (fileObj) => {
+        console.log('📄 Processing file:', fileObj.name);
         try {
           let updatedFile = { ...fileObj, isProcessing: false };
           
