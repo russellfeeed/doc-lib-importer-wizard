@@ -6,10 +6,6 @@ import { extractTextFromDocument, generatePdfThumbnail, generateDocumentSummary,
 import { hasOpenAIKey } from '@/utils/openaiClient';
 import { addPrefixTags } from '@/utils/prefixTagUtils';
 
-// Test prefix tag function at import time
-console.log('✅ addPrefixTags function imported:', typeof addPrefixTags);
-console.log('🧪 Testing with OP2 prefix:', addPrefixTags('', 'OP2-test.pdf'));
-
 interface UseSimpleFileUploadProps {
   onFilesUploaded: (files: DocumentFile[]) => void;
 }
