@@ -1,8 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Tag } from 'lucide-react';
+import { ArrowLeft, Tag, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { useSimpleFileUpload } from '@/hooks/useSimpleFileUpload';
 import SimpleDocumentEditor from '@/components/SimpleDocumentEditor';
@@ -10,7 +10,7 @@ import CSVGenerator from '@/components/CSVGenerator';
 import WordPressUploader from '@/components/WordPressUploader';
 import { DocumentFile } from '@/types/document';
 import { Steps, StepType } from '@/types/steps';
-import { loadCategories, getAllCategoriesFlat } from '@/utils/categoryUtils';
+import { fetchWordPressTaxonomies } from '@/utils/wordpressUtils';
 
 // Simple File Uploader Component
 const SimpleFileUploader = ({ onFilesUploaded }: { onFilesUploaded: (files: DocumentFile[]) => void }) => {
@@ -30,9 +30,39 @@ const SimpleFileUploader = ({ onFilesUploaded }: { onFilesUploaded: (files: Docu
     setForcedCategory
   } = useSimpleFileUpload({ onFilesUploaded });
 
-  // Load available categories
-  const categoriesHierarchy = loadCategories();
-  const availableCategories = getAllCategoriesFlat(categoriesHierarchy);
+  // WordPress categories state
+  const [wpCategories, setWpCategories] = useState<any[]>([]);
+  const [isLoadingCategories, setIsLoadingCategories] = useState(false);
+
+  // Load WordPress categories on component mount
+  useEffect(() => {
+    const loadWpCategories = async () => {
+      setIsLoadingCategories(true);
+      try {
+        // Get WordPress credentials from localStorage
+        const wpSiteUrl = localStorage.getItem('wp_site_url');
+        const wpUsername = localStorage.getItem('wp_username');
+        const wpPassword = localStorage.getItem('wp_password');
+
+        if (wpSiteUrl && wpUsername && wpPassword) {
+          const credentials = {
+            url: wpSiteUrl,
+            username: wpUsername,
+            password: wpPassword
+          };
+          const categories = await fetchWordPressTaxonomies('doc_categories', credentials);
+          setWpCategories(categories);
+        }
+      } catch (error) {
+        console.error('Error loading WordPress categories:', error);
+        setWpCategories([]);
+      } finally {
+        setIsLoadingCategories(false);
+      }
+    };
+
+    loadWpCategories();
+  }, []);
 
   return (
     <div className="space-y-6">
@@ -65,11 +95,20 @@ const SimpleFileUploader = ({ onFilesUploaded }: { onFilesUploaded: (files: Docu
             <SelectItem value="none">
               <span className="text-gray-500">Use AI categorization (default)</span>
             </SelectItem>
-            {availableCategories.map((category) => (
-              <SelectItem key={category.id} value={category.name}>
-                {category.path}
+            {isLoadingCategories ? (
+              <SelectItem value="loading" disabled>
+                <div className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Loading categories...</span>
+                </div>
               </SelectItem>
-            ))}
+            ) : (
+              wpCategories.map((category) => (
+                <SelectItem key={category.id} value={category.name}>
+                  {category.name}
+                </SelectItem>
+              ))
+            )}
           </SelectContent>
         </Select>
         {forcedCategory && forcedCategory !== 'none' && (
