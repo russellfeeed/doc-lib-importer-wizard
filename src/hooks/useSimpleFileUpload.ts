@@ -115,14 +115,19 @@ export function useSimpleFileUpload({ onFilesUploaded }: UseSimpleFileUploadProp
 
                   // Generate tags
                   try {
+                    console.log('🏷️ Starting tag generation for file:', fileObj.name);
                     const aiTags = await generateDocumentTagsWithContext(content, fileObj.name, updatedFile.categories);
+                    console.log('🤖 AI generated tags:', aiTags);
                     // Add prefix-based tags to AI-generated tags
                     const tagsWithPrefix = addPrefixTags(aiTags, fileObj.name);
+                    console.log('🏷️ Final tags with prefix:', tagsWithPrefix);
                     updatedFile = { ...updatedFile, tags: tagsWithPrefix };
                   } catch (error) {
                     console.warn('Tag generation failed:', error);
+                    console.log('🏷️ Falling back to prefix-only tags for file:', fileObj.name);
                     // If AI tag generation fails, still add prefix tags
                     const prefixTags = addPrefixTags('', fileObj.name);
+                    console.log('🏷️ Prefix-only tags result:', prefixTags);
                     if (prefixTags) {
                       updatedFile = { ...updatedFile, tags: prefixTags };
                     }
