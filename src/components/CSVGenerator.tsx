@@ -131,7 +131,7 @@ const CSVGenerator: React.FC<CSVGeneratorProps> = ({
               className="bg-green-600 hover:bg-green-700"
             >
               <Upload className="mr-2 h-4 w-4" />
-              Upload to WordPress
+              Upload to WordPress Media Library
             </Button>
           )}
         </div>
