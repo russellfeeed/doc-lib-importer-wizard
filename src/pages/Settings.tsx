@@ -30,6 +30,7 @@ import {
   type AllPromptConfigs 
 } from '@/utils/promptManager';
 import { fetchWordPressTaxonomies } from '@/utils/wordpressUtils';
+import { getWordPressSettings, saveWordPressSettings, migrateLocalStorageToSupabase } from '@/utils/wordpressSettingsUtils';
 
 const promptConfigSchema = z.object({
   systemPrompt: z.string().min(1, 'System prompt is required'),
@@ -76,9 +77,9 @@ const Settings: React.FC = () => {
   const wpForm = useForm<z.infer<typeof wordpressConfigSchema>>({
     resolver: zodResolver(wordpressConfigSchema),
     defaultValues: {
-      siteUrl: localStorage.getItem('wp_site_url') || '',
-      username: localStorage.getItem('wp_username') || '',
-      password: localStorage.getItem('wp_password') || ''
+      siteUrl: '',
+      username: '',
+      password: ''
     }
   });
 
@@ -167,13 +168,20 @@ const Settings: React.FC = () => {
   };
 
   // WordPress functions
-  const onWpSubmit = (data: z.infer<typeof wordpressConfigSchema>) => {
+  const onWpSubmit = async (data: z.infer<typeof wordpressConfigSchema>) => {
     try {
-      localStorage.setItem('wp_site_url', data.siteUrl);
-      localStorage.setItem('wp_username', data.username);
-      localStorage.setItem('wp_password', data.password);
-      toast.success('WordPress settings saved successfully');
-      setConnectionStatus('idle');
+      const success = await saveWordPressSettings({
+        site_url: data.siteUrl,
+        username: data.username,
+        password: data.password
+      });
+
+      if (success) {
+        toast.success('WordPress settings saved successfully');
+        setConnectionStatus('idle');
+      } else {
+        toast.error('Failed to save WordPress settings');
+      }
     } catch (error) {
       toast.error('Failed to save WordPress settings');
     }
@@ -298,29 +306,44 @@ const Settings: React.FC = () => {
     }
   };
 
-  // Load nsi-schemes on component mount if WordPress is configured
+  // Load WordPress settings and nsi-schemes on component mount
   useEffect(() => {
-    const wpData = wpForm.getValues();
-    if (wpData.siteUrl && wpData.username && wpData.password) {
-      const credentials = {
-        url: wpData.siteUrl,
-        username: wpData.username,
-        password: wpData.password
-      };
-      // Auto-load schemes when component mounts if credentials are available
-      fetchWordPressTaxonomies('nsi-scheme', credentials)
-        .then(schemes => {
+    const loadWordPressSettings = async () => {
+      // First, try to migrate from localStorage if needed
+      await migrateLocalStorageToSupabase();
+      
+      // Load settings from Supabase
+      const settings = await getWordPressSettings();
+      
+      if (settings) {
+        wpForm.reset({
+          siteUrl: settings.site_url,
+          username: settings.username,
+          password: settings.password
+        });
+
+        const credentials = {
+          url: settings.site_url,
+          username: settings.username,
+          password: settings.password
+        };
+        
+        // Auto-load schemes when component mounts if credentials are available
+        try {
+          const schemes = await fetchWordPressTaxonomies('nsi-scheme', credentials);
           setNsiSchemes(schemes);
           if (schemes.length > 0) {
             // Store the schemes in localStorage for use by AI generation
             localStorage.setItem('nsi_schemes', JSON.stringify(schemes));
             console.log(`Auto-loaded ${schemes.length} nsi-scheme terms`);
           }
-        })
-        .catch(error => {
+        } catch (error) {
           console.error('Error auto-loading nsi-schemes:', error);
-        });
-    }
+        }
+      }
+    };
+
+    loadWordPressSettings();
   }, []);
 
   const getConnectionStatusIcon = () => {

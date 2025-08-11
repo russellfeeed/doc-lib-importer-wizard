@@ -47,10 +47,14 @@ const WordPressUploader: React.FC<WordPressUploaderProps> = ({
   const [isUploading, setIsUploading] = useState(false);
   const [uploadResults, setUploadResults] = useState<UploadResult[]>([]);
   const [uploadComplete, setUploadComplete] = useState(false);
-  const [wpSettings, setWpSettings] = useState(getWordPressSettings());
+  const [wpSettings, setWpSettings] = useState<any>(null);
 
   useEffect(() => {
-    setWpSettings(getWordPressSettings());
+    const loadSettings = async () => {
+      const settings = await getWordPressSettings();
+      setWpSettings(settings);
+    };
+    loadSettings();
   }, []);
 
   // Filter documents that have file URLs

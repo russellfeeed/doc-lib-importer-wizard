@@ -248,7 +248,8 @@ export function useSimpleAiGeneration({
 
   const handleGenerateAllSchemes = useCallback(async () => {
     // Check if WordPress settings are configured
-    if (!hasWordPressSettings()) {
+    const hasSettings = await hasWordPressSettings();
+    if (!hasSettings) {
       toast.error(promptForWordPressSettings());
       return;
     }

@@ -17,6 +17,7 @@ import {
 import { useCategories } from '@/context/CategoryContext';
 import { CategoryHierarchy } from '@/types/categories';
 import { toast } from 'sonner';
+import { getWordPressSettings } from '@/utils/settingsUtils';
 
 interface WordPressCredentials {
   url: string;
@@ -42,20 +43,18 @@ const WordPressImporter: React.FC = () => {
   const [importAction, setImportAction] = useState<ImportAction>(null);
 
   const fetchWordPressCategories = async () => {
-    // Get credentials from localStorage (set in Settings page)
-    const savedCredentials = localStorage.getItem('wp_site_url') && 
-                            localStorage.getItem('wp_username') && 
-                            localStorage.getItem('wp_password');
+    // Get credentials from Supabase (with localStorage fallback)
+    const settings = await getWordPressSettings();
     
-    if (!savedCredentials) {
+    if (!settings) {
       toast.error('WordPress credentials not found. Please configure them in Settings first.');
       return;
     }
 
     const credentials = {
-      url: localStorage.getItem('wp_site_url')!,
-      username: localStorage.getItem('wp_username')!,
-      password: localStorage.getItem('wp_password')!
+      url: settings.siteUrl,
+      username: settings.username,
+      password: settings.password
     };
 
     setIsLoading(true);
