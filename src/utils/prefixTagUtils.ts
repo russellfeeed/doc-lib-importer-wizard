@@ -58,9 +58,9 @@ export function extractPrefixTags(filename: string): string[] {
   
   if (mapping) {
     console.log('Found matching prefix:', mapping.prefix, 'for filename:', filename);
-    // Add both the prefix and the full description as tags
-    tags.push(mapping.prefix);
-    tags.push(mapping.description);
+    // Add both the prefix and the full description as tags (lowercase)
+    tags.push(mapping.prefix.toLowerCase());
+    tags.push(mapping.description.toLowerCase());
   }
   
   console.log('Generated prefix tags:', tags);
