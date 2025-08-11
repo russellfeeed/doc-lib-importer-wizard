@@ -358,8 +358,11 @@ const DocumentsTableView: React.FC<DocumentsTableViewProps> = ({
                   </TableCell>
                   <TableCell>
                     <Input 
-                      value={doc.customFields?.scheme || ''}
-                      onChange={(e) => onEditDocument(index, 'customFields', { ...doc.customFields, scheme: e.target.value })}
+                      value={doc.customTaxonomies?.['tax:nsi-scheme'] || ''}
+                      onChange={(e) => {
+                        const updatedTaxonomies = { ...doc.customTaxonomies, 'tax:nsi-scheme': e.target.value };
+                        onEditDocument(index, 'customTaxonomies', updatedTaxonomies);
+                      }}
                       className="w-full"
                       placeholder="Scheme"
                     />
