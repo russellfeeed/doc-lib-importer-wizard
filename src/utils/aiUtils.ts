@@ -442,97 +442,64 @@ export async function generateDocumentScheme(content: string, title: string): Pr
     throw new Error("OpenAI API key not set");
   }
 
-  // Get stored NSI schemes
+  // Get stored NSI schemes from WordPress
   const storedSchemes = localStorage.getItem('nsi_schemes');
   console.log('Stored NSI schemes from localStorage:', storedSchemes);
   
-  let availableSchemes = '';
+  let validSchemes: string[] = [];
   
   if (storedSchemes) {
     try {
       const schemes = JSON.parse(storedSchemes);
       console.log('Parsed NSI schemes:', schemes);
-      availableSchemes = schemes.map((scheme: any) => scheme.name).join(', ');
-      console.log('Available schemes string:', availableSchemes);
+      validSchemes = schemes.map((scheme: any) => scheme.name);
+      console.log('Valid schemes array:', validSchemes);
     } catch (error) {
       console.error('Error parsing stored NSI schemes:', error);
     }
   }
 
-  if (!availableSchemes) {
-    console.log('No NSI schemes available, falling back to default behavior');
-    // Fallback to basic scheme generation
-    const prompt = `
-Analyze the following document and determine the most appropriate scheme classification.
-
-Choose from typical schemes like "Security Standards", "Risk Management", "Compliance Frameworks", "Technical Guidelines", "Policy Documents", "Training Materials", "Assessment Tools", or similar relevant categories.
-
-Document: ${title}
-Content: ${content.substring(0, 2000)}
-
-Return only the scheme name that best categorizes this document. No explanation, just the scheme name.
-`;
-
-    const requestBody = {
-      model: "gpt-4o-mini",
-      messages: [
-        { role: "system", content: "You are a document classification assistant. Return only the scheme name, no additional text." },
-        { role: "user", content: prompt }
-      ],
-      max_tokens: 50,
-      temperature: 0.3,
-    };
-
-    try {
-      console.log('Making API call for scheme without constraints...');
-      const response = await fetch("https://api.openai.com/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify(requestBody),
-      });
-
-      if (!response.ok) {
-        console.log('API response not ok for scheme:', response.status);
-        throw new Error(`OpenAI API error: ${response.status}`);
-      }
-
-      const data = await response.json();
-      console.log('API response data for scheme:', data);
-      const scheme = data.choices[0]?.message?.content?.trim() || '';
-      console.log('Generated scheme:', scheme);
-      return scheme;
-    } catch (error) {
-      console.error('Error generating scheme without constraints:', error);
-      throw new Error('Failed to generate scheme');
-    }
+  // Fallback to common NSI schemes if WordPress is not configured
+  if (validSchemes.length === 0) {
+    console.log('No NSI schemes available from WordPress, using fallback schemes');
+    validSchemes = [
+      'ARC',
+      'Cash Services',
+      'EMS',
+      'Evacuation Alert Systems',
+      'Fire',
+      'Guarding',
+      'Health and Safety',
+      'Kitchen Fire Protection Systems',
+      'Life Safety Fire Risk Assessment',
+      'NACOSS',
+      'Specialist Services'
+    ];
   }
 
-  const prompt = `
-Analyze the following document and determine the most appropriate NSI scheme classification.
-
-Choose ONLY from these available NSI schemes: ${availableSchemes}
-
-Document: ${title}
-Content: ${content.substring(0, 2000)}
-
-If the document matches multiple schemes, you can list them separated by commas (e.g. "Guarding, Cash Services").
-Return only the exact scheme name(s) from the list above that best categorize this document. No explanation, just the scheme name(s).
-`;
+  // Import prompt config
+  const { getPromptConfig } = await import('./promptManager');
+  const promptConfig = getPromptConfig('schemeGeneration');
+  
+  // Prepare the prompt with valid schemes
+  const validSchemesString = validSchemes.join('\n- ');
+  const userPrompt = promptConfig.userPromptTemplate
+    .replace('{fileName}', title)
+    .replace('{validSchemes}', validSchemesString)
+    .replace('{content}', content.substring(0, 2000));
 
   const requestBody = {
-    model: "gpt-4o-mini",
+    model: promptConfig.model,
     messages: [
-      { role: "system", content: "You are a document classification assistant. Return only the exact scheme name from the provided list, no additional text." },
-      { role: "user", content: prompt }
+      { role: "system", content: promptConfig.systemPrompt },
+      { role: "user", content: userPrompt }
     ],
-    max_tokens: 50,
-    temperature: 0.3,
+    max_tokens: promptConfig.maxTokens,
+    temperature: promptConfig.temperature,
   };
 
   try {
+    console.log('Making API call for scheme generation with prompt config...');
     const response = await fetch("https://api.openai.com/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -543,11 +510,29 @@ Return only the exact scheme name(s) from the list above that best categorize th
     });
 
     if (!response.ok) {
+      console.log('API response not ok for scheme:', response.status);
       throw new Error(`OpenAI API error: ${response.status}`);
     }
 
     const data = await response.json();
+    console.log('API response data for scheme:', data);
     const scheme = data.choices[0]?.message?.content?.trim() || '';
+    console.log('Generated scheme:', scheme);
+    
+    // Validate that the generated scheme only contains valid schemes
+    if (scheme) {
+      const generatedSchemes = scheme.split(',').map(s => s.trim());
+      const invalidSchemes = generatedSchemes.filter(s => !validSchemes.includes(s));
+      
+      if (invalidSchemes.length > 0) {
+        console.warn('AI generated invalid schemes:', invalidSchemes);
+        console.warn('Valid schemes are:', validSchemes);
+        // Filter out invalid schemes and return only valid ones
+        const validGeneratedSchemes = generatedSchemes.filter(s => validSchemes.includes(s));
+        return validGeneratedSchemes.join(', ');
+      }
+    }
+    
     return scheme;
   } catch (error) {
     console.error('Error generating scheme:', error);

@@ -12,6 +12,7 @@ export interface AllPromptConfigs {
   tagGeneration: PromptConfig;
   circularLetters: PromptConfig;
   standardsCategorization: PromptConfig;
+  schemeGeneration: PromptConfig;
 }
 
 const DEFAULT_PROMPTS: AllPromptConfigs = {
@@ -124,6 +125,40 @@ Document content:
     model: "gpt-4o-mini",
     temperature: 0.3,
     maxTokens: 100
+  },
+  schemeGeneration: {
+    systemPrompt: "You are a compliance scheme detection specialist. Your task is to analyze documents and identify which NSI compliance schemes they relate to, using ONLY the exact scheme names provided in the valid schemes list.",
+    userPromptTemplate: `Analyze this document titled "{fileName}" and determine which NSI compliance schemes it relates to from the list below.
+
+CRITICAL RULES:
+1. You MUST only use scheme names that appear EXACTLY in the valid schemes list below
+2. You can select multiple schemes if the document relates to more than one
+3. Return schemes as a comma-separated list (e.g., "Fire, Health and Safety")
+4. If the document doesn't clearly relate to any specific scheme, return an empty string
+5. Do NOT create or modify scheme names - use only the exact names provided
+
+VALID NSI SCHEMES:
+{validSchemes}
+
+GUIDELINES:
+- Look for explicit mentions of scheme names or their abbreviated forms
+- Consider the document's subject matter and compliance requirements
+- Fire-related documents → "Fire"
+- Security-related documents → "Guarding" 
+- Emergency systems → "EMS" or "Evacuation Alert Systems"
+- Kitchen safety → "Kitchen Fire Protection Systems"
+- General safety → "Health and Safety"
+- Cash handling → "Cash Services"
+- Building standards → "ARC"
+- Risk assessments → "Life Safety Fire Risk Assessment"
+- Alarm systems → "NACOSS"
+- Other specialized services → "Specialist Services"
+
+Document content:
+{content}`,
+    model: "gpt-4o-mini",
+    temperature: 0.3,
+    maxTokens: 200
   }
 };
 
@@ -187,7 +222,7 @@ export function importPromptConfigs(jsonString: string): void {
   try {
     const configs = JSON.parse(jsonString) as AllPromptConfigs;
     // Validate the structure
-    if (configs.summarization && configs.categorization && configs.tagGeneration && configs.circularLetters && configs.standardsCategorization) {
+    if (configs.summarization && configs.categorization && configs.tagGeneration && configs.circularLetters && configs.standardsCategorization && configs.schemeGeneration) {
       saveAllPromptConfigs(configs);
     } else {
       throw new Error("Invalid prompt configuration format");
