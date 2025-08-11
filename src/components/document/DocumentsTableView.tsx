@@ -119,11 +119,13 @@ const DocumentsTableView: React.FC<DocumentsTableViewProps> = ({
   const handleSelectDocumentsNeedingAttention = () => {
     const indicesNeedingAttention = new Set<number>();
     documents.forEach((doc, index) => {
-      if (needsAttention(doc).needs) {
+      const attention = needsAttention(doc);
+      if (attention.needs) {
         indicesNeedingAttention.add(index);
       }
     });
     setSelectedDocuments(indicesNeedingAttention);
+    console.log('Selected documents needing attention:', indicesNeedingAttention.size, 'out of', documents.length);
   };
   
   // Bulk action handlers
