@@ -14,7 +14,7 @@ export function useSimpleFileUpload({ onFilesUploaded }: UseSimpleFileUploadProp
   const [isDragging, setIsDragging] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [aiEnabled, setAiEnabled] = useState(true); // AI enabled by default for simple version
-  const [forcedCategory, setForcedCategory] = useState<string>(''); // For forcing a specific category
+  const [forcedCategory, setForcedCategory] = useState<string>('none'); // For forcing a specific category
 
   const handleFileSelection = useCallback(async (selectedFiles: FileList | null) => {
     if (!selectedFiles || selectedFiles.length === 0) return;
@@ -76,7 +76,7 @@ export function useSimpleFileUpload({ onFilesUploaded }: UseSimpleFileUploadProp
             };
 
             // Apply forced category if set, regardless of AI status
-            if (forcedCategory) {
+            if (forcedCategory && forcedCategory !== 'none') {
               updatedFile = { ...updatedFile, categories: forcedCategory };
             }
 
@@ -103,7 +103,7 @@ export function useSimpleFileUpload({ onFilesUploaded }: UseSimpleFileUploadProp
                   updatedFile = { ...updatedFile, excerpt };
 
                   // Generate category only if no forced category is set
-                  if (!forcedCategory) {
+                  if (!forcedCategory || forcedCategory === 'none') {
                     try {
                       const category = await generateDocumentCategoryWithContext(content, fileObj.name);
                       updatedFile = { ...updatedFile, categories: category };

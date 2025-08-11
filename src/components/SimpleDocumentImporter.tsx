@@ -62,7 +62,7 @@ const SimpleFileUploader = ({ onFilesUploaded }: { onFilesUploaded: (files: Docu
             <SelectValue placeholder="Select a category to apply to all documents (disables AI categorization)" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">
+            <SelectItem value="none">
               <span className="text-gray-500">Use AI categorization (default)</span>
             </SelectItem>
             {availableCategories.map((category) => (
@@ -72,7 +72,7 @@ const SimpleFileUploader = ({ onFilesUploaded }: { onFilesUploaded: (files: Docu
             ))}
           </SelectContent>
         </Select>
-        {forcedCategory && (
+        {forcedCategory && forcedCategory !== 'none' && (
           <p className="text-sm text-amber-600">
             Category "{forcedCategory}" will be applied to all uploaded documents. AI categorization is disabled.
           </p>
