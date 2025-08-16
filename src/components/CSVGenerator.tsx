@@ -60,6 +60,27 @@ const CSVGenerator: React.FC<CSVGeneratorProps> = ({
     generate();
   }, [documents]);
 
+  const getPredominantCategory = () => {
+    if (isCircularLetter) return '';
+    
+    const categoryCount: Record<string, number> = {};
+    
+    documents.forEach(doc => {
+      const docFile = doc as DocumentFile;
+      if (docFile.categories && !docFile.omitFromCSV) {
+        const categories = docFile.categories.split(',').map(cat => cat.trim());
+        categories.forEach(category => {
+          if (category) {
+            categoryCount[category] = (categoryCount[category] || 0) + 1;
+          }
+        });
+      }
+    });
+    
+    const sortedCategories = Object.entries(categoryCount).sort(([,a], [,b]) => b - a);
+    return sortedCategories.length > 0 ? sortedCategories[0][0] : '';
+  };
+
   const handleDownload = () => {
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -67,7 +88,16 @@ const CSVGenerator: React.FC<CSVGeneratorProps> = ({
     link.setAttribute('href', url);
     
     // Use appropriate filename based on content type
-    const filename = isCircularLetter ? 'circular-letters-export.csv' : 'document-library-import.csv';
+    let filename = isCircularLetter ? 'circular-letters-export.csv' : 'document-library-import.csv';
+    
+    if (!isCircularLetter) {
+      const predominantCategory = getPredominantCategory();
+      if (predominantCategory) {
+        const sanitizedCategory = predominantCategory.toLowerCase().replace(/[^a-z0-9]/g, '-');
+        filename = `document-library-import-${sanitizedCategory}.csv`;
+      }
+    }
+    
     link.setAttribute('download', filename);
     
     document.body.appendChild(link);
