@@ -2,8 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ArrowLeft, Tag, Loader2 } from 'lucide-react';
+import { ArrowLeft, Tag, Loader2, BookOpen } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import WordPressReferenceModal from '@/components/WordPressReferenceModal';
 import { useSimpleFileUpload } from '@/hooks/useSimpleFileUpload';
 import SimpleDocumentEditor from '@/components/SimpleDocumentEditor';
 import CSVGenerator from '@/components/CSVGenerator';
@@ -266,13 +267,20 @@ const SimpleDocumentImporter: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center mb-4">
+      <div className="flex items-center justify-between mb-4">
         <Button asChild variant="ghost" size="sm" className="gap-2">
           <Link to="/">
             <ArrowLeft className="h-4 w-4" />
             Back to Home
           </Link>
         </Button>
+        
+        <WordPressReferenceModal>
+          <Button variant="outline" size="sm" className="gap-2">
+            <BookOpen className="h-4 w-4" />
+            Reference Guide
+          </Button>
+        </WordPressReferenceModal>
       </div>
       
       <div className="flex justify-between items-center mb-10">
