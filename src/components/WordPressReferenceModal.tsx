@@ -40,7 +40,7 @@ const WordPressReferenceModal: React.FC<WordPressReferenceModalProps> = ({ child
       // Fetch both taxonomies in parallel
       const [categories, schemes] = await Promise.all([
         fetchWordPressTaxonomies('doc_categories', credentials).catch(() => []),
-        fetchWordPressTaxonomies('nsi_scheme', credentials).catch(() => [])
+        fetchWordPressTaxonomies('nsi-scheme', credentials).catch(() => [])
       ]);
 
       setDocCategories(categories);
