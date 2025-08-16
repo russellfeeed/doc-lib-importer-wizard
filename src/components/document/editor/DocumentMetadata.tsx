@@ -7,8 +7,6 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { PDFViewerModal } from '@/components/ui/pdf-viewer-modal';
 import { Tag, BookCopy, FolderOpen, ChevronRight, AlertTriangle, Building, CheckSquare, Square, FileText, Eye, Trash2 } from 'lucide-react';
 import { DocumentFile } from '@/types/document';
-import { useCategories } from '@/context/CategoryContext';
-import { CategoryNode } from '@/types/categories';
 import { fetchWordPressTaxonomies } from '@/utils/wordpressUtils';
 
 interface DocumentMetadataProps {
@@ -30,16 +28,18 @@ const DocumentMetadata: React.FC<DocumentMetadataProps> = ({
   onGenerateScheme,
   onDelete
 }) => {
-  const { hierarchy } = useCategories();
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   const [isSchemePopoverOpen, setIsSchemePopoverOpen] = useState(false);
   const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
   const [nsiSchemes, setNsiSchemes] = useState<string[]>([]);
   const [isLoadingSchemes, setIsLoadingSchemes] = useState(false);
+  const [docCategories, setDocCategories] = useState<any[]>([]);
+  const [isLoadingCategories, setIsLoadingCategories] = useState(false);
 
-  // Fetch NSI schemes from WordPress taxonomy with fallback
+  // Fetch categories and NSI schemes from WordPress taxonomy
   useEffect(() => {
-    const loadNsiSchemes = async () => {
+    const loadData = async () => {
+      // Load NSI schemes
       setIsLoadingSchemes(true);
       try {
         const schemes = await fetchWordPressTaxonomies('nsi-scheme');
@@ -64,32 +64,25 @@ const DocumentMetadata: React.FC<DocumentMetadataProps> = ({
       } finally {
         setIsLoadingSchemes(false);
       }
+
+      // Load document categories
+      setIsLoadingCategories(true);
+      try {
+        const categories = await fetchWordPressTaxonomies('doc_categories');
+        setDocCategories(categories);
+      } catch (error) {
+        console.error('Failed to fetch document categories:', error);
+        setDocCategories([]);
+      } finally {
+        setIsLoadingCategories(false);
+      }
     };
 
-    loadNsiSchemes();
+    loadData();
   }, []);
 
-  const buildCategoryPath = (categoryId: string, categories: CategoryNode[]): string => {
-    const findCategoryPath = (id: string, nodes: CategoryNode[], path: string[] = []): string[] | null => {
-      for (const node of nodes) {
-        if (node.id === id) {
-          return [...path, node.name];
-        }
-        if (node.children.length > 0) {
-          const result = findCategoryPath(id, node.children, [...path, node.name]);
-          if (result) return result;
-        }
-      }
-      return null;
-    };
-    
-    const path = findCategoryPath(categoryId, categories);
-    return path ? path.join(' > ') : '';
-  };
-
-  const handleCategorySelect = (categoryId: string) => {
-    const categoryPath = buildCategoryPath(categoryId, hierarchy.categories);
-    onEdit('categories', categoryPath);
+  const handleCategorySelect = (categoryName: string) => {
+    onEdit('categories', categoryName);
     setIsPopoverOpen(false);
   };
 
@@ -122,20 +115,18 @@ const DocumentMetadata: React.FC<DocumentMetadataProps> = ({
     return schemesArray.includes(scheme);
   };
 
-  const renderCategoryTree = (categories: CategoryNode[], level = 0) => {
+  const renderCategoryList = (categories: any[]) => {
     return categories.map((category) => (
-      <div key={category.id} className={`${level > 0 ? 'ml-4' : ''}`}>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="w-full justify-start text-left h-8 px-2"
-          onClick={() => handleCategorySelect(category.id)}
-        >
-          <FolderOpen className="mr-2 h-3 w-3" />
-          {category.name}
-        </Button>
-        {category.children.length > 0 && renderCategoryTree(category.children, level + 1)}
-      </div>
+      <Button
+        key={category.id}
+        variant="ghost"
+        size="sm"
+        className="w-full justify-start text-left h-8 px-2"
+        onClick={() => handleCategorySelect(category.name)}
+      >
+        <FolderOpen className="mr-2 h-3 w-3" />
+        {category.name}
+      </Button>
     ));
   };
 
@@ -174,14 +165,19 @@ const DocumentMetadata: React.FC<DocumentMetadataProps> = ({
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-80 max-h-96 overflow-y-auto" align="start">
-                <div className="space-y-1">
-                  <h4 className="font-medium text-sm mb-2">Select Category</h4>
-                  {hierarchy.categories.length > 0 ? (
-                    renderCategoryTree(hierarchy.categories)
-                  ) : (
-                    <p className="text-sm text-muted-foreground">No categories available</p>
-                  )}
-                </div>
+                 <div className="space-y-1">
+                   <h4 className="font-medium text-sm mb-2">Select Category</h4>
+                   {isLoadingCategories ? (
+                     <div className="flex items-center justify-center py-4">
+                       <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full mr-2" />
+                       Loading categories...
+                     </div>
+                   ) : docCategories.length > 0 ? (
+                     renderCategoryList(docCategories)
+                   ) : (
+                     <p className="text-sm text-muted-foreground">No categories available from WordPress</p>
+                   )}
+                 </div>
               </PopoverContent>
             </Popover>
           </div>
