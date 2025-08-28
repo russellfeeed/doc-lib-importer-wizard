@@ -281,6 +281,12 @@ export function useCircularLetterUpload({ onLettersUploaded }: UseCircularLetter
     }
   }, [aiEnabled]);
 
+  const handleApiKeyChange = useCallback((hasKey: boolean) => {
+    if (aiEnabled && !hasKey) {
+      toast.info("AI extraction will be disabled without an API key");
+    }
+  }, [aiEnabled]);
+
   return {
     letters,
     isDragging,
@@ -293,6 +299,7 @@ export function useCircularLetterUpload({ onLettersUploaded }: UseCircularLetter
     handleBrowseClick,
     handleRemoveLetter,
     handleContinue,
-    toggleAI
+    toggleAI,
+    handleApiKeyChange
   };
 }

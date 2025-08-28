@@ -2,11 +2,11 @@
 import React, { useState, useRef } from 'react';
 import { useCircularLetterUpload } from '@/hooks/useCircularLetterUpload';
 import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
 import { FileTextIcon, PlusCircleIcon, UploadIcon } from 'lucide-react';
 import DropZone from '@/components/file-uploader/DropZone';
 import { Card } from '@/components/ui/card';
 import CircularLetterList from './CircularLetterList';
+import AiSettings from '@/components/file-uploader/AiSettings';
 
 interface CircularLetterUploaderProps {
   onLettersUploaded: (letters: any[]) => void;
@@ -27,7 +27,8 @@ const CircularLetterUploader: React.FC<CircularLetterUploaderProps> = ({ onLette
     handleBrowseClick,
     handleRemoveLetter,
     handleContinue,
-    toggleAI
+    toggleAI,
+    handleApiKeyChange
   } = useCircularLetterUpload({ onLettersUploaded });
 
   // Function to trigger the file input click
@@ -41,10 +42,11 @@ const CircularLetterUploader: React.FC<CircularLetterUploaderProps> = ({ onLette
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h3 className="text-xl font-semibold">Upload Circular Letters</h3>
-        <div className="flex items-center">
-          <span className="mr-2 text-sm">AI Extraction</span>
-          <Switch checked={aiEnabled} onCheckedChange={toggleAI} />
-        </div>
+        <AiSettings
+          aiEnabled={aiEnabled}
+          onToggleAi={toggleAI}
+          onApiKeyChange={handleApiKeyChange}
+        />
       </div>
 
       <input
