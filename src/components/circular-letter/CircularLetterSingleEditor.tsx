@@ -3,10 +3,11 @@ import { CircularLetter, AppendixItem } from '@/types/circular-letter';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft, ChevronRight, ListFilter, Save, Tag, File, Plus, Minus, FileText, ExternalLink } from 'lucide-react';
+import { ChevronLeft, ChevronRight, ListFilter, Save, Tag, File, Plus, Minus, FileText, Eye } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { PDFViewerModal } from '@/components/ui/pdf-viewer-modal';
 import { convertToMarkdown } from '@/utils/aiUtils';
 import { toast } from "sonner";
 
@@ -36,6 +37,7 @@ const CircularLetterSingleEditor: React.FC<CircularLetterSingleEditorProps> = ({
   onBack
 }) => {
   const [isMarkdownViewOpen, setIsMarkdownViewOpen] = useState(false);
+  const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
   
   const handleAppendixChange = (index: number, field: keyof AppendixItem, value: string) => {
     if (!currentLetter.appendices) return;
@@ -97,14 +99,12 @@ const CircularLetterSingleEditor: React.FC<CircularLetterSingleEditorProps> = ({
     return markdown;
   };
 
-  const openPdfInNewTab = () => {
+  const openPdfModal = () => {
     if (!currentLetter.file) {
       toast.error("PDF file not available");
       return;
     }
-    
-    const fileUrl = URL.createObjectURL(currentLetter.file);
-    window.open(fileUrl, '_blank');
+    setIsPdfModalOpen(true);
   };
 
   return (
@@ -125,9 +125,9 @@ const CircularLetterSingleEditor: React.FC<CircularLetterSingleEditorProps> = ({
           <Button 
             variant="outline" 
             size="sm"
-            onClick={openPdfInNewTab}
+            onClick={openPdfModal}
           >
-            <ExternalLink className="h-4 w-4 mr-2" />
+            <Eye className="h-4 w-4 mr-2" />
             View Original PDF
           </Button>
           <Dialog open={isMarkdownViewOpen} onOpenChange={setIsMarkdownViewOpen}>
@@ -377,6 +377,14 @@ const CircularLetterSingleEditor: React.FC<CircularLetterSingleEditorProps> = ({
           </Button>
         </div>
       </div>
+
+      {/* PDF Viewer Modal */}
+      <PDFViewerModal
+        isOpen={isPdfModalOpen}
+        onClose={() => setIsPdfModalOpen(false)}
+        pdfFile={currentLetter.file}
+        fileName={currentLetter.name}
+      />
     </div>
   );
 };
