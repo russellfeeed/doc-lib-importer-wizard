@@ -111,7 +111,7 @@ export const generateCSV = (documents: DocumentFile[] | CircularLetter[]): strin
         'Author': escapeCsvValue(letter.author),
         'Tags': escapeCsvValue(letter.tags),
         'Categories': escapeCsvValue(letter.categories || ''),
-        'Excerpt': escapeCsvValue(letter.details),
+        'Excerpt': escapeCsvValue(letter.excerpt || ''),
         'File URL': escapeCsvValue(`https://dev.members.nsi.org.uk/wp-content/uploads/${getCurrentUploadPath()}/${letter.file?.name || letter.name}`),
         'Direct URL': escapeCsvValue(`https://dev.members.nsi.org.uk/wp-content/uploads/${getCurrentUploadPath()}/${letter.file?.name || letter.name}`),
         'Featured Image URL': escapeCsvValue(letter.thumbnail || ''),

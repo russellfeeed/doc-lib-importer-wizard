@@ -43,6 +43,7 @@ export function useCircularLetterUpload({ onLettersUploaded }: UseCircularLetter
         audience: '',
         title: '',
         details: '',
+        excerpt: '',
         author: '',
         tags: '',
         categories: 'Circular Letters', // Default category path

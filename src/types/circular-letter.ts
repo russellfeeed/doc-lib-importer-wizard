@@ -13,6 +13,7 @@ export interface CircularLetter {
   audience: string;
   title: string;
   details: string;
+  excerpt: string;
   author: string;
   tags: string;
   categories?: string; // Added categories field

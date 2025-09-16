@@ -268,6 +268,16 @@ const CircularLetterSingleEditor: React.FC<CircularLetterSingleEditorProps> = ({
         </div>
         
         <div className="mt-4">
+          <label className="block text-sm font-medium mb-1">Excerpt/Summary</label>
+          <Textarea 
+            value={currentLetter.excerpt || ''}
+            onChange={(e) => onEdit('excerpt', e.target.value)}
+            placeholder="Enter a brief summary or excerpt"
+            rows={3}
+          />
+        </div>
+        
+        <div className="mt-4">
           <label className="block text-sm font-medium mb-1">Details (Full Document Content)</label>
           <Textarea 
             value={currentLetter.details}
