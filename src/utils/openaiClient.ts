@@ -441,6 +441,7 @@ export async function extractCircularLetterDataWithOpenAI(
   audience: string;
   title: string;
   details: string;
+  excerpt: string;
   author: string;
   tags: string;
   appendices: AppendixItem[];
@@ -499,6 +500,7 @@ export async function extractCircularLetterDataWithOpenAI(
         audience: extractedData.audience || '',
         title: extractedData.title || '',
         details: extractedData.details || '',
+        excerpt: extractedData.excerpt || '',
         author: extractedData.author || '',
         tags: extractedData.tags || '',
         appendices: Array.isArray(extractedData.appendices) ? extractedData.appendices : []
@@ -513,6 +515,7 @@ export async function extractCircularLetterDataWithOpenAI(
         audience: '',
         title: '',
         details: '',
+        excerpt: '',
         author: '',
         tags: '',
         appendices: []

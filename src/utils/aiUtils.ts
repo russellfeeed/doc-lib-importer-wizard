@@ -380,6 +380,7 @@ export async function processCircularLetterWithAI(
   audience: string,
   title: string,
   details: string,
+  excerpt: string,
   author: string,
   tags: string,
   appendices: AppendixItem[]
@@ -396,7 +397,8 @@ export async function processCircularLetterWithAI(
       date, 
       audience, 
       title, 
-      details, 
+      details,
+      excerpt, 
       author,
       tags,
       appendices
@@ -412,6 +414,7 @@ export async function processCircularLetterWithAI(
       audience,
       title,
       details, // This should now exclude appendix content
+      excerpt,
       author,
       tags,
       appendices

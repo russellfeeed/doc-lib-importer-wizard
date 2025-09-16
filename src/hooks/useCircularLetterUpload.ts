@@ -91,7 +91,8 @@ export function useCircularLetterUpload({ onLettersUploaded }: UseCircularLetter
                 date, 
                 audience, 
                 title, 
-                details, 
+                details,
+                excerpt, 
                 author,
                 tags,
                 appendices
@@ -106,6 +107,7 @@ export function useCircularLetterUpload({ onLettersUploaded }: UseCircularLetter
                 audience: audience || '',
                 title: title || '',
                 details: details || '',
+                excerpt: excerpt || '',
                 author: author || '',
                 tags: tags || '',
                 appendices: appendices || [],
