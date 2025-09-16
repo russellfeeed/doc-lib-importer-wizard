@@ -32,6 +32,10 @@ export const generateCSV = (documents: DocumentFile[] | CircularLetter[]): strin
       'Details',
       'Author',
       'Tags',
+      'Categories',
+      'File URL',
+      'Direct URL',
+      'Featured Image URL',
       'File Size',
       'Content',
     ];
@@ -105,6 +109,10 @@ export const generateCSV = (documents: DocumentFile[] | CircularLetter[]): strin
         'Details': escapeCsvValue(letter.details),
         'Author': escapeCsvValue(letter.author),
         'Tags': escapeCsvValue(letter.tags),
+        'Categories': escapeCsvValue(letter.categories || ''),
+        'File URL': escapeCsvValue(`https://dev.members.nsi.org.uk/wp-content/uploads/${getCurrentUploadPath()}/${letter.file?.name || letter.name}`),
+        'Direct URL': escapeCsvValue(`https://dev.members.nsi.org.uk/wp-content/uploads/${getCurrentUploadPath()}/${letter.file?.name || letter.name}`),
+        'Featured Image URL': escapeCsvValue(letter.thumbnail || ''),
         'File Size': escapeCsvValue(letter.fileSize),
         'Content': escapeCsvValue(letter.content),
       };
