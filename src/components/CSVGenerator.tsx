@@ -153,7 +153,7 @@ const CSVGenerator: React.FC<CSVGeneratorProps> = ({
             {isCopied ? <Check className="mr-2 h-4 w-4" /> : <Copy className="mr-2 h-4 w-4" />}
             {isCopied ? 'Copied!' : 'Copy to Clipboard'}
           </Button>
-          {!isCircularLetter && (
+          {onWordPressUpload && (
             <Button
               variant="default"
               onClick={onWordPressUpload}
@@ -161,7 +161,7 @@ const CSVGenerator: React.FC<CSVGeneratorProps> = ({
               className="bg-green-600 hover:bg-green-700"
             >
               <Upload className="mr-2 h-4 w-4" />
-              Upload to WordPress Media Library
+              Upload to WordPress
             </Button>
           )}
         </div>
