@@ -30,7 +30,7 @@ export const generateCSV = (documents: DocumentFile[] | CircularLetter[]): strin
       'Audience',
       'Title',
       'Details',
-      'Author',
+      'Document Authors',
       'Tags',
       'Categories',
       'Excerpt',
@@ -101,14 +101,14 @@ export const generateCSV = (documents: DocumentFile[] | CircularLetter[]): strin
       // Map circular letter properties
       const letter = doc as CircularLetter;
       row = {
-        'Name': escapeCsvValue(letter.name),
+        'Name': escapeCsvValue(letter.title),
         'Reference Number': escapeCsvValue(letter.referenceNumber),
         'Correspondence Ref': escapeCsvValue(letter.correspondenceRef),
         'Date': escapeCsvValue(letter.date),
         'Audience': escapeCsvValue(letter.audience),
         'Title': escapeCsvValue(letter.title),
         'Details': escapeCsvValue(letter.details),
-        'Author': escapeCsvValue(letter.author),
+        'Document Authors': escapeCsvValue(letter.author),
         'Tags': escapeCsvValue(letter.tags),
         'Categories': escapeCsvValue(letter.categories || ''),
         'Excerpt': forceQuoteCsvValue(letter.excerpt || ''),
