@@ -111,7 +111,7 @@ export const generateCSV = (documents: DocumentFile[] | CircularLetter[]): strin
         'Author': escapeCsvValue(letter.author),
         'Tags': escapeCsvValue(letter.tags),
         'Categories': escapeCsvValue(letter.categories || ''),
-        'Excerpt': escapeCsvValue(letter.excerpt || ''),
+        'Excerpt': forceQuoteCsvValue(letter.excerpt || ''),
         'File URL': escapeCsvValue(`https://dev.members.nsi.org.uk/wp-content/uploads/${getCurrentUploadPath()}/${letter.file?.name || letter.name}`),
         'Direct URL': escapeCsvValue(`https://dev.members.nsi.org.uk/wp-content/uploads/${getCurrentUploadPath()}/${letter.file?.name || letter.name}`),
         'Featured Image URL': escapeCsvValue(letter.thumbnail || ''),
@@ -130,7 +130,7 @@ export const generateCSV = (documents: DocumentFile[] | CircularLetter[]): strin
         'Direct URL': escapeCsvValue(docFile.directUrl || `https://dev.members.nsi.org.uk/wp-content/uploads/${getCurrentUploadPath()}/${docFile.file?.name || docFile.name}`),
         'Featured Image URL': escapeCsvValue(docFile.imageUrl),
         'File Size': escapeCsvValue(docFile.fileSize),
-        'Excerpt': escapeCsvValue(docFile.excerpt),
+        'Excerpt': forceQuoteCsvValue(docFile.excerpt),
         'Content': escapeCsvValue(docFile.content),
         'Published': docFile.published ? 'TRUE' : 'FALSE',
       };
@@ -173,6 +173,16 @@ const escapeCsvValue = (value: string): string => {
   }
   
   return value;
+};
+
+/**
+ * Always wraps value in double quotes for CSV (used for excerpt field)
+ */
+const forceQuoteCsvValue = (value: string): string => {
+  if (!value) return '""';
+  
+  // Always wrap in quotes and escape internal quotes
+  return `"${value.replace(/"/g, '""')}"`;
 };
 
 /**
