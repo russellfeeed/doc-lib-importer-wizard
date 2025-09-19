@@ -11,6 +11,7 @@ interface SingleDocumentEditorProps {
   currentDocIndex: number;
   totalDocuments: number;
   isGeneratingAI: boolean;
+  showSchemes?: boolean;
   onEdit: (field: keyof DocumentFile, value: string | boolean | Record<string, string>) => void;
   onPrevious: () => void;
   onNext: () => void;
@@ -33,6 +34,7 @@ const SingleDocumentEditor: React.FC<SingleDocumentEditorProps> = ({
   currentDocIndex,
   totalDocuments,
   isGeneratingAI,
+  showSchemes = true,
   onEdit,
   onPrevious,
   onNext,
@@ -66,6 +68,7 @@ const SingleDocumentEditor: React.FC<SingleDocumentEditorProps> = ({
         <DocumentMetadata 
           document={currentDocument}
           isGeneratingAI={isGeneratingAI}
+          showSchemes={showSchemes}
           onEdit={onEdit}
           onGenerateCategory={onGenerateCategory}
           onGenerateTags={onGenerateTags}

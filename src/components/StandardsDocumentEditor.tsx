@@ -64,6 +64,7 @@ const StandardsDocumentEditor: React.FC<StandardsDocumentEditorProps> = ({
           currentDocIndex={currentDocIndex}
           totalDocuments={editedDocuments.length}
           isGeneratingAI={isGeneratingAI}
+          showSchemes={false}
           onEdit={handleChange}
           onPrevious={handlePrevious}
           onNext={handleNext}

@@ -12,6 +12,7 @@ import { fetchWordPressTaxonomies } from '@/utils/wordpressUtils';
 interface DocumentMetadataProps {
   document: DocumentFile;
   isGeneratingAI: boolean;
+  showSchemes?: boolean;
   onEdit: (field: keyof DocumentFile, value: string | boolean | Record<string, string>) => void;
   onGenerateCategory?: () => void;
   onGenerateTags?: () => void;
@@ -22,6 +23,7 @@ interface DocumentMetadataProps {
 const DocumentMetadata: React.FC<DocumentMetadataProps> = ({
   document,
   isGeneratingAI,
+  showSchemes = true,
   onEdit,
   onGenerateCategory,
   onGenerateTags,
@@ -221,102 +223,104 @@ const DocumentMetadata: React.FC<DocumentMetadataProps> = ({
         <p className="text-xs text-gray-500 mt-1">Use &gt; for category hierarchy (e.g., Policies &gt; HR)</p>
       </div>
       
-      <div className="mb-4">
-        <div className="flex justify-between items-center mb-1">
-          <div className="flex items-center gap-2">
-            <label className="block text-sm font-medium">Scheme(s)</label>
-            <Popover open={isSchemePopoverOpen} onOpenChange={setIsSchemePopoverOpen}>
-              <PopoverTrigger asChild>
-                <Button variant="outline" size="sm">
-                  <Building className="mr-2 h-4 w-4" />
-                  Select
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-80 max-h-96 overflow-y-auto" align="start">
-                <div className="space-y-1">
-                  <h4 className="font-medium text-sm mb-2">Select NSI Schemes</h4>
-                  <p className="text-xs text-muted-foreground mb-3">Select multiple schemes</p>
-                  {isLoadingSchemes ? (
-                    <div className="flex items-center justify-center py-4">
-                      <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full mr-2" />
-                      Loading schemes...
-                    </div>
-                  ) : nsiSchemes.length > 0 ? (
-                    <>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="w-full mb-2"
-                        onClick={handleSelectAllSchemes}
-                      >
-                        Select All Schemes
-                      </Button>
-                      {nsiSchemes.map((scheme) => (
+      {showSchemes && (
+        <div className="mb-4">
+          <div className="flex justify-between items-center mb-1">
+            <div className="flex items-center gap-2">
+              <label className="block text-sm font-medium">Scheme(s)</label>
+              <Popover open={isSchemePopoverOpen} onOpenChange={setIsSchemePopoverOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm">
+                    <Building className="mr-2 h-4 w-4" />
+                    Select
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80 max-h-96 overflow-y-auto" align="start">
+                  <div className="space-y-1">
+                    <h4 className="font-medium text-sm mb-2">Select NSI Schemes</h4>
+                    <p className="text-xs text-muted-foreground mb-3">Select multiple schemes</p>
+                    {isLoadingSchemes ? (
+                      <div className="flex items-center justify-center py-4">
+                        <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full mr-2" />
+                        Loading schemes...
+                      </div>
+                    ) : nsiSchemes.length > 0 ? (
+                      <>
                         <Button
-                          key={scheme}
-                          variant="ghost"
+                          variant="outline"
                           size="sm"
-                          className="w-full justify-start text-left h-8 px-2"
-                          onClick={() => handleSchemeToggle(scheme)}
+                          className="w-full mb-2"
+                          onClick={handleSelectAllSchemes}
                         >
-                          {isSchemeSelected(scheme) ? (
-                            <CheckSquare className="mr-2 h-3 w-3 text-blue-600" />
-                          ) : (
-                            <Square className="mr-2 h-3 w-3" />
-                          )}
-                          {scheme}
+                          Select All Schemes
                         </Button>
-                      ))}
-                    </>
-                  ) : (
-                    <p className="text-sm text-muted-foreground py-2">No NSI schemes found in WordPress taxonomy</p>
-                  )}
-                </div>
-              </PopoverContent>
-            </Popover>
+                        {nsiSchemes.map((scheme) => (
+                          <Button
+                            key={scheme}
+                            variant="ghost"
+                            size="sm"
+                            className="w-full justify-start text-left h-8 px-2"
+                            onClick={() => handleSchemeToggle(scheme)}
+                          >
+                            {isSchemeSelected(scheme) ? (
+                              <CheckSquare className="mr-2 h-3 w-3 text-blue-600" />
+                            ) : (
+                              <Square className="mr-2 h-3 w-3" />
+                            )}
+                            {scheme}
+                          </Button>
+                        ))}
+                      </>
+                    ) : (
+                      <p className="text-sm text-muted-foreground py-2">No NSI schemes found in WordPress taxonomy</p>
+                    )}
+                  </div>
+                </PopoverContent>
+              </Popover>
+            </div>
+            {onGenerateScheme && (
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={onGenerateScheme}
+                disabled={isGeneratingAI}
+                className={document.aiProcessing?.status === 'processing' ? "opacity-50" : ""}
+              >
+                {document.aiProcessing?.status === 'processing' ? (
+                  <>
+                    <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full mr-2" />
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <Building className="mr-2 h-4 w-4" /> 
+                    Detect Scheme
+                  </>
+                )}
+              </Button>
+            )}
           </div>
-          {onGenerateScheme && (
-            <Button 
-              variant="outline" 
-              size="sm"
-              onClick={onGenerateScheme}
-              disabled={isGeneratingAI}
-              className={document.aiProcessing?.status === 'processing' ? "opacity-50" : ""}
-            >
-              {document.aiProcessing?.status === 'processing' ? (
-                <>
-                  <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full mr-2" />
-                  Processing...
-                </>
-              ) : (
-                <>
-                  <Building className="mr-2 h-4 w-4" /> 
-                  Detect Scheme
-                </>
-              )}
-            </Button>
-          )}
-        </div>
-        <div className="relative">
-          <Input 
-            value={document.customTaxonomies?.['tax:nsi-scheme'] || ''}
-            onChange={(e) => {
-              const updatedTaxonomies = { ...document.customTaxonomies, 'tax:nsi-scheme': e.target.value };
-              onEdit('customTaxonomies', updatedTaxonomies as any);
-            }}
-            placeholder="E.g., Building Regulations, Health & Safety"
-            title="The scheme this document belongs to"
-            className={isSchemesEmpty ? "border-red-500 text-red-600 pr-10" : ""}
-          />
+          <div className="relative">
+            <Input 
+              value={document.customTaxonomies?.['tax:nsi-scheme'] || ''}
+              onChange={(e) => {
+                const updatedTaxonomies = { ...document.customTaxonomies, 'tax:nsi-scheme': e.target.value };
+                onEdit('customTaxonomies', updatedTaxonomies as any);
+              }}
+              placeholder="E.g., Building Regulations, Health & Safety"
+              title="The scheme this document belongs to"
+              className={isSchemesEmpty ? "border-red-500 text-red-600 pr-10" : ""}
+            />
+            {isSchemesEmpty && (
+              <AlertTriangle className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-red-500" />
+            )}
+          </div>
           {isSchemesEmpty && (
-            <AlertTriangle className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-red-500" />
+            <p className="text-xs text-red-500 mt-1">⚠️ This document needs a scheme assignment</p>
           )}
+          <p className="text-xs text-gray-500 mt-1">The compliance scheme this document relates to</p>
         </div>
-        {isSchemesEmpty && (
-          <p className="text-xs text-red-500 mt-1">⚠️ This document needs a scheme assignment</p>
-        )}
-        <p className="text-xs text-gray-500 mt-1">The compliance scheme this document relates to</p>
-      </div>
+      )}
       
       <div className="mb-4">
         <div className="flex justify-between items-center mb-1">
