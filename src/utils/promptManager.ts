@@ -165,11 +165,37 @@ Document content:
 
 const STORAGE_KEY = "openai_prompts_config";
 
+// Force refresh circular letter prompt config to ensure excerpt field is included
+export function refreshCircularLetterPromptConfig(): void {
+  try {
+    const stored = localStorage.getItem(STORAGE_KEY);
+    if (stored) {
+      const configs = JSON.parse(stored) as AllPromptConfigs;
+      // Reset only the circular letter config to use the new default
+      configs.circularLetters = DEFAULT_PROMPTS.circularLetters;
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(configs));
+      console.log('Refreshed circular letter prompt config with excerpt field');
+    }
+  } catch (error) {
+    console.error("Error refreshing circular letter prompt config:", error);
+  }
+}
+
 export function getPromptConfig(type: keyof AllPromptConfigs): PromptConfig {
   const stored = localStorage.getItem(STORAGE_KEY);
   if (stored) {
     try {
       const configs = JSON.parse(stored) as AllPromptConfigs;
+      
+      // Debug log for circular letters to verify excerpt is included
+      if (type === 'circularLetters') {
+        console.log('Loading circular letter prompt config:', {
+          hasExcerptInSystem: configs[type]?.systemPrompt?.includes('Excerpt'),
+          hasExcerptInUser: configs[type]?.userPromptTemplate?.includes('excerpt'),
+          usingDefault: !configs[type]
+        });
+      }
+      
       return configs[type] || DEFAULT_PROMPTS[type];
     } catch (error) {
       console.error("Error parsing stored prompt configs:", error);

@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { generateUniqueId, formatFileSize, extractFileType } from '@/utils/fileUtils';
 import { extractTextFromDocument, processCircularLetterWithAI, generatePdfThumbnail, generateDocumentCategory } from '@/utils/aiUtils';
 import { hasOpenAIKey } from '@/utils/openaiClient';
+import { refreshCircularLetterPromptConfig } from '@/utils/promptManager';
 import { useCategories } from '@/context/CategoryContext';
 
 interface UseCircularLetterUploadProps {
@@ -20,6 +21,9 @@ export function useCircularLetterUpload({ onLettersUploaded }: UseCircularLetter
 
   const handleFileSelection = useCallback(async (selectedFiles: FileList | null) => {
     if (!selectedFiles || selectedFiles.length === 0) return;
+    
+    // Force refresh the circular letter prompt config to ensure excerpt is included
+    refreshCircularLetterPromptConfig();
     
     // Check if AI is enabled but no API key is set
     if (aiEnabled && !hasOpenAIKey()) {

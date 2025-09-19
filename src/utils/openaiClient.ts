@@ -451,15 +451,22 @@ export async function extractCircularLetterDataWithOpenAI(
   }
 
   const config = getPromptConfig('circularLetters');
-  const model = options.model || config.model;
-  const maxTokens = options.maxTokens || config.maxTokens;
-  const temperature = options.temperature || config.temperature;
+  const model = options?.model || config.model;
+  const maxTokens = options?.maxTokens || config.maxTokens;
+  const temperature = options?.temperature || config.temperature;
 
   const systemPrompt = config.systemPrompt;
   
   const userPrompt = config.userPromptTemplate
     .replace('{fileName}', fileName)
     .replace('{content}', content);
+
+  console.log('Circular letter prompt config:', {
+    systemPrompt: systemPrompt.substring(0, 200) + '...',
+    userPrompt: userPrompt.substring(0, 200) + '...',
+    model,
+    includesExcerpt: systemPrompt.includes('Excerpt')
+  });
 
   const messages: OpenAIMessage[] = [
     {
@@ -492,6 +499,12 @@ export async function extractCircularLetterDataWithOpenAI(
       const jsonMatch = resultText.match(/\{[\s\S]*\}/);
       const jsonStr = jsonMatch ? jsonMatch[0] : resultText;
       const extractedData = JSON.parse(jsonStr);
+      
+      console.log('OpenAI extracted data:', {
+        hasExcerpt: !!extractedData.excerpt,
+        excerpt: extractedData.excerpt,
+        allFields: Object.keys(extractedData)
+      });
       
       return {
         referenceNumber: extractedData.referenceNumber || '',
