@@ -37,7 +37,6 @@ export const generateCSV = (documents: DocumentFile[] | CircularLetter[]): strin
       'Direct URL',
       'Featured Image URL',
       'File Size',
-      'Content',
     ];
   } else {
     // Headers for regular documents
@@ -114,7 +113,6 @@ export const generateCSV = (documents: DocumentFile[] | CircularLetter[]): strin
         'Direct URL': forceQuoteCsvValue(`https://dev.members.nsi.org.uk/wp-content/uploads/${getCurrentUploadPath()}/${letter.file?.name || letter.name}`),
         'Featured Image URL': forceQuoteCsvValue(letter.thumbnail || ''),
         'File Size': forceQuoteCsvValue(letter.fileSize),
-        'Content': forceQuoteCsvValue(letter.content),
       };
     } else {
       // Map document properties
