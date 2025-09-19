@@ -100,36 +100,36 @@ export const generateCSV = (documents: DocumentFile[] | CircularLetter[]): strin
       // Map circular letter properties
       const letter = doc as CircularLetter;
       row = {
-        'Name': escapeCsvValue(letter.title),
-        'Reference Number': escapeCsvValue(letter.referenceNumber),
-        'Correspondence Ref': escapeCsvValue(letter.correspondenceRef),
-        'Date': escapeCsvValue(letter.date),
-        'Audience': escapeCsvValue(letter.audience),
-        'Details': escapeCsvValue(letter.details),
-        'Document Authors': escapeCsvValue(letter.author),
-        'Tags': escapeCsvValue(letter.tags),
-        'Categories': escapeCsvValue(letter.categories || ''),
+        'Name': forceQuoteCsvValue(letter.title),
+        'Reference Number': forceQuoteCsvValue(letter.referenceNumber),
+        'Correspondence Ref': forceQuoteCsvValue(letter.correspondenceRef),
+        'Date': forceQuoteCsvValue(letter.date),
+        'Audience': forceQuoteCsvValue(letter.audience),
+        'Details': forceQuoteCsvValue(letter.details),
+        'Document Authors': forceQuoteCsvValue(letter.author),
+        'Tags': forceQuoteCsvValue(letter.tags),
+        'Categories': forceQuoteCsvValue(letter.categories || ''),
         'Excerpt': forceQuoteCsvValue(letter.excerpt || ''),
-        'File URL': escapeCsvValue(`https://dev.members.nsi.org.uk/wp-content/uploads/${getCurrentUploadPath()}/${letter.file?.name || letter.name}`),
-        'Direct URL': escapeCsvValue(`https://dev.members.nsi.org.uk/wp-content/uploads/${getCurrentUploadPath()}/${letter.file?.name || letter.name}`),
-        'Featured Image URL': escapeCsvValue(letter.thumbnail || ''),
-        'File Size': escapeCsvValue(letter.fileSize),
-        'Content': escapeCsvValue(letter.content),
+        'File URL': forceQuoteCsvValue(`https://dev.members.nsi.org.uk/wp-content/uploads/${getCurrentUploadPath()}/${letter.file?.name || letter.name}`),
+        'Direct URL': forceQuoteCsvValue(`https://dev.members.nsi.org.uk/wp-content/uploads/${getCurrentUploadPath()}/${letter.file?.name || letter.name}`),
+        'Featured Image URL': forceQuoteCsvValue(letter.thumbnail || ''),
+        'File Size': forceQuoteCsvValue(letter.fileSize),
+        'Content': forceQuoteCsvValue(letter.content),
       };
     } else {
       // Map document properties
       const docFile = doc as DocumentFile;
       row = {
-        'Name': escapeCsvValue(docFile.name),
-        'Categories': escapeCsvValue(docFile.categories),
-        'Tags': escapeCsvValue(docFile.tags),
-        'Document Authors': escapeCsvValue(docFile.authors),
-        'File URL': escapeCsvValue(docFile.fileUrl || `https://dev.members.nsi.org.uk/wp-content/uploads/${getCurrentUploadPath()}/${docFile.file?.name || docFile.name}`),
-        'Direct URL': escapeCsvValue(docFile.directUrl || `https://dev.members.nsi.org.uk/wp-content/uploads/${getCurrentUploadPath()}/${docFile.file?.name || docFile.name}`),
-        'Featured Image URL': escapeCsvValue(docFile.imageUrl),
-        'File Size': escapeCsvValue(docFile.fileSize),
+        'Name': forceQuoteCsvValue(docFile.name),
+        'Categories': forceQuoteCsvValue(docFile.categories),
+        'Tags': forceQuoteCsvValue(docFile.tags),
+        'Document Authors': forceQuoteCsvValue(docFile.authors),
+        'File URL': forceQuoteCsvValue(docFile.fileUrl || `https://dev.members.nsi.org.uk/wp-content/uploads/${getCurrentUploadPath()}/${docFile.file?.name || docFile.name}`),
+        'Direct URL': forceQuoteCsvValue(docFile.directUrl || `https://dev.members.nsi.org.uk/wp-content/uploads/${getCurrentUploadPath()}/${docFile.file?.name || docFile.name}`),
+        'Featured Image URL': forceQuoteCsvValue(docFile.imageUrl),
+        'File Size': forceQuoteCsvValue(docFile.fileSize),
         'Excerpt': forceQuoteCsvValue(docFile.excerpt),
-        'Content': escapeCsvValue(docFile.content),
+        'Content': forceQuoteCsvValue(docFile.content),
         'Published': docFile.published ? 'TRUE' : 'FALSE',
       };
       
@@ -138,7 +138,7 @@ export const generateCSV = (documents: DocumentFile[] | CircularLetter[]): strin
         const customFieldKeys = Object.keys(docFile.customFields);
         customFieldKeys.forEach(key => {
           const displayKey = key.startsWith('cf:') ? key : `Custom Field ${key}`;
-          row[displayKey] = escapeCsvValue(docFile.customFields[key] || '');
+          row[displayKey] = forceQuoteCsvValue(docFile.customFields[key] || '');
         });
       }
       
@@ -147,7 +147,7 @@ export const generateCSV = (documents: DocumentFile[] | CircularLetter[]): strin
         const customTaxonomyKeys = Object.keys(docFile.customTaxonomies);
         customTaxonomyKeys.forEach(key => {
           const displayKey = key.startsWith('tax:') ? key : `Custom Taxonomy ${key}`;
-          row[displayKey] = escapeCsvValue(docFile.customTaxonomies[key] || '');
+          row[displayKey] = forceQuoteCsvValue(docFile.customTaxonomies[key] || '');
         });
       }
     }
