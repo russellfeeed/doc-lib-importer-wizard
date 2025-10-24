@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { ChevronLeft, Download, Copy, Check, ArrowRight, RefreshCw, Upload } from 'lucide-react';
 import { DocumentFile } from '@/types/document';
 import { CircularLetter } from '@/types/circular-letter';
@@ -154,15 +155,24 @@ const CSVGenerator: React.FC<CSVGeneratorProps> = ({
             {isCopied ? 'Copied!' : 'Copy to Clipboard'}
           </Button>
           {onWordPressUpload && (
-            <Button
-              variant="default"
-              onClick={onWordPressUpload}
-              disabled={isGenerating || !!error}
-              className="bg-green-600 hover:bg-green-700"
-            >
-              <Upload className="mr-2 h-4 w-4" />
-              Upload to WordPress
-            </Button>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="default"
+                    onClick={onWordPressUpload}
+                    disabled={isGenerating || !!error}
+                    className="bg-green-600 hover:bg-green-700"
+                  >
+                    <Upload className="mr-2 h-4 w-4" />
+                    Upload to WordPress
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p>Uploads the documents only. The CSV must be imported manually (see "Next Steps" below)</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           )}
         </div>
       </div>
