@@ -120,9 +120,12 @@ export const generateCSV = (documents: DocumentFile[] | CircularLetter[], isStan
       const docFile = doc as DocumentFile;
       
       // Generate URLs with _pda path for standards documents
+      // Replace spaces with hyphens in filename for standards documents only
+      const fileName = docFile.file?.name || docFile.name;
+      const urlFileName = isStandards ? fileName.replace(/\s+/g, '-') : fileName;
       const urlPath = isStandards 
-        ? `https://dev.members.nsi.org.uk/wp-content/uploads/_pda/${getCurrentUploadPath()}/${docFile.file?.name || docFile.name}`
-        : `https://dev.members.nsi.org.uk/wp-content/uploads/${getCurrentUploadPath()}/${docFile.file?.name || docFile.name}`;
+        ? `https://dev.members.nsi.org.uk/wp-content/uploads/_pda/${getCurrentUploadPath()}/${urlFileName}`
+        : `https://dev.members.nsi.org.uk/wp-content/uploads/${getCurrentUploadPath()}/${urlFileName}`;
       
       row = {
         'Name': forceQuoteCsvValue(docFile.name),
