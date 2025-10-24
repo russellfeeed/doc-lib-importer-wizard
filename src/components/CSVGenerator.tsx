@@ -13,13 +13,15 @@ interface CSVGeneratorProps {
   onBack: () => void;
   onReset: () => void;
   onWordPressUpload?: () => void;
+  isStandards?: boolean;
 }
 
 const CSVGenerator: React.FC<CSVGeneratorProps> = ({ 
   documents, 
-  onBack,
+  onBack, 
   onReset,
-  onWordPressUpload
+  onWordPressUpload,
+  isStandards = false
 }) => {
   const [csvContent, setCsvContent] = useState<string>('');
   const [isGenerating, setIsGenerating] = useState(true);
@@ -37,7 +39,7 @@ const CSVGenerator: React.FC<CSVGeneratorProps> = ({
       setError(null);
       
       try {
-        const csv = generateCSV(documents);
+        const csv = generateCSV(documents, isStandards);
         setCsvContent(csv);
         
         // Calculate document counts

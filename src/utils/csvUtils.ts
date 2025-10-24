@@ -12,8 +12,9 @@ const getCurrentUploadPath = (): string => {
 
 /**
  * Converts document data to CSV format
+ * @param isStandards - If true, generates protected URLs with _pda path for standards documents
  */
-export const generateCSV = (documents: DocumentFile[] | CircularLetter[]): string => {
+export const generateCSV = (documents: DocumentFile[] | CircularLetter[], isStandards: boolean = false): string => {
   // Check if we're working with circular letters
   const isCircularLetter = documents.length > 0 && 'referenceNumber' in documents[0];
   
@@ -117,13 +118,19 @@ export const generateCSV = (documents: DocumentFile[] | CircularLetter[]): strin
     } else {
       // Map document properties
       const docFile = doc as DocumentFile;
+      
+      // Generate URLs with _pda path for standards documents
+      const urlPath = isStandards 
+        ? `https://dev.members.nsi.org.uk/wp-content/uploads/_pda/${getCurrentUploadPath()}/${docFile.file?.name || docFile.name}`
+        : `https://dev.members.nsi.org.uk/wp-content/uploads/${getCurrentUploadPath()}/${docFile.file?.name || docFile.name}`;
+      
       row = {
         'Name': forceQuoteCsvValue(docFile.name),
         'Categories': forceQuoteCsvValue(docFile.categories),
         'Tags': forceQuoteCsvValue(docFile.tags),
         'Document Authors': forceQuoteCsvValue(docFile.authors),
-        'File URL': forceQuoteCsvValue(docFile.fileUrl || `https://dev.members.nsi.org.uk/wp-content/uploads/${getCurrentUploadPath()}/${docFile.file?.name || docFile.name}`),
-        'Direct URL': forceQuoteCsvValue(docFile.directUrl || `https://dev.members.nsi.org.uk/wp-content/uploads/${getCurrentUploadPath()}/${docFile.file?.name || docFile.name}`),
+        'File URL': forceQuoteCsvValue(docFile.fileUrl || urlPath),
+        'Direct URL': forceQuoteCsvValue(docFile.directUrl || urlPath),
         'Featured Image URL': forceQuoteCsvValue(docFile.imageUrl),
         'File Size': forceQuoteCsvValue(docFile.fileSize),
         'Excerpt': forceQuoteCsvValue(docFile.excerpt),

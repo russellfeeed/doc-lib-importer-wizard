@@ -79,6 +79,7 @@ const StandardsDocumentImporter: React.FC = () => {
           onReset={handleReset}
           onBack={handleBackToEdit}
           onWordPressUpload={handleWordPressUpload}
+          isStandards={true}
         />
       )
     },
