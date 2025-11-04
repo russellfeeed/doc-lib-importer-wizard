@@ -144,7 +144,7 @@ export const generateCSV = (documents: DocumentFile[] | CircularLetter[], isStan
         'File Size': forceQuoteCsvValue(docFile.fileSize),
         'Excerpt': forceQuoteCsvValue(docFile.excerpt),
         'Content': forceQuoteCsvValue(docFile.content),
-        'Published': forceQuoteCsvValue(docFile.published ? 'TRUE' : 'FALSE'),
+        'Published': docFile.published ? 'TRUE' : 'FALSE',
       };
       
       // Add custom fields if they exist
@@ -167,7 +167,7 @@ export const generateCSV = (documents: DocumentFile[] | CircularLetter[], isStan
     }
     
     // Add row to CSV
-    csv += headers.map(header => row[header] || '').join(',') + '\n';
+    csv += headers.map(header => row[header] || '""').join(',') + '\n';
   });
   
   return csv;
