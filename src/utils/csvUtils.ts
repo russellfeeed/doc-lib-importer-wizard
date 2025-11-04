@@ -123,7 +123,13 @@ export const generateCSV = (documents: DocumentFile[] | CircularLetter[], isStan
       // Replace spaces with hyphens in filename for standards documents only
       const fileName = docFile.file?.name || docFile.name;
       const urlFileName = isStandards ? fileName.replace(/\s+/g, '-') : fileName;
-      const urlPath = isStandards 
+      
+      // For standards: File URL is relative path, Direct URL is full URL
+      const fileUrlPath = isStandards 
+        ? `/wp-content/uploads/_pda/${getCurrentUploadPath()}/${urlFileName}`
+        : `https://dev.members.nsi.org.uk/wp-content/uploads/${getCurrentUploadPath()}/${urlFileName}`;
+      
+      const directUrlPath = isStandards 
         ? `https://dev.members.nsi.org.uk/wp-content/uploads/_pda/${getCurrentUploadPath()}/${urlFileName}`
         : `https://dev.members.nsi.org.uk/wp-content/uploads/${getCurrentUploadPath()}/${urlFileName}`;
       
@@ -132,8 +138,8 @@ export const generateCSV = (documents: DocumentFile[] | CircularLetter[], isStan
         'Categories': forceQuoteCsvValue(docFile.categories),
         'Tags': forceQuoteCsvValue(docFile.tags),
         'Document Authors': forceQuoteCsvValue(docFile.authors),
-        'File URL': forceQuoteCsvValue(docFile.fileUrl || urlPath),
-        'Direct URL': forceQuoteCsvValue(docFile.directUrl || urlPath),
+        'File URL': forceQuoteCsvValue(docFile.fileUrl || fileUrlPath),
+        'Direct URL': forceQuoteCsvValue(docFile.directUrl || directUrlPath),
         'Featured Image URL': forceQuoteCsvValue(docFile.imageUrl),
         'File Size': forceQuoteCsvValue(docFile.fileSize),
         'Excerpt': forceQuoteCsvValue(docFile.excerpt),
