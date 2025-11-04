@@ -144,7 +144,7 @@ export const generateCSV = (documents: DocumentFile[] | CircularLetter[], isStan
         'File Size': forceQuoteCsvValue(docFile.fileSize),
         'Excerpt': forceQuoteCsvValue(docFile.excerpt),
         'Content': forceQuoteCsvValue(docFile.content),
-        'Published': docFile.published ? 'TRUE' : 'FALSE',
+        'Published': forceQuoteCsvValue(docFile.published ? 'TRUE' : 'FALSE'),
       };
       
       // Add custom fields if they exist
