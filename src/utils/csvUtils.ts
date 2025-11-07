@@ -1,6 +1,7 @@
 
 import { DocumentFile, CSVData } from '@/types/document';
 import { CircularLetter } from '@/types/circular-letter';
+import { hasOpenAIKey, summarizeWithOpenAI } from './openaiClient';
 
 // Generate current year/month for WordPress upload URLs
 const getCurrentUploadPath = (): string => {
@@ -11,10 +12,53 @@ const getCurrentUploadPath = (): string => {
 };
 
 /**
+ * Prepares content for CSV export by summarizing or truncating if it exceeds the threshold
+ * @param content - The content to prepare
+ * @param fileName - The filename for context
+ * @param maxLength - Maximum length before processing (default: 10000)
+ * @returns Promise of processed content with indicator if modified
+ */
+async function prepareContentForCSV(
+  content: string, 
+  fileName: string, 
+  maxLength: number = 10000
+): Promise<string> {
+  if (!content || content.length <= maxLength) {
+    return content;
+  }
+  
+  // Try AI summarization first if available
+  if (hasOpenAIKey()) {
+    try {
+      const summary = await summarizeWithOpenAI(content, fileName, {
+        maxTokens: 1250 // Roughly 5K characters
+      });
+      return `[AI Summary] ${summary}`;
+    } catch (error) {
+      console.warn(`AI summarization failed for ${fileName}, falling back to truncation:`, error);
+    }
+  }
+  
+  // Fallback: Smart truncation
+  const truncated = content.substring(0, maxLength - 100);
+  const lastPeriod = truncated.lastIndexOf('.');
+  const smartTruncate = lastPeriod > maxLength * 0.8 
+    ? truncated.substring(0, lastPeriod + 1)
+    : truncated;
+  
+  return `[Truncated] ${smartTruncate}...`;
+}
+
+/**
  * Converts document data to CSV format
  * @param isStandards - If true, generates protected URLs with _pda path for standards documents
+ * @param onProgress - Optional callback for progress updates
  */
-export const generateCSV = (documents: DocumentFile[] | CircularLetter[], isStandards: boolean = false): string => {
+export const generateCSV = async (
+  documents: DocumentFile[] | CircularLetter[], 
+  isStandards: boolean = false,
+  onProgress?: (status: { current: number; total: number; message: string }) => void
+): Promise<{ csv: string; processedCount: number }> => {
   // Check if we're working with circular letters
   const isCircularLetter = documents.length > 0 && 'referenceNumber' in documents[0];
   
@@ -84,28 +128,46 @@ export const generateCSV = (documents: DocumentFile[] | CircularLetter[], isStan
   // Create CSV header row
   let csv = headers.join(',') + '\n';
   
-  // Add document rows (excluding omitted documents)
-  documents
-    .filter(doc => {
-      // For circular letters, include all documents
-      if (isCircularLetter) return true;
-      // For regular documents, exclude if omitFromCSV is true
-      const docFile = doc as DocumentFile;
-      return !docFile.omitFromCSV;
-    })
-    .forEach(doc => {
+  // Filter documents to process
+  const filteredDocs = documents.filter(doc => {
+    if (isCircularLetter) return true;
+    const docFile = doc as DocumentFile;
+    return !docFile.omitFromCSV;
+  });
+  
+  let processedCount = 0;
+  
+  // Process documents one by one to handle async content preparation
+  for (let i = 0; i < filteredDocs.length; i++) {
+    const doc = filteredDocs[i];
+    
+    // Report progress
+    if (onProgress) {
+      onProgress({
+        current: i + 1,
+        total: filteredDocs.length,
+        message: `Processing ${i + 1} of ${filteredDocs.length}...`
+      });
+    }
     let row: Record<string, string> = {};
     
     if (isCircularLetter) {
       // Map circular letter properties
       const letter = doc as CircularLetter;
+      
+      // Prepare content (may be summarized if too large)
+      const preparedDetails = await prepareContentForCSV(letter.details || '', letter.title);
+      if (preparedDetails !== letter.details && preparedDetails.length < (letter.details || '').length) {
+        processedCount++;
+      }
+      
       row = {
         'Name': forceQuoteCsvValue(letter.title),
         'Reference Number': forceQuoteCsvValue(letter.referenceNumber),
         'Correspondence Ref': forceQuoteCsvValue(letter.correspondenceRef),
         'Document Date': forceQuoteCsvValue(letter.date),
         'Audience': forceQuoteCsvValue(letter.audience),
-        'Content': forceQuoteCsvValue(letter.details),
+        'Content': forceQuoteCsvValue(preparedDetails),
         'Document Authors': forceQuoteCsvValue(letter.author),
         'Tags': forceQuoteCsvValue(letter.tags),
         'Categories': forceQuoteCsvValue(letter.categories || ''),
@@ -118,6 +180,12 @@ export const generateCSV = (documents: DocumentFile[] | CircularLetter[], isStan
     } else {
       // Map document properties
       const docFile = doc as DocumentFile;
+      
+      // Prepare content (may be summarized if too large)
+      const preparedContent = await prepareContentForCSV(docFile.content || '', docFile.name);
+      if (preparedContent !== docFile.content && preparedContent.length < (docFile.content || '').length) {
+        processedCount++;
+      }
       
       // Generate URLs with _pda path for standards documents
       // Replace spaces with hyphens in filename for standards documents only
@@ -143,7 +211,7 @@ export const generateCSV = (documents: DocumentFile[] | CircularLetter[], isStan
         'Featured Image URL': forceQuoteCsvValue(docFile.imageUrl),
         'File Size': forceQuoteCsvValue(docFile.fileSize),
         'Excerpt': forceQuoteCsvValue(docFile.excerpt),
-        'Content': forceQuoteCsvValue(docFile.content),
+        'Content': forceQuoteCsvValue(preparedContent),
         'Published': docFile.published ? 'TRUE' : 'FALSE',
       };
       
@@ -167,10 +235,10 @@ export const generateCSV = (documents: DocumentFile[] | CircularLetter[], isStan
     }
     
     // Add row to CSV
-    csv += headers.map(header => row[header] || '').join(',') + '\n';
-  });
+    csv += headers.map(header => row[header] || '""').join(',') + '\n';
+  }
   
-  return csv;
+  return { csv, processedCount };
 };
 
 /**

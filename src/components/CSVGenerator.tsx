@@ -28,6 +28,8 @@ const CSVGenerator: React.FC<CSVGeneratorProps> = ({
   const [isCopied, setIsCopied] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [documentCounts, setDocumentCounts] = useState<{ included: number; excluded: number }>({ included: 0, excluded: 0 });
+  const [progressMessage, setProgressMessage] = useState<string>('');
+  const [processedCount, setProcessedCount] = useState<number>(0);
   
   // Determine if we're dealing with circular letters
   const isCircularLetter = documents.length > 0 && 'referenceNumber' in documents[0];
@@ -37,10 +39,18 @@ const CSVGenerator: React.FC<CSVGeneratorProps> = ({
     const generate = async () => {
       setIsGenerating(true);
       setError(null);
+      setProgressMessage('Preparing CSV export...');
       
       try {
-        const csv = generateCSV(documents, isStandards);
+        const { csv, processedCount: processed } = await generateCSV(
+          documents, 
+          isStandards,
+          (status) => {
+            setProgressMessage(status.message);
+          }
+        );
         setCsvContent(csv);
+        setProcessedCount(processed);
         
         // Calculate document counts
         if (isCircularLetter) {
@@ -51,17 +61,23 @@ const CSVGenerator: React.FC<CSVGeneratorProps> = ({
           const excludedCount = documents.length - includedCount;
           setDocumentCounts({ included: includedCount, excluded: excludedCount });
         }
+        
+        // Show summary if content was processed
+        if (processed > 0) {
+          toast.success(`CSV generated. ${processed} document(s) had content summarized to meet import limits.`);
+        }
       } catch (error) {
         console.error('Error generating CSV:', error);
         setError('Failed to generate CSV. Please check the console for details.');
         toast.error('Error generating CSV');
       } finally {
         setIsGenerating(false);
+        setProgressMessage('');
       }
     };
     
     generate();
-  }, [documents]);
+  }, [documents, isStandards, isCircularLetter]);
 
   const getPredominantCategory = () => {
     if (isCircularLetter) return '';
@@ -132,10 +148,17 @@ const CSVGenerator: React.FC<CSVGeneratorProps> = ({
           }
         </p>
         <div className="bg-white rounded-md p-3 border border-blue-200 mb-4">
-          <div className="flex justify-between items-center text-sm">
-            <span className="text-green-700 font-medium">✓ {documentCounts.included} documents included</span>
-            {documentCounts.excluded > 0 && (
-              <span className="text-gray-600">⚬ {documentCounts.excluded} documents excluded</span>
+          <div className="flex flex-col gap-2 text-sm">
+            <div className="flex justify-between items-center">
+              <span className="text-green-700 font-medium">✓ {documentCounts.included} documents included</span>
+              {documentCounts.excluded > 0 && (
+                <span className="text-gray-600">⚬ {documentCounts.excluded} documents excluded</span>
+              )}
+            </div>
+            {processedCount > 0 && (
+              <div className="text-orange-600 font-medium">
+                ⚡ {processedCount} document(s) had content summarized/truncated
+              </div>
             )}
           </div>
         </div>
@@ -188,7 +211,7 @@ const CSVGenerator: React.FC<CSVGeneratorProps> = ({
         {isGenerating ? (
           <div className="p-6 text-center">
             <div className="animate-spin h-6 w-6 border-2 border-blue-600 border-t-transparent rounded-full mx-auto mb-2"></div>
-            <p className="text-gray-500">Generating CSV...</p>
+            <p className="text-gray-500">{progressMessage || 'Generating CSV...'}</p>
           </div>
         ) : error ? (
           <div className="p-6 text-center text-red-500">
