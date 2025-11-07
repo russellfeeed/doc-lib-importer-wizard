@@ -31,7 +31,7 @@ async function prepareContentForCSV(
   if (hasOpenAIKey()) {
     try {
       const summary = await summarizeWithOpenAI(content, fileName, {
-        maxTokens: 1250 // Roughly 5K characters
+        maxTokens: 2000 // Roughly 8K characters for better searchability
       });
       return `[AI Summary] ${summary}`;
     } catch (error) {
