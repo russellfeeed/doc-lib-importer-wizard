@@ -12,7 +12,10 @@ const getCurrentUploadPath = (): string => {
 };
 
 /**
- * Prepares content for CSV export by summarizing or truncating if it exceeds the threshold
+ * Prepares content for CSV export using hybrid approach:
+ * - Content < 10K: Use as-is
+ * - Content 10K-30K: Smart truncate to ~10K
+ * - Content > 30K: AI summarize to ~8K
  * @param content - The content to prepare
  * @param fileName - The filename for context
  * @param maxLength - Maximum length before processing (default: 10000)
@@ -23,11 +26,29 @@ async function prepareContentForCSV(
   fileName: string, 
   maxLength: number = 10000
 ): Promise<string> {
-  if (!content || content.length <= maxLength) {
+  if (!content) {
     return content;
   }
   
-  // Try AI summarization first if available
+  const contentLength = content.length;
+  
+  // Content < 10K: Use as-is
+  if (contentLength <= maxLength) {
+    return content;
+  }
+  
+  // Content 10K-30K: Smart truncate to preserve more original text
+  if (contentLength <= 30000) {
+    const truncated = content.substring(0, maxLength - 100);
+    const lastPeriod = truncated.lastIndexOf('.');
+    const smartTruncate = lastPeriod > maxLength * 0.8 
+      ? truncated.substring(0, lastPeriod + 1)
+      : truncated;
+    
+    return `[Truncated] ${smartTruncate}...`;
+  }
+  
+  // Content > 30K: AI summarize for very large content
   if (hasOpenAIKey()) {
     try {
       const summary = await summarizeWithOpenAI(content, fileName, {
@@ -36,10 +57,18 @@ async function prepareContentForCSV(
       return `[AI Summary] ${summary}`;
     } catch (error) {
       console.warn(`AI summarization failed for ${fileName}, falling back to truncation:`, error);
+      // Fallback to truncation if AI fails
+      const truncated = content.substring(0, maxLength - 100);
+      const lastPeriod = truncated.lastIndexOf('.');
+      const smartTruncate = lastPeriod > maxLength * 0.8 
+        ? truncated.substring(0, lastPeriod + 1)
+        : truncated;
+      
+      return `[Truncated] ${smartTruncate}...`;
     }
   }
   
-  // Fallback: Smart truncation
+  // No AI key available, truncate
   const truncated = content.substring(0, maxLength - 100);
   const lastPeriod = truncated.lastIndexOf('.');
   const smartTruncate = lastPeriod > maxLength * 0.8 
