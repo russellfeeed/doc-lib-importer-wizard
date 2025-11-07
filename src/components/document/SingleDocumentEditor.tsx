@@ -12,7 +12,6 @@ interface SingleDocumentEditorProps {
   totalDocuments: number;
   isGeneratingAI: boolean;
   showSchemes?: boolean;
-  isStandards?: boolean;
   onEdit: (field: keyof DocumentFile, value: string | boolean | Record<string, string>) => void;
   onPrevious: () => void;
   onNext: () => void;
@@ -36,7 +35,6 @@ const SingleDocumentEditor: React.FC<SingleDocumentEditorProps> = ({
   totalDocuments,
   isGeneratingAI,
   showSchemes = true,
-  isStandards = false,
   onEdit,
   onPrevious,
   onNext,
@@ -83,7 +81,6 @@ const SingleDocumentEditor: React.FC<SingleDocumentEditorProps> = ({
           isGeneratingAI={isGeneratingAI}
           onEdit={onEdit}
           onGenerateExcerpt={onGenerateExcerpt}
-          isStandards={isStandards}
         />
       </div>
       

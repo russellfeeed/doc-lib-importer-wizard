@@ -19,36 +19,14 @@ interface DocumentContentProps {
   isGeneratingAI: boolean;
   onEdit: (field: keyof DocumentFile, value: string | boolean | Record<string, string>) => void;
   onGenerateExcerpt: () => void;
-  isStandards?: boolean;
 }
 
 const DocumentContent: React.FC<DocumentContentProps> = ({
   document,
   isGeneratingAI,
   onEdit,
-  onGenerateExcerpt,
-  isStandards = false
+  onGenerateExcerpt
 }) => {
-  const getFileUrlPlaceholder = () => {
-    const fileName = `${document.name}${document.name.includes('.') ? '' : '.pdf'}`;
-    const urlFileName = isStandards ? fileName.replace(/\s+/g, '-') : fileName;
-    
-    if (isStandards) {
-      return `/wp-content/uploads/_pda/${getCurrentUploadPath()}/${urlFileName}`;
-    }
-    return `https://dev.members.nsi.org.uk/wp-content/uploads/${getCurrentUploadPath()}/${urlFileName}`;
-  };
-
-  const getDirectUrlPlaceholder = () => {
-    const fileName = `${document.name}${document.name.includes('.') ? '' : '.pdf'}`;
-    const urlFileName = isStandards ? fileName.replace(/\s+/g, '-') : fileName;
-    
-    if (isStandards) {
-      return `https://dev.members.nsi.org.uk/wp-content/uploads/_pda/${getCurrentUploadPath()}/${urlFileName}`;
-    }
-    return `https://dev.members.nsi.org.uk/wp-content/uploads/${getCurrentUploadPath()}/${urlFileName}`;
-  };
-
   return (
     <div>
       <div className="mb-4">
@@ -96,18 +74,18 @@ const DocumentContent: React.FC<DocumentContentProps> = ({
       <div className="mb-4">
         <label className="block text-sm font-medium mb-1">File URL</label>
         <Input 
-          value={document.fileUrl || getFileUrlPlaceholder()}
+          value={document.fileUrl || `https://dev.members.nsi.org.uk/wp-content/uploads/${getCurrentUploadPath()}/${document.name}${document.name.includes('.') ? '' : '.pdf'}`}
           onChange={(e) => onEdit('fileUrl', e.target.value)}
-          placeholder={getFileUrlPlaceholder()}
+          placeholder={`https://dev.members.nsi.org.uk/wp-content/uploads/${getCurrentUploadPath()}/${document.name}${document.name.includes('.') ? '' : '.pdf'}`}
         />
       </div>
       
       <div className="mb-4">
         <label className="block text-sm font-medium mb-1">Direct URL</label>
         <Input 
-          value={document.directUrl || getDirectUrlPlaceholder()}
+          value={document.directUrl || `https://dev.members.nsi.org.uk/wp-content/uploads/${getCurrentUploadPath()}/${document.name}${document.name.includes('.') ? '' : '.pdf'}`}
           onChange={(e) => onEdit('directUrl', e.target.value)}
-          placeholder={getDirectUrlPlaceholder()}
+          placeholder={`https://dev.members.nsi.org.uk/wp-content/uploads/${getCurrentUploadPath()}/${document.name}${document.name.includes('.') ? '' : '.pdf'}`}
         />
       </div>
     </div>
