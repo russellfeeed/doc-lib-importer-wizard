@@ -84,6 +84,7 @@ const StandardsDocumentEditor: React.FC<StandardsDocumentEditorProps> = ({
         <DocumentsTableView
           documents={editedDocuments}
           isGeneratingAI={isGeneratingAI}
+          isStandards={true}
           onEditDocument={handleTableChange}
           onGenerateAllExcerpts={handleGenerateAllExcerpts}
           onGenerateAllTags={handleGenerateAllTags}
