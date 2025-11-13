@@ -94,13 +94,30 @@ export function useStandardsFileUpload({ onFilesUploaded }: UseStandardsFileUplo
               
             } catch (error) {
               console.error("AI processing error:", error);
-              updatedFile = {
-                ...updatedFile,
-                aiProcessing: {
-                  status: 'error',
-                  error: 'Failed to generate AI summary'
-                }
-              };
+              
+              // Even if AI processing fails, try to extract the content so it's available for manual editing
+              try {
+                const content = await extractTextFromDocument(fileObj.file);
+                updatedFile = {
+                  ...updatedFile,
+                  content: content,
+                  aiProcessing: {
+                    status: 'error',
+                    error: error instanceof Error && error.message.includes('context length') 
+                      ? 'Document too large for automatic AI processing - content preserved for manual editing'
+                      : 'Failed to generate AI summary - content preserved for manual editing'
+                  }
+                };
+              } catch (extractError) {
+                console.error("Content extraction error:", extractError);
+                updatedFile = {
+                  ...updatedFile,
+                  aiProcessing: {
+                    status: 'error',
+                    error: 'Failed to extract document content'
+                  }
+                };
+              }
             }
           } else {
             // If AI is not enabled, just extract the text content
