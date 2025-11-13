@@ -23,6 +23,7 @@ export function useStandardsAiGeneration({
     
     // Check if content is empty
     if (!currentDoc.content || currentDoc.content.trim().length === 0) {
+      toast.error('Cannot generate excerpt: Document content is empty');
       return;
     }
     
@@ -54,6 +55,7 @@ export function useStandardsAiGeneration({
     
     // Check if content is empty
     if (!currentDoc.content || currentDoc.content.trim().length === 0) {
+      toast.error('Cannot generate category: Document content is empty');
       return;
     }
     
@@ -85,6 +87,7 @@ export function useStandardsAiGeneration({
     
     // Check if content is empty
     if (!currentDoc.content || currentDoc.content.trim().length === 0) {
+      toast.error('Cannot generate tags: Document content is empty');
       return;
     }
     
