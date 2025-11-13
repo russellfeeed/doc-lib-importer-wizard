@@ -9,6 +9,41 @@ import { AppendixItem } from "@/types/circular-letter";
 // Set worker path for pdf.js
 pdfjs.GlobalWorkerOptions.workerSrc = `https://cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
 
+// Maximum safe content size for AI processing (~100K tokens, leaving room for prompts/responses)
+const MAX_AI_CONTENT_SIZE = 400000;
+
+/**
+ * Intelligently truncate content for AI processing
+ * Attempts to truncate at sentence boundaries for better context
+ */
+export function truncateContentForAI(content: string): string {
+  if (content.length <= MAX_AI_CONTENT_SIZE) {
+    return content;
+  }
+
+  console.log(`Truncating content from ${content.length} to ${MAX_AI_CONTENT_SIZE} characters for AI processing`);
+  
+  // Truncate to max size
+  let truncated = content.substring(0, MAX_AI_CONTENT_SIZE);
+  
+  // Try to find a sentence boundary in the last 1000 characters
+  const lastPortion = truncated.substring(MAX_AI_CONTENT_SIZE - 1000);
+  const lastPeriodIndex = lastPortion.lastIndexOf('. ');
+  const lastNewlinePeriodIndex = lastPortion.lastIndexOf('.\n');
+  
+  const bestBoundary = Math.max(lastPeriodIndex, lastNewlinePeriodIndex);
+  
+  if (bestBoundary > 0) {
+    // Found a sentence boundary, truncate there
+    truncated = truncated.substring(0, MAX_AI_CONTENT_SIZE - 1000 + bestBoundary + 1);
+  }
+  
+  // Add truncation note
+  truncated += '\n\n[Content truncated for AI processing - showing first ' + truncated.length + ' characters]';
+  
+  return truncated;
+}
+
 // Generate a thumbnail for a PDF file
 export async function generatePdfThumbnail(file: File): Promise<string> {
   try {
@@ -346,15 +381,24 @@ export async function processStandardsDocumentWithAI(
     // 1. Extract text from document
     const extractedText = await extractTextFromDocument(file);
     
-    // 2. Generate summary using OpenAI
-    const summary = await generateDocumentSummary(extractedText, file.name, options);
+    // Check if content needs truncation for AI processing
+    let contentForAI = extractedText;
+    if (extractedText.length > 400000) {
+      console.log(`Document too large (${extractedText.length} chars), truncating to 400,000 chars for AI processing`);
+      contentForAI = truncateContentForAI(extractedText);
+      toast.info("Document is large - processing first portion for AI analysis");
+    }
+    
+    // 2. Generate summary using OpenAI (with truncated content if necessary)
+    const summary = await generateDocumentSummary(contentForAI, file.name, options);
     
     // 3. Determine appropriate standards category (System or Service only)
-    const category = await generateStandardsCategory(extractedText, file.name, options);
+    const category = await generateStandardsCategory(contentForAI, file.name, options);
     
     // 4. Generate document tags (pass category for additional tag generation)
-    const tags = await generateDocumentTags(extractedText, file.name, category, options);
+    const tags = await generateDocumentTags(contentForAI, file.name, category, options);
     
+    // CRITICAL: Return the FULL extractedText as content, not the truncated version
     return {
       summary,
       content: extractedText,

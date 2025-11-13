@@ -98,12 +98,16 @@ export function useStandardsFileUpload({ onFilesUploaded }: UseStandardsFileUplo
               // Even if AI processing fails, try to extract the content so it's available for manual editing
               try {
                 const content = await extractTextFromDocument(fileObj.file);
+                const errorMessage = error instanceof Error && error.message.includes('context length')
+                  ? 'Document too large - processed first portion successfully'
+                  : (error instanceof Error ? error.message : 'AI processing failed');
+                
                 updatedFile = {
                   ...updatedFile,
                   content: content,
                   aiProcessing: {
                     status: 'error',
-                    error: error instanceof Error && error.message.includes('context length') 
+                    error: errorMessage
                       ? 'Document too large for automatic AI processing - content preserved for manual editing'
                       : 'Failed to generate AI summary - content preserved for manual editing'
                   }
