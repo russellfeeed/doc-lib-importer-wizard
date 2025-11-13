@@ -19,6 +19,7 @@ import { DocumentFile } from '@/types/document';
 interface DocumentsTableViewProps {
   documents: DocumentFile[];
   isGeneratingAI: boolean;
+  isStandards?: boolean;
   onEditDocument: (index: number, field: keyof DocumentFile, value: string | boolean | Record<string, string>) => void;
   onGenerateAllExcerpts: () => void;
   onGenerateAllCategories?: () => void;
@@ -33,6 +34,7 @@ interface DocumentsTableViewProps {
 const DocumentsTableView: React.FC<DocumentsTableViewProps> = ({
   documents,
   isGeneratingAI,
+  isStandards = false,
   onEditDocument,
   onGenerateAllExcerpts,
   onGenerateAllCategories,
@@ -64,8 +66,8 @@ const DocumentsTableView: React.FC<DocumentsTableViewProps> = ({
       reasons.push('Needs categorization');
     }
     
-    // Check for missing scheme
-    if (!doc.customTaxonomies?.['tax:nsi-scheme'] || doc.customTaxonomies['tax:nsi-scheme'].trim() === '') {
+    // Check for missing scheme (skip for standards documents)
+    if (!isStandards && (!doc.customTaxonomies?.['tax:nsi-scheme'] || doc.customTaxonomies['tax:nsi-scheme'].trim() === '')) {
       reasons.push('Missing scheme');
     }
     
