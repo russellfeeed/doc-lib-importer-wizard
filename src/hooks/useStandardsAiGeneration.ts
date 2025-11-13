@@ -27,15 +27,33 @@ export function useStandardsAiGeneration({
       return;
     }
     
+    let contentToProcess = currentDoc.content;
+    
     // Check if content is too large (over ~100K characters which is roughly 25K tokens)
     if (currentDoc.content.length > 100000) {
-      toast.error('Document is too large for AI processing. Consider splitting it into smaller sections.');
-      return;
+      const shouldProceed = window.confirm(
+        `This document is very large (${Math.round(currentDoc.content.length / 1000)}K characters). ` +
+        `Would you like to process the first 100K characters for AI analysis?\n\n` +
+        `Click OK to process partial content, or Cancel to skip.`
+      );
+      
+      if (!shouldProceed) {
+        return;
+      }
+      
+      // Truncate to first 100K characters, trying to end at a sentence boundary
+      contentToProcess = currentDoc.content.substring(0, 100000);
+      const lastPeriod = contentToProcess.lastIndexOf('.');
+      if (lastPeriod > 90000) {
+        contentToProcess = contentToProcess.substring(0, lastPeriod + 1);
+      }
+      
+      toast.info('Processing first portion of document...');
     }
     
     setIsGeneratingAI(true);
     try {
-      const excerpt = await generateDocumentSummary(currentDoc.content, currentDoc.name);
+      const excerpt = await generateDocumentSummary(contentToProcess, currentDoc.name);
       
       setEditedDocuments(prev => 
         prev.map((doc, index) => 
@@ -65,15 +83,32 @@ export function useStandardsAiGeneration({
       return;
     }
     
+    let contentToProcess = currentDoc.content;
+    
     // Check if content is too large
     if (currentDoc.content.length > 100000) {
-      toast.error('Document is too large for AI processing. Consider splitting it into smaller sections.');
-      return;
+      const shouldProceed = window.confirm(
+        `This document is very large (${Math.round(currentDoc.content.length / 1000)}K characters). ` +
+        `Would you like to process the first 100K characters for AI analysis?\n\n` +
+        `Click OK to process partial content, or Cancel to skip.`
+      );
+      
+      if (!shouldProceed) {
+        return;
+      }
+      
+      contentToProcess = currentDoc.content.substring(0, 100000);
+      const lastPeriod = contentToProcess.lastIndexOf('.');
+      if (lastPeriod > 90000) {
+        contentToProcess = contentToProcess.substring(0, lastPeriod + 1);
+      }
+      
+      toast.info('Processing first portion of document...');
     }
     
     setIsGeneratingAI(true);
     try {
-      const category = await generateStandardsCategory(currentDoc.content, currentDoc.name);
+      const category = await generateStandardsCategory(contentToProcess, currentDoc.name);
       
       setEditedDocuments(prev => 
         prev.map((doc, index) => 
@@ -103,15 +138,32 @@ export function useStandardsAiGeneration({
       return;
     }
     
+    let contentToProcess = currentDoc.content;
+    
     // Check if content is too large
     if (currentDoc.content.length > 100000) {
-      toast.error('Document is too large for AI processing. Consider splitting it into smaller sections.');
-      return;
+      const shouldProceed = window.confirm(
+        `This document is very large (${Math.round(currentDoc.content.length / 1000)}K characters). ` +
+        `Would you like to process the first 100K characters for AI analysis?\n\n` +
+        `Click OK to process partial content, or Cancel to skip.`
+      );
+      
+      if (!shouldProceed) {
+        return;
+      }
+      
+      contentToProcess = currentDoc.content.substring(0, 100000);
+      const lastPeriod = contentToProcess.lastIndexOf('.');
+      if (lastPeriod > 90000) {
+        contentToProcess = contentToProcess.substring(0, lastPeriod + 1);
+      }
+      
+      toast.info('Processing first portion of document...');
     }
     
     setIsGeneratingAI(true);
     try {
-      const tags = await generateDocumentTags(currentDoc.content, currentDoc.name, currentDoc.categories);
+      const tags = await generateDocumentTags(contentToProcess, currentDoc.name, currentDoc.categories);
       
       setEditedDocuments(prev => 
         prev.map((doc, index) => 
@@ -140,7 +192,18 @@ export function useStandardsAiGeneration({
           if (!updatedDocs[i].content || updatedDocs[i].content.trim().length === 0) {
             continue;
           }
-          const excerpt = await generateDocumentSummary(updatedDocs[i].content, updatedDocs[i].name);
+          
+          // Truncate large content automatically for batch processing
+          let contentToProcess = updatedDocs[i].content;
+          if (contentToProcess.length > 100000) {
+            contentToProcess = contentToProcess.substring(0, 100000);
+            const lastPeriod = contentToProcess.lastIndexOf('.');
+            if (lastPeriod > 90000) {
+              contentToProcess = contentToProcess.substring(0, lastPeriod + 1);
+            }
+          }
+          
+          const excerpt = await generateDocumentSummary(contentToProcess, updatedDocs[i].name);
           updatedDocs[i] = { ...updatedDocs[i], excerpt };
         } catch (error) {
           console.error(`Error generating excerpt for document ${i}:`, error);
@@ -167,7 +230,18 @@ export function useStandardsAiGeneration({
           if (!updatedDocs[i].content || updatedDocs[i].content.trim().length === 0) {
             continue;
           }
-          const category = await generateStandardsCategory(updatedDocs[i].content, updatedDocs[i].name);
+          
+          // Truncate large content automatically for batch processing
+          let contentToProcess = updatedDocs[i].content;
+          if (contentToProcess.length > 100000) {
+            contentToProcess = contentToProcess.substring(0, 100000);
+            const lastPeriod = contentToProcess.lastIndexOf('.');
+            if (lastPeriod > 90000) {
+              contentToProcess = contentToProcess.substring(0, lastPeriod + 1);
+            }
+          }
+          
+          const category = await generateStandardsCategory(contentToProcess, updatedDocs[i].name);
           updatedDocs[i] = { ...updatedDocs[i], categories: category };
         } catch (error) {
           console.error(`Error generating category for document ${i}:`, error);
@@ -194,7 +268,18 @@ export function useStandardsAiGeneration({
           if (!updatedDocs[i].content || updatedDocs[i].content.trim().length === 0) {
             continue;
           }
-          const tags = await generateDocumentTags(updatedDocs[i].content, updatedDocs[i].name, updatedDocs[i].categories);
+          
+          // Truncate large content automatically for batch processing
+          let contentToProcess = updatedDocs[i].content;
+          if (contentToProcess.length > 100000) {
+            contentToProcess = contentToProcess.substring(0, 100000);
+            const lastPeriod = contentToProcess.lastIndexOf('.');
+            if (lastPeriod > 90000) {
+              contentToProcess = contentToProcess.substring(0, lastPeriod + 1);
+            }
+          }
+          
+          const tags = await generateDocumentTags(contentToProcess, updatedDocs[i].name, updatedDocs[i].categories);
           updatedDocs[i] = { ...updatedDocs[i], tags };
         } catch (error) {
           console.error(`Error generating tags for document ${i}:`, error);
