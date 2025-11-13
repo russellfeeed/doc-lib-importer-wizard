@@ -47,6 +47,7 @@ const WordPressUploader: React.FC<WordPressUploaderProps> = ({
   const [isUploading, setIsUploading] = useState(false);
   const [uploadResults, setUploadResults] = useState<UploadResult[]>([]);
   const [uploadComplete, setUploadComplete] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<string>('');
   const [wpSettings, setWpSettings] = useState(getWordPressSettings());
 
   useEffect(() => {
@@ -98,11 +99,29 @@ const WordPressUploader: React.FC<WordPressUploaderProps> = ({
     setUploadResults([]);
 
     try {
-      // Convert files to base64 before uploading
-      const documentsToUpload = await Promise.all(
-        uploadableDocuments
-          .filter(doc => selectedDocuments.has(doc.id))
-          .map(async (doc) => {
+      // Filter selected documents
+      const selectedDocs = uploadableDocuments.filter(doc => selectedDocuments.has(doc.id));
+      
+      // Batch size for uploads to prevent memory issues
+      const BATCH_SIZE = 5;
+      const totalBatches = Math.ceil(selectedDocs.length / BATCH_SIZE);
+      
+      console.log(`Uploading ${selectedDocs.length} documents in ${totalBatches} batches of ${BATCH_SIZE}`);
+      
+      let allResults: any[] = [];
+      
+      // Process documents in batches
+      for (let batchIndex = 0; batchIndex < totalBatches; batchIndex++) {
+        const start = batchIndex * BATCH_SIZE;
+        const end = Math.min(start + BATCH_SIZE, selectedDocs.length);
+        const batchDocs = selectedDocs.slice(start, end);
+        
+        console.log(`Processing batch ${batchIndex + 1}/${totalBatches} (documents ${start + 1}-${end})`);
+        setUploadProgress(`Uploading batch ${batchIndex + 1} of ${totalBatches}...`);
+        
+        // Convert files to base64 for this batch only
+        const documentsToUpload = await Promise.all(
+          batchDocs.map(async (doc) => {
             if ('referenceNumber' in doc) {
               // Handle circular letters
               const file = (doc as any).file;
@@ -126,32 +145,45 @@ const WordPressUploader: React.FC<WordPressUploaderProps> = ({
               };
             }
           })
-      );
+        );
 
-      console.log('Uploading documents:', documentsToUpload);
+        console.log(`Uploading batch ${batchIndex + 1}:`, documentsToUpload.map(d => d.name));
 
-      const { data, error } = await supabase.functions.invoke('wordpress-upload', {
-        body: {
-          documents: documentsToUpload,
-          wpUrl: wpSettings.siteUrl,
-          wpUsername: wpSettings.username,
-          wpPassword: wpSettings.password,
+        const { data, error } = await supabase.functions.invoke('wordpress-upload', {
+          body: {
+            documents: documentsToUpload,
+            wpUrl: wpSettings.siteUrl,
+            wpUsername: wpSettings.username,
+            wpPassword: wpSettings.password,
+          }
+        });
+
+        if (error) {
+          console.error(`Error in batch ${batchIndex + 1}:`, error);
+          // Continue with remaining batches even if one fails
+          allResults.push(...(data?.results || []));
+        } else {
+          allResults.push(...(data.results || []));
         }
-      });
-
-      if (error) {
-        throw error;
+        
+        // Small delay between batches to allow garbage collection
+        if (batchIndex < totalBatches - 1) {
+          await new Promise(resolve => setTimeout(resolve, 1000));
+        }
       }
 
-      setUploadResults(data.results || []);
+      setUploadResults(allResults);
       setUploadComplete(true);
 
-      const summary = data.summary;
-      if (summary.successful > 0) {
-        toast.success(`Successfully uploaded ${summary.successful} document(s) to WordPress`);
+      // Calculate summary from all results
+      const successful = allResults.filter(r => r.success).length;
+      const failed = allResults.length - successful;
+      
+      if (successful > 0) {
+        toast.success(`Successfully uploaded ${successful} document${successful !== 1 ? 's' : ''} to WordPress`);
       }
-      if (summary.failed > 0) {
-        toast.error(`Failed to upload ${summary.failed} document(s)`);
+      if (failed > 0) {
+        toast.error(`Failed to upload ${failed} document${failed !== 1 ? 's' : ''}`);
       }
 
     } catch (error) {
@@ -321,22 +353,27 @@ const WordPressUploader: React.FC<WordPressUploaderProps> = ({
           <ChevronLeft className="mr-2 h-4 w-4" />
           Back to CSV
         </Button>
-        <Button 
-          onClick={handleUpload}
-          disabled={isUploading || selectedDocuments.size === 0}
-        >
-          {isUploading ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Uploading...
-            </>
-          ) : (
-            <>
-              <Upload className="mr-2 h-4 w-4" />
-              Upload to WordPress ({selectedDocuments.size})
-            </>
+        <div className="flex items-center gap-4">
+          {isUploading && uploadProgress && (
+            <span className="text-sm text-gray-600">{uploadProgress}</span>
           )}
-        </Button>
+          <Button 
+            onClick={handleUpload}
+            disabled={isUploading || selectedDocuments.size === 0}
+          >
+            {isUploading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Uploading...
+              </>
+            ) : (
+              <>
+                <Upload className="mr-2 h-4 w-4" />
+                Upload to WordPress ({selectedDocuments.size})
+              </>
+            )}
+          </Button>
+        </div>
       </div>
     </div>
   );

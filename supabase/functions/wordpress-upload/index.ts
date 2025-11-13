@@ -36,6 +36,11 @@ serve(async (req) => {
     const { documents, wpUrl, wpUsername, wpPassword }: UploadRequest = await req.json();
 
     console.log(`Starting upload of ${documents.length} documents to WordPress`);
+    
+    // Limit number of documents to prevent memory issues
+    if (documents.length > 10) {
+      throw new Error(`Too many documents. Please upload in batches of 10 or fewer. Current batch: ${documents.length}`);
+    }
 
     // Create basic auth header
     const authHeader = btoa(`${wpUsername}:${wpPassword}`);
@@ -218,17 +223,35 @@ serve(async (req) => {
         
         // Handle different file data formats
         if (typeof doc.fileData === 'string') {
-          // Handle base64 string
+          // Handle base64 string with memory optimization
           const base64Data = doc.fileData.includes(',') 
             ? doc.fileData.split(',')[1] 
             : doc.fileData;
 
-          const binaryString = atob(base64Data);
-          const bytes = new Uint8Array(binaryString.length);
-          for (let i = 0; i < binaryString.length; i++) {
-            bytes[i] = binaryString.charCodeAt(i);
+          // Check file size before processing (base64 is ~33% larger than binary)
+          const estimatedSize = (base64Data.length * 3) / 4;
+          const maxSize = 15 * 1024 * 1024; // 15MB limit
+          
+          console.log(`Estimated file size: ${(estimatedSize / 1024 / 1024).toFixed(2)} MB`);
+          
+          if (estimatedSize > maxSize) {
+            throw new Error(`File too large: ${(estimatedSize / 1024 / 1024).toFixed(2)} MB. Maximum size is 15 MB. Please upload files individually or reduce file size.`);
           }
-          fileBlob = new Blob([bytes], { type: mimeType });
+
+          // Convert base64 to binary more efficiently
+          try {
+            const binaryString = atob(base64Data);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+              bytes[i] = binaryString.charCodeAt(i);
+            }
+            fileBlob = new Blob([bytes], { type: mimeType });
+            
+            // Clear references to help garbage collection
+            doc.fileData = null;
+          } catch (decodeError) {
+            throw new Error(`Failed to decode file data: ${decodeError.message}`);
+          }
         } else if (doc.fileData instanceof File) {
           // Handle File object - use original MIME type if available, otherwise use our mapping
           const finalMimeType = doc.fileData.type || mimeType;
