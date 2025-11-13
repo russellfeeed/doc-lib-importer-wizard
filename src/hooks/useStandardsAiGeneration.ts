@@ -23,7 +23,13 @@ export function useStandardsAiGeneration({
     
     // Check if content is empty
     if (!currentDoc.content || currentDoc.content.trim().length === 0) {
-      toast.error('Cannot generate excerpt: Document content is empty');
+      toast.error('Cannot generate excerpt: Document content is empty. Please upload the document again.');
+      return;
+    }
+    
+    // Check if content is too large (over ~100K characters which is roughly 25K tokens)
+    if (currentDoc.content.length > 100000) {
+      toast.error('Document is too large for AI processing. Consider splitting it into smaller sections.');
       return;
     }
     
@@ -55,7 +61,13 @@ export function useStandardsAiGeneration({
     
     // Check if content is empty
     if (!currentDoc.content || currentDoc.content.trim().length === 0) {
-      toast.error('Cannot generate category: Document content is empty');
+      toast.error('Cannot generate category: Document content is empty. Please upload the document again.');
+      return;
+    }
+    
+    // Check if content is too large
+    if (currentDoc.content.length > 100000) {
+      toast.error('Document is too large for AI processing. Consider splitting it into smaller sections.');
       return;
     }
     
@@ -87,7 +99,13 @@ export function useStandardsAiGeneration({
     
     // Check if content is empty
     if (!currentDoc.content || currentDoc.content.trim().length === 0) {
-      toast.error('Cannot generate tags: Document content is empty');
+      toast.error('Cannot generate tags: Document content is empty. Please upload the document again.');
+      return;
+    }
+    
+    // Check if content is too large
+    if (currentDoc.content.length > 100000) {
+      toast.error('Document is too large for AI processing. Consider splitting it into smaller sections.');
       return;
     }
     

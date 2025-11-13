@@ -363,6 +363,23 @@ export async function processStandardsDocumentWithAI(
     };
   } catch (error) {
     console.error("Error processing standards document with AI:", error);
+    
+    // If we at least extracted the content, return it along with the error
+    // This allows the content to be preserved for manual editing
+    try {
+      const extractedText = await extractTextFromDocument(file);
+      if (extractedText && extractedText.length > 0) {
+        return {
+          summary: '',
+          content: extractedText,
+          category: '',
+          tags: ''
+        };
+      }
+    } catch (extractError) {
+      console.error("Failed to extract content after AI error:", extractError);
+    }
+    
     toast.error("Failed to process standards document with AI");
     throw error;
   }
