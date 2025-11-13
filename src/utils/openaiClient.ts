@@ -195,7 +195,7 @@ export async function summarizeWithOpenAI(
   
   const userPrompt = config.userPromptTemplate
     .replace('{fileName}', fileName)
-    .replace('{content}', content);
+    .replace('{content}', content.substring(0, 400000)); // Safety truncation
 
   const messages: OpenAIMessage[] = [
     {

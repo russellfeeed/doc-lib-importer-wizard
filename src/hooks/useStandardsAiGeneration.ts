@@ -29,11 +29,11 @@ export function useStandardsAiGeneration({
     
     let contentToProcess = currentDoc.content;
     
-    // Check if content is too large (over ~100K characters which is roughly 25K tokens)
-    if (currentDoc.content.length > 100000) {
+    // Check if content is too large (over ~400K characters which is roughly 100K tokens)
+    if (currentDoc.content.length > 400000) {
       const shouldProceed = window.confirm(
         `This document is very large (${Math.round(currentDoc.content.length / 1000)}K characters). ` +
-        `Would you like to process the first 100K characters for AI analysis?\n\n` +
+        `Would you like to process the first 400K characters for AI analysis?\n\n` +
         `Click OK to process partial content, or Cancel to skip.`
       );
       
@@ -41,14 +41,14 @@ export function useStandardsAiGeneration({
         return;
       }
       
-      // Truncate to first 100K characters, trying to end at a sentence boundary
-      contentToProcess = currentDoc.content.substring(0, 100000);
+      // Truncate to first 400K characters, trying to end at a sentence boundary
+      contentToProcess = currentDoc.content.substring(0, 400000);
       const lastPeriod = contentToProcess.lastIndexOf('.');
-      if (lastPeriod > 90000) {
+      if (lastPeriod > 390000) {
         contentToProcess = contentToProcess.substring(0, lastPeriod + 1);
       }
       
-      toast.info('Processing first portion of document...');
+      toast.info('Processing first 400,000 characters of document...');
     }
     
     setIsGeneratingAI(true);
@@ -86,10 +86,10 @@ export function useStandardsAiGeneration({
     let contentToProcess = currentDoc.content;
     
     // Check if content is too large
-    if (currentDoc.content.length > 100000) {
+    if (currentDoc.content.length > 400000) {
       const shouldProceed = window.confirm(
         `This document is very large (${Math.round(currentDoc.content.length / 1000)}K characters). ` +
-        `Would you like to process the first 100K characters for AI analysis?\n\n` +
+        `Would you like to process the first 400K characters for AI analysis?\n\n` +
         `Click OK to process partial content, or Cancel to skip.`
       );
       
@@ -97,13 +97,13 @@ export function useStandardsAiGeneration({
         return;
       }
       
-      contentToProcess = currentDoc.content.substring(0, 100000);
+      contentToProcess = currentDoc.content.substring(0, 400000);
       const lastPeriod = contentToProcess.lastIndexOf('.');
-      if (lastPeriod > 90000) {
+      if (lastPeriod > 390000) {
         contentToProcess = contentToProcess.substring(0, lastPeriod + 1);
       }
       
-      toast.info('Processing first portion of document...');
+      toast.info('Processing first 400,000 characters of document...');
     }
     
     setIsGeneratingAI(true);
@@ -141,10 +141,10 @@ export function useStandardsAiGeneration({
     let contentToProcess = currentDoc.content;
     
     // Check if content is too large
-    if (currentDoc.content.length > 100000) {
+    if (currentDoc.content.length > 400000) {
       const shouldProceed = window.confirm(
         `This document is very large (${Math.round(currentDoc.content.length / 1000)}K characters). ` +
-        `Would you like to process the first 100K characters for AI analysis?\n\n` +
+        `Would you like to process the first 400K characters for AI analysis?\n\n` +
         `Click OK to process partial content, or Cancel to skip.`
       );
       
@@ -152,13 +152,13 @@ export function useStandardsAiGeneration({
         return;
       }
       
-      contentToProcess = currentDoc.content.substring(0, 100000);
+      contentToProcess = currentDoc.content.substring(0, 400000);
       const lastPeriod = contentToProcess.lastIndexOf('.');
-      if (lastPeriod > 90000) {
+      if (lastPeriod > 390000) {
         contentToProcess = contentToProcess.substring(0, lastPeriod + 1);
       }
       
-      toast.info('Processing first portion of document...');
+      toast.info('Processing first 400,000 characters of document...');
     }
     
     setIsGeneratingAI(true);
