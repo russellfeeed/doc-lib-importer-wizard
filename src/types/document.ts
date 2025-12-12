@@ -19,6 +19,9 @@ export interface DocumentFile {
   isProcessing?: boolean;
   processingError?: string;
   thumbnail?: string;
+  // Standards-specific fields
+  standardNumber?: string;
+  documentTitle?: string;
   aiProcessing?: {
     status: 'idle' | 'processing' | 'completed' | 'error';
     error?: string;

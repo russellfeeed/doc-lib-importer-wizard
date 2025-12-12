@@ -5,7 +5,7 @@ import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { PDFViewerModal } from '@/components/ui/pdf-viewer-modal';
-import { Tag, BookCopy, FolderOpen, ChevronRight, AlertTriangle, Building, CheckSquare, Square, FileText, Eye, Trash2 } from 'lucide-react';
+import { Tag, BookCopy, FolderOpen, ChevronRight, AlertTriangle, Building, CheckSquare, Square, FileText, Eye, Trash2, Hash, FileType } from 'lucide-react';
 import { DocumentFile } from '@/types/document';
 import { fetchWordPressTaxonomies } from '@/utils/wordpressUtils';
 
@@ -13,6 +13,7 @@ interface DocumentMetadataProps {
   document: DocumentFile;
   isGeneratingAI: boolean;
   showSchemes?: boolean;
+  isStandards?: boolean;
   onEdit: (field: keyof DocumentFile, value: string | boolean | Record<string, string>) => void;
   onGenerateCategory?: () => void;
   onGenerateTags?: () => void;
@@ -24,6 +25,7 @@ const DocumentMetadata: React.FC<DocumentMetadataProps> = ({
   document,
   isGeneratingAI,
   showSchemes = true,
+  isStandards = false,
   onEdit,
   onGenerateCategory,
   onGenerateTags,
@@ -146,6 +148,37 @@ const DocumentMetadata: React.FC<DocumentMetadataProps> = ({
 
   return (
     <div>
+      {/* Standards-specific fields */}
+      {isStandards && (
+        <>
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-1 flex items-center gap-2">
+              <Hash className="h-4 w-4" />
+              Standard Number
+            </label>
+            <Input 
+              value={document.standardNumber || ''}
+              onChange={(e) => onEdit('standardNumber', e.target.value)}
+              placeholder="E.g., BS EN 50131-1:2006+A3:2020"
+            />
+            <p className="text-xs text-muted-foreground mt-1">The formal standard identifier/code</p>
+          </div>
+          
+          <div className="mb-4">
+            <label className="block text-sm font-medium mb-1 flex items-center gap-2">
+              <FileType className="h-4 w-4" />
+              Document Title
+            </label>
+            <Input 
+              value={document.documentTitle || ''}
+              onChange={(e) => onEdit('documentTitle', e.target.value)}
+              placeholder="E.g., Alarm systems - Intrusion and hold-up systems"
+            />
+            <p className="text-xs text-muted-foreground mt-1">The descriptive title of the standard</p>
+          </div>
+        </>
+      )}
+
       <div className="mb-4">
         <label className="block text-sm font-medium mb-1">Document Name</label>
         <Input 

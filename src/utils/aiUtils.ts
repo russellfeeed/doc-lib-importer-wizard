@@ -1,5 +1,5 @@
 import { toast } from "sonner";
-import { hasOpenAIKey, summarizeWithOpenAI, categorizeWithOpenAI, generateTagsWithOpenAI, extractCircularLetterDataWithOpenAI, categorizeStandardsWithOpenAI } from "./openaiClient";
+import { hasOpenAIKey, summarizeWithOpenAI, categorizeWithOpenAI, generateTagsWithOpenAI, extractCircularLetterDataWithOpenAI, categorizeStandardsWithOpenAI, extractStandardsDataWithOpenAI } from "./openaiClient";
 import { AiProcessingOptions } from "@/types/document";
 import { CategoryNode } from "@/types/categories";
 import { loadCategories } from "./categoryUtils";
@@ -376,7 +376,7 @@ export async function processDocumentWithAI(
 export async function processStandardsDocumentWithAI(
   file: File,
   options?: AiProcessingOptions
-): Promise<{ summary: string, content: string, category?: string, tags?: string }> {
+): Promise<{ summary: string, content: string, category?: string, tags?: string, standardNumber?: string, documentTitle?: string }> {
   try {
     // 1. Extract text from document
     const extractedText = await extractTextFromDocument(file);
@@ -389,13 +389,16 @@ export async function processStandardsDocumentWithAI(
       toast.info("Document is large - processing first portion for AI analysis");
     }
     
-    // 2. Generate summary using OpenAI (with truncated content if necessary)
+    // 2. Extract standard number and document title
+    const { standardNumber, documentTitle } = await extractStandardsDataWithOpenAI(contentForAI, file.name, options);
+    
+    // 3. Generate summary using OpenAI (with truncated content if necessary)
     const summary = await generateDocumentSummary(contentForAI, file.name, options);
     
-    // 3. Determine appropriate standards category (System or Service only)
+    // 4. Determine appropriate standards category (System or Service only)
     const category = await generateStandardsCategory(contentForAI, file.name, options);
     
-    // 4. Generate document tags (pass category for additional tag generation)
+    // 5. Generate document tags (pass category for additional tag generation)
     const tags = await generateDocumentTags(contentForAI, file.name, category, options);
     
     // CRITICAL: Return the FULL extractedText as content, not the truncated version
@@ -403,7 +406,9 @@ export async function processStandardsDocumentWithAI(
       summary,
       content: extractedText,
       category,
-      tags
+      tags,
+      standardNumber,
+      documentTitle
     };
   } catch (error) {
     console.error("Error processing standards document with AI:", error);
@@ -417,7 +422,9 @@ export async function processStandardsDocumentWithAI(
           summary: '',
           content: extractedText,
           category: '',
-          tags: ''
+          tags: '',
+          standardNumber: '',
+          documentTitle: ''
         };
       }
     } catch (extractError) {

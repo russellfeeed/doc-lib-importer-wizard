@@ -74,7 +74,7 @@ export function useStandardsFileUpload({ onFilesUploaded }: UseStandardsFileUplo
           // If AI is enabled, extract text and generate a summary using standards-specific processing
           if (aiEnabled) {
             try {
-              const { summary, content, category, tags } = await processStandardsDocumentWithAI(fileObj.file);
+              const { summary, content, category, tags, standardNumber, documentTitle } = await processStandardsDocumentWithAI(fileObj.file);
               
               updatedFile = {
                 ...updatedFile,
@@ -82,13 +82,17 @@ export function useStandardsFileUpload({ onFilesUploaded }: UseStandardsFileUplo
                 content: content,
                 categories: category || '',
                 tags: tags || '',
+                standardNumber: standardNumber || '',
+                documentTitle: documentTitle || '',
                 aiProcessing: {
                   status: 'completed',
                   model: 'gpt-4o-mini' // Default model
                 }
               };
               
-              if (category) {
+              if (standardNumber) {
+                toast.success(`Extracted standard: ${standardNumber}`);
+              } else if (category) {
                 toast.success(`Standards document "${fileObj.name}" categorized as "${category}"`);
               }
               

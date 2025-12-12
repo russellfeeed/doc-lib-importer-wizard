@@ -116,6 +116,14 @@ export const generateCSV = async (
     // Headers for regular documents
     headers = [
       'Name',
+    ];
+    
+    // Add standards-specific headers if applicable
+    if (isStandards) {
+      headers.push('Standard Number', 'Document Title');
+    }
+    
+    headers.push(
       'Categories',
       'Tags',
       'Document Authors',
@@ -126,7 +134,7 @@ export const generateCSV = async (
       'Excerpt',
       'Content',
       'Published',
-    ];
+    );
     
     // Get all unique custom field and taxonomy keys from all documents
     const customFieldKeys = new Set<string>();
@@ -232,17 +240,24 @@ export const generateCSV = async (
       
       row = {
         'Name': forceQuoteCsvValue(docFile.name),
-        'Categories': forceQuoteCsvValue(docFile.categories),
-        'Tags': forceQuoteCsvValue(docFile.tags),
-        'Document Authors': forceQuoteCsvValue(docFile.authors),
-        'File URL': forceQuoteCsvValue(docFile.fileUrl || fileUrlPath),
-        'Direct URL': forceQuoteCsvValue(docFile.directUrl || directUrlPath),
-        'Featured Image URL': forceQuoteCsvValue(docFile.imageUrl),
-        'File Size': forceQuoteCsvValue(docFile.fileSize),
-        'Excerpt': forceQuoteCsvValue(docFile.excerpt),
-        'Content': forceQuoteCsvValue(preparedContent),
-        'Published': docFile.published ? 'TRUE' : 'FALSE',
       };
+      
+      // Add standards-specific fields
+      if (isStandards) {
+        row['Standard Number'] = forceQuoteCsvValue(docFile.standardNumber || '');
+        row['Document Title'] = forceQuoteCsvValue(docFile.documentTitle || '');
+      }
+      
+      row['Categories'] = forceQuoteCsvValue(docFile.categories);
+      row['Tags'] = forceQuoteCsvValue(docFile.tags);
+      row['Document Authors'] = forceQuoteCsvValue(docFile.authors);
+      row['File URL'] = forceQuoteCsvValue(docFile.fileUrl || fileUrlPath);
+      row['Direct URL'] = forceQuoteCsvValue(docFile.directUrl || directUrlPath);
+      row['Featured Image URL'] = forceQuoteCsvValue(docFile.imageUrl);
+      row['File Size'] = forceQuoteCsvValue(docFile.fileSize);
+      row['Excerpt'] = forceQuoteCsvValue(docFile.excerpt);
+      row['Content'] = forceQuoteCsvValue(preparedContent);
+      row['Published'] = docFile.published ? 'TRUE' : 'FALSE';
       
       // Add custom fields if they exist
       if (docFile.customFields) {
