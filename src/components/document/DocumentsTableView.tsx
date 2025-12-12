@@ -318,9 +318,11 @@ const DocumentsTableView: React.FC<DocumentsTableViewProps> = ({
                   aria-label="Select all documents"
                 />
               </TableHead>
+              {isStandards && <TableHead>Standard #</TableHead>}
+              {isStandards && <TableHead>Title</TableHead>}
               <TableHead>Name</TableHead>
               <TableHead>Categories</TableHead>
-              <TableHead>Scheme</TableHead>
+              {!isStandards && <TableHead>Scheme</TableHead>}
               <TableHead>Tags</TableHead>
               <TableHead>Authors</TableHead>
               <TableHead>File Size</TableHead>
@@ -341,6 +343,26 @@ const DocumentsTableView: React.FC<DocumentsTableViewProps> = ({
                       aria-label={`Select ${doc.name}`}
                     />
                   </TableCell>
+                  {isStandards && (
+                    <TableCell>
+                      <Input 
+                        value={doc.standardNumber || ''}
+                        onChange={(e) => onEditDocument(index, 'standardNumber', e.target.value)}
+                        className="w-32"
+                        placeholder="Standard #"
+                      />
+                    </TableCell>
+                  )}
+                  {isStandards && (
+                    <TableCell>
+                      <Input 
+                        value={doc.documentTitle || ''}
+                        onChange={(e) => onEditDocument(index, 'documentTitle', e.target.value)}
+                        className="w-40"
+                        placeholder="Title"
+                      />
+                    </TableCell>
+                  )}
                   <TableCell>
                     <div className="flex items-center gap-2">
                       <Input 
@@ -365,20 +387,22 @@ const DocumentsTableView: React.FC<DocumentsTableViewProps> = ({
                       <div className="text-xs text-destructive mt-1">Categorization failed</div>
                     )}
                   </TableCell>
-                  <TableCell>
-                    <Input 
-                      value={doc.customTaxonomies?.['tax:nsi-scheme'] || ''}
-                      onChange={(e) => {
-                        const updatedTaxonomies = { ...doc.customTaxonomies, 'tax:nsi-scheme': e.target.value };
-                        onEditDocument(index, 'customTaxonomies', updatedTaxonomies);
-                      }}
-                      className={`w-full ${!doc.customTaxonomies?.['tax:nsi-scheme'] || doc.customTaxonomies['tax:nsi-scheme'].trim() === '' ? 'border-destructive bg-destructive/10' : ''}`}
-                      placeholder="Scheme"
-                    />
-                    {(!doc.customTaxonomies?.['tax:nsi-scheme'] || doc.customTaxonomies['tax:nsi-scheme'].trim() === '') && (
-                      <div className="text-xs text-destructive mt-1">Scheme missing</div>
-                    )}
-                  </TableCell>
+                  {!isStandards && (
+                    <TableCell>
+                      <Input 
+                        value={doc.customTaxonomies?.['tax:nsi-scheme'] || ''}
+                        onChange={(e) => {
+                          const updatedTaxonomies = { ...doc.customTaxonomies, 'tax:nsi-scheme': e.target.value };
+                          onEditDocument(index, 'customTaxonomies', updatedTaxonomies);
+                        }}
+                        className={`w-full ${!doc.customTaxonomies?.['tax:nsi-scheme'] || doc.customTaxonomies['tax:nsi-scheme'].trim() === '' ? 'border-destructive bg-destructive/10' : ''}`}
+                        placeholder="Scheme"
+                      />
+                      {(!doc.customTaxonomies?.['tax:nsi-scheme'] || doc.customTaxonomies['tax:nsi-scheme'].trim() === '') && (
+                        <div className="text-xs text-destructive mt-1">Scheme missing</div>
+                      )}
+                    </TableCell>
+                  )}
                   <TableCell>
                     <Input 
                       value={doc.tags}

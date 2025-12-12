@@ -71,6 +71,7 @@ const SingleDocumentEditor: React.FC<SingleDocumentEditorProps> = ({
           document={currentDocument}
           isGeneratingAI={isGeneratingAI}
           showSchemes={showSchemes}
+          isStandards={isStandards}
           onEdit={onEdit}
           onGenerateCategory={onGenerateCategory}
           onGenerateTags={onGenerateTags}

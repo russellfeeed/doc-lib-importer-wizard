@@ -539,3 +539,109 @@ export async function extractCircularLetterDataWithOpenAI(
     throw error;
   }
 }
+
+/**
+ * Extract standard number and document title from standards documents
+ */
+export async function extractStandardsDataWithOpenAI(
+  content: string,
+  fileName: string,
+  options: AiProcessingOptions = {}
+): Promise<{
+  standardNumber: string;
+  documentTitle: string;
+}> {
+  if (!hasOpenAIKey()) {
+    throw new Error("OpenAI API key not set");
+  }
+
+  const config = getPromptConfig('standardsExtraction');
+  const model = options?.model || config.model;
+  const maxTokens = options?.maxTokens || config.maxTokens;
+  const temperature = options?.temperature || config.temperature;
+
+  const systemPrompt = config.systemPrompt;
+  
+  // Use first 8000 chars for extraction (standard info is usually at the beginning)
+  const userPrompt = config.userPromptTemplate
+    .replace('{fileName}', fileName)
+    .replace('{content}', content.substring(0, 8000));
+
+  const messages: OpenAIMessage[] = [
+    {
+      role: "system",
+      content: systemPrompt,
+    },
+    {
+      role: "user",
+      content: userPrompt,
+    },
+  ];
+
+  const requestBody: OpenAIRequestBody = {
+    model,
+    messages,
+    max_tokens: maxTokens,
+    temperature,
+  };
+
+  try {
+    const data = await makeOpenAIRequest(requestBody, `standards extraction: ${fileName}`);
+    const resultText = data.choices[0]?.message.content.trim();
+
+    if (!resultText) {
+      throw new Error("OpenAI returned an empty response");
+    }
+
+    try {
+      // Parse the JSON response
+      const jsonMatch = resultText.match(/\{[\s\S]*\}/);
+      const jsonStr = jsonMatch ? jsonMatch[0] : resultText;
+      const extractedData = JSON.parse(jsonStr);
+      
+      console.log('Standards data extracted:', {
+        standardNumber: extractedData.standardNumber,
+        documentTitle: extractedData.documentTitle
+      });
+      
+      return {
+        standardNumber: extractedData.standardNumber || '',
+        documentTitle: extractedData.documentTitle || ''
+      };
+    } catch (parseError) {
+      console.error("Error parsing standards extraction response:", parseError);
+      // Try to extract from filename as fallback
+      return extractStandardInfoFromFilename(fileName);
+    }
+  } catch (error) {
+    console.error("Error calling OpenAI API for standards extraction:", error);
+    // Fallback to filename parsing
+    return extractStandardInfoFromFilename(fileName);
+  }
+}
+
+/**
+ * Fallback function to extract standard info from filename
+ */
+function extractStandardInfoFromFilename(fileName: string): { standardNumber: string; documentTitle: string } {
+  // Common patterns: "BS EN 50131-1 2006+A3 2020 - Title.pdf" or "ISO 9001-2015.pdf"
+  const nameWithoutExt = fileName.replace(/\.[^/.]+$/, '');
+  
+  // Try to find standard number pattern
+  const standardPattern = /^((?:BS\s*)?(?:EN\s*)?(?:ISO\s*)?(?:IEC\s*)?(?:PD\s*)?[\d\-:]+(?:\+[A-Za-z\d]+)?(?:[\s:]\d{4})?)/i;
+  const match = nameWithoutExt.match(standardPattern);
+  
+  if (match) {
+    const standardNumber = match[1].trim();
+    const remainder = nameWithoutExt.substring(match[0].length).replace(/^[\s\-–—]+/, '').trim();
+    return {
+      standardNumber,
+      documentTitle: remainder || ''
+    };
+  }
+  
+  return {
+    standardNumber: '',
+    documentTitle: nameWithoutExt
+  };
+}

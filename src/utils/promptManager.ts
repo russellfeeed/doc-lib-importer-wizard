@@ -13,6 +13,7 @@ export interface AllPromptConfigs {
   circularLetters: PromptConfig;
   standardsCategorization: PromptConfig;
   schemeGeneration: PromptConfig;
+  standardsExtraction: PromptConfig;
 }
 
 const DEFAULT_PROMPTS: AllPromptConfigs = {
@@ -160,6 +161,31 @@ Document content:
     model: "gpt-4o-mini",
     temperature: 0.3,
     maxTokens: 200
+  },
+  standardsExtraction: {
+    systemPrompt: `You are a standards document extraction specialist. Your task is to analyze standards documents and extract the standard number/code and the document title.
+
+Standards documents typically have:
+- A standard number/code (e.g., "BS EN 50131-1:2006+A3:2020", "ISO 9001:2015", "PD 6662:2017", "EN 50136-1", "IEC 62676-1-1:2013")
+- A document title that describes what the standard covers
+
+IMPORTANT:
+- The standard number is the formal identifier, often including organization prefix (BS, EN, ISO, IEC, PD), numbers, and year designations
+- The title should be the descriptive name of the standard, NOT including the standard number
+- Look for these in the header, first page, or beginning of the document`,
+    userPromptTemplate: `Extract the standard number and document title from this standards document with filename "{fileName}".
+
+Here is the document content (first portion):
+{content}
+
+Return a JSON object with exactly these two fields:
+- "standardNumber": The formal standard identifier/code (e.g., "BS EN 50131-1:2006+A3:2020")
+- "documentTitle": The descriptive title of the standard (e.g., "Alarm systems - Intrusion and hold-up systems - System requirements")
+
+If you cannot find a specific field, try to infer it from the filename or context. Return empty string only as a last resort.`,
+    model: "gpt-4o-mini",
+    temperature: 0.2,
+    maxTokens: 300
   }
 };
 
@@ -249,7 +275,7 @@ export function importPromptConfigs(jsonString: string): void {
   try {
     const configs = JSON.parse(jsonString) as AllPromptConfigs;
     // Validate the structure
-    if (configs.summarization && configs.categorization && configs.tagGeneration && configs.circularLetters && configs.standardsCategorization && configs.schemeGeneration) {
+    if (configs.summarization && configs.categorization && configs.tagGeneration && configs.circularLetters && configs.standardsCategorization && configs.schemeGeneration && configs.standardsExtraction) {
       saveAllPromptConfigs(configs);
     } else {
       throw new Error("Invalid prompt configuration format");
