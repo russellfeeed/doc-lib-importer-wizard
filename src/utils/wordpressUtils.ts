@@ -137,11 +137,26 @@ export const fetchWordPressTaxonomies = async (
   }
 };
 
+// Decode common HTML entities that WordPress injects into title.rendered
+const decodeHtmlEntities = (str: string): string => {
+  return str
+    .replace(/&#8211;/g, '-')   // en-dash
+    .replace(/&#8212;/g, '-')   // em-dash
+    .replace(/&#8217;/g, "'")   // right single quote
+    .replace(/&#8220;/g, '"')   // left double quote
+    .replace(/&#8221;/g, '"')   // right double quote
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&#\d+;/g, '')     // strip any remaining numeric entities
+    .replace(/&\w+;/g, '');     // strip any remaining named entities
+};
+
 // Normalize a standard number by stripping punctuation/whitespace for fuzzy comparison
 const normalizeStandardNumber = (str: string): string => {
-  return str
+  return decodeHtmlEntities(str)
     .toLowerCase()
-    .replace(/[\/\\:_\-.\s,]+/g, '')
+    .replace(/[\/\\:_\-.\s,'"]+/g, '')
     .trim();
 };
 
@@ -261,7 +276,6 @@ export const checkExistingDlpDocumentWithLogs = async (
     log('Comparing against documents...', 'info');
 
     let match: any = null;
-    const showLimit = 30;
 
     for (let i = 0; i < allDocs.length; i++) {
       const doc = allDocs[i];
@@ -269,21 +283,12 @@ export const checkExistingDlpDocumentWithLogs = async (
       const normalizedTitle = normalizeStandardNumber(title);
       const isMatch = normalizedTitle.includes(normalizedSearch);
 
-      if (i < showLimit) {
-        const prefix = isMatch ? '✅ MATCH' : '  ';
-        log(`${prefix} [${i + 1}] "${title}" → "${normalizedTitle}"`, isMatch ? 'success' : 'detail');
-      }
+      const prefix = isMatch ? '✅ MATCH' : '  ';
+      log(`${prefix} [${i + 1}] ID:${doc.id} "${title}" → "${normalizedTitle}"`, isMatch ? 'success' : 'detail');
 
       if (isMatch && !match) {
         match = doc;
-        if (i >= showLimit) {
-          log(`✅ MATCH [${i + 1}] "${title}" → "${normalizedTitle}"`, 'success');
-        }
       }
-    }
-
-    if (allDocs.length > showLimit && !match) {
-      log(`... and ${allDocs.length - showLimit} more documents checked (no match)`, 'detail');
     }
 
     if (match) {
