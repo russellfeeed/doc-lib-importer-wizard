@@ -1,40 +1,79 @@
 
 
-## Fix: Fetch All DLP Documents for Client-Side Fuzzy Matching
+## Fix: Add Visibility to WordPress DLP Document Check
 
 ### Problem
-The current approach sends the full standard number (e.g., `PD CLC/TS 50131-2-9:2016`) to WordPress's `?search=` parameter. WordPress splits this into keywords and may return no results due to special characters. The fuzzy normalization logic never gets a chance to work because the API returns an empty array.
+When uploading a standards document, the WordPress duplicate check runs silently. If credentials aren't configured, it returns `null` without any indication. Even when it does run, there's no loading indicator or status feedback, so you can't tell if it's searching or if it was skipped entirely.
+
+### Root Cause
+Looking at the console logs, the error `"WordPress credentials not found"` appears from the editor's metadata fetching -- but the DLP check in `checkExistingDlpDocument` just silently returns `null` with no log or toast. There is no feedback at any stage.
 
 ### Solution
-Instead of relying on WordPress search, fetch **all** `dlp_document` titles and perform the fuzzy matching entirely client-side. DLP document libraries typically have hundreds to low thousands of entries, so fetching titles only (minimal payload) is practical.
+Add clear feedback at every stage of the WordPress check process:
 
 ### Changes
 
-#### 1. Update `wordpress-proxy` edge function — new action `fetch-all-dlp-titles`
+#### 1. Add logging and toast feedback in `useStandardsFileUpload.ts`
 
-Add a new action that paginates through all `dlp_document` posts, fetching only `id,title,status,link,date` fields:
+Around the WordPress check block (lines 94-107):
+- Add a toast or log **before** the check starts: "Checking WordPress for existing document..."
+- If credentials are missing, show an info toast: "WordPress credentials not configured - skipping duplicate check"
+- If the check succeeds and finds a match, keep the existing warning toast
+- If the check succeeds with no match, log it: "No existing WordPress document found for {standardNumber}"
+- If the check fails, log the error (already done)
 
-- First request: `GET /wp-json/wp/v2/dlp_document?per_page=100&page=1&_fields=id,title,status,link,date`
-- Read the `X-WP-TotalPages` response header to determine if more pages exist
-- Loop through all pages, collecting results
-- Return the full array
+#### 2. Add logging in `checkExistingDlpDocument` (`src/utils/wordpressUtils.ts`)
 
-This ensures we get every document regardless of WordPress search quirks.
+- Add `console.log` when credentials are missing (line 183)
+- Add `console.log` when fetching starts, showing the standard number being searched
+- Add `console.log` showing the number of documents fetched and the normalized search term
+- Add `console.log` when a match is found or not found
 
-#### 2. Update `checkExistingDlpDocument` in `src/utils/wordpressUtils.ts`
+#### 3. Update the FileList UI to show search status
 
-- Change `action` from `'search-dlp-documents'` to `'fetch-all-dlp-titles'`
-- Remove the `searchTerm` parameter (no longer needed server-side)
-- Keep the existing client-side normalization and `includes()` matching — this already works correctly
+In the `FileList` component or `DocumentsTableView`, show a "Checking WP..." spinner/text while the WordPress check is in progress. This requires:
+- Adding a `wpCheckStatus` field to the file object (or reusing `aiProcessing` stages) in `useStandardsFileUpload.ts` to track: `'pending' | 'checking' | 'done' | 'skipped'`
+- Displaying this status in the file list so the user can see the check is happening
 
-#### 3. Optional: Cache results
+### Technical Details
 
-Since fetching all titles is heavier than a search query, cache the results in memory (module-level variable) for the duration of the session so subsequent checks during the same upload batch don't re-fetch. Clear cache when credentials change.
+The main code change is in `useStandardsFileUpload.ts` around lines 94-107:
 
-### Technical Notes
+```text
+// Before the check
+toast.info(`Checking WordPress for existing document: ${standardNumber}...`);
+console.log(`Checking WordPress for existing DLP document: ${standardNumber}`);
 
-- The `_fields=id,title,status,link,date` parameter keeps the payload small (no content/body)
-- WordPress REST API default max `per_page` is 100, so pagination is needed for larger libraries
-- The existing `normalizeStandardNumber` function and fuzzy matching logic remain unchanged
-- The old `search-dlp-documents` action can be kept for backward compatibility or removed
+try {
+  const existing = await checkExistingDlpDocument(standardNumber);
+  if (existing) {
+    updatedFile = { ...updatedFile, wpExisting: existing };
+    toast.warning(`Standard ${standardNumber} already exists in WordPress`);
+  } else {
+    console.log(`No existing WordPress document found for: ${standardNumber}`);
+  }
+} catch (wpError) {
+  console.error('WordPress check failed (non-blocking):', wpError);
+}
+```
 
+And in `checkExistingDlpDocument`:
+
+```text
+const credentials = getWordPressCredentials();
+if (!credentials) {
+  console.log('WordPress credentials not configured - skipping DLP duplicate check');
+  return null;
+}
+if (!standardNumber) {
+  console.log('No standard number provided - skipping DLP duplicate check');
+  return null;
+}
+
+console.log(`Fetching all DLP documents to check for: "${standardNumber}"`);
+const allDocs = await fetchAllDlpDocuments(credentials);
+const normalizedSearch = normalizeStandardNumber(standardNumber);
+console.log(`Searching ${allDocs.length} documents, normalized search: "${normalizedSearch}"`);
+```
+
+This will make it immediately obvious whether the check is running, being skipped (and why), or finding/not finding matches.
