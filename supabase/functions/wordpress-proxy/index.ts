@@ -169,12 +169,11 @@ serve(async (req) => {
       }
     }
 
-    // Handle search DLP documents action
-    if (action === 'search-dlp-documents') {
-      const { searchTerm } = body;
-      if (!url || !username || !password || !searchTerm) {
+    // Handle fetch all DLP document titles (paginated)
+    if (action === 'fetch-all-dlp-titles') {
+      if (!url || !username || !password) {
         return new Response(
-          JSON.stringify({ error: 'Missing required fields: url, username, password, searchTerm' }), 
+          JSON.stringify({ error: 'Missing required fields: url, username, password' }), 
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -183,34 +182,49 @@ serve(async (req) => {
       const authString = btoa(`${username}:${password}`);
       
       try {
-        const searchUrl = `${baseUrl}/wp-json/wp/v2/dlp_document?search=${encodeURIComponent(searchTerm)}&per_page=10&_fields=id,title,status,link,date`;
-        console.log(`Searching DLP documents: ${searchUrl}`);
-        
-        const searchResponse = await fetch(searchUrl, {
-          headers: {
-            'Authorization': `Basic ${authString}`,
-            'Content-Type': 'application/json',
-            'User-Agent': 'Supabase-Edge-Function'
-          }
-        });
+        const allDocuments: any[] = [];
+        let page = 1;
+        let totalPages = 1;
 
-        if (searchResponse.ok) {
-          const results = await searchResponse.json();
-          console.log(`Found ${results.length} matching DLP documents`);
-          return new Response(JSON.stringify(results), {
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        while (page <= totalPages) {
+          const pageUrl = `${baseUrl}/wp-json/wp/v2/dlp_document?per_page=100&page=${page}&_fields=id,title,status,link,date`;
+          console.log(`Fetching DLP documents page ${page}: ${pageUrl}`);
+          
+          const pageResponse = await fetch(pageUrl, {
+            headers: {
+              'Authorization': `Basic ${authString}`,
+              'Content-Type': 'application/json',
+              'User-Agent': 'Supabase-Edge-Function'
+            }
           });
-        } else {
-          const errorText = await searchResponse.text();
-          console.error('DLP document search failed:', searchResponse.status, errorText);
-          return new Response(JSON.stringify({ error: 'Failed to search DLP documents', details: errorText }), {
-            status: searchResponse.status,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-          });
+
+          if (!pageResponse.ok) {
+            const errorText = await pageResponse.text();
+            console.error('DLP document fetch failed:', pageResponse.status, errorText);
+            return new Response(JSON.stringify({ error: 'Failed to fetch DLP documents', details: errorText }), {
+              status: pageResponse.status,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+          }
+
+          if (page === 1) {
+            const totalPagesHeader = pageResponse.headers.get('X-WP-TotalPages');
+            totalPages = totalPagesHeader ? parseInt(totalPagesHeader, 10) : 1;
+            console.log(`Total DLP document pages: ${totalPages}`);
+          }
+
+          const results = await pageResponse.json();
+          allDocuments.push(...results);
+          page++;
         }
+
+        console.log(`Fetched ${allDocuments.length} total DLP documents`);
+        return new Response(JSON.stringify(allDocuments), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
       } catch (error) {
-        console.error('DLP document search error:', error);
-        return new Response(JSON.stringify({ error: 'Search failed', details: error.message }), {
+        console.error('DLP document fetch error:', error);
+        return new Response(JSON.stringify({ error: 'Fetch failed', details: error.message }), {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });

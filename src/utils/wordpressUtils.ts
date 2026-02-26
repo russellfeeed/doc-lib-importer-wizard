@@ -136,6 +136,45 @@ const normalizeStandardNumber = (str: string): string => {
     .trim();
 };
 
+// Session-level cache for DLP document titles
+let dlpDocumentsCache: any[] | null = null;
+let dlpCacheCredentialsKey: string | null = null;
+
+const getDlpCacheKey = (creds: WordPressCredentials) => `${creds.url}|${creds.username}`;
+
+// Clear the DLP documents cache (call when credentials change)
+export const clearDlpDocumentsCache = () => {
+  dlpDocumentsCache = null;
+  dlpCacheCredentialsKey = null;
+};
+
+// Fetch all DLP document titles (with session cache)
+const fetchAllDlpDocuments = async (credentials: WordPressCredentials): Promise<any[]> => {
+  const cacheKey = getDlpCacheKey(credentials);
+  if (dlpDocumentsCache && dlpCacheCredentialsKey === cacheKey) {
+    console.log(`Using cached DLP documents (${dlpDocumentsCache.length} entries)`);
+    return dlpDocumentsCache;
+  }
+
+  const { data, error } = await supabase.functions.invoke('wordpress-proxy', {
+    body: {
+      url: credentials.url,
+      username: credentials.username,
+      password: credentials.password,
+      action: 'fetch-all-dlp-titles'
+    }
+  });
+
+  if (error || !Array.isArray(data)) {
+    throw new Error(error?.message || 'Failed to fetch DLP documents');
+  }
+
+  dlpDocumentsCache = data;
+  dlpCacheCredentialsKey = cacheKey;
+  console.log(`Cached ${data.length} DLP documents`);
+  return data;
+};
+
 // Check if a DLP document already exists in WordPress by standard number
 export const checkExistingDlpDocument = async (
   standardNumber: string
@@ -144,21 +183,10 @@ export const checkExistingDlpDocument = async (
   if (!credentials || !standardNumber) return null;
 
   try {
-    const { data, error } = await supabase.functions.invoke('wordpress-proxy', {
-      body: {
-        url: credentials.url,
-        username: credentials.username,
-        password: credentials.password,
-        action: 'search-dlp-documents',
-        searchTerm: standardNumber
-      }
-    });
+    const allDocs = await fetchAllDlpDocuments(credentials);
 
-    if (error || !Array.isArray(data) || data.length === 0) return null;
-
-    // Find match using normalized comparison
     const normalizedSearch = normalizeStandardNumber(standardNumber);
-    const match = data.find((doc: any) => 
+    const match = allDocs.find((doc: any) => 
       normalizeStandardNumber(doc.title?.rendered || '').includes(normalizedSearch)
     );
 
