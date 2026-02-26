@@ -1,58 +1,40 @@
 
 
-## Fix: WordPress Duplicate Check Not Matching (Post 35179)
+## Fix: Filter DLP Documents by "standards" Category
 
-### Root Cause
-The edge function successfully fetches 237 DLP documents, but the matching fails. WordPress `title.rendered` contains HTML entities (e.g., `&#8211;` for en-dash `–`, `&#47;` for `/`, `&#8217;` for apostrophe). The `normalizeStandardNumber` function strips certain punctuation characters but does NOT decode HTML entities first, so the normalized title retains garbage like `82117` instead of properly removing dashes.
+### Problem
+The current API call fetches all `dlp_document` posts without filtering, returning only 237 of 358 published standards documents. The WordPress REST API likely applies default permission-based filtering.
 
-For example, if WordPress stores the title as:
-`DD CLC/TS 50131&#8211;7:2010`
+### Solution
+Add the `doc_categories` taxonomy filter to the API query. The WordPress REST API supports taxonomy filtering via query parameters like `?doc_categories=<term_id>`. We need to:
 
-Normalization produces: `ddclcts50131821172010` (wrong)
-Instead of: `ddclcts5013172010` (correct)
+1. First resolve the `standards` category slug to its term ID
+2. Then filter the document fetch by that term ID
 
 ### Changes
 
-#### 1. Add HTML entity decoding before normalization (`src/utils/wordpressUtils.ts`)
+#### 1. Update edge function: `supabase/functions/wordpress-proxy/index.ts`
 
-Update `normalizeStandardNumber` to first decode HTML entities using a simple regex replacement for common entities (`&#8211;`, `&#8212;`, `&#8217;`, `&#8220;`, `&#8221;`, `&amp;`, `&lt;`, `&gt;`, `&#47;`, etc.), then also strip any remaining `&#...;` patterns. This ensures the comparison works regardless of WordPress encoding.
+Modify the `fetch-all-dlp-titles` action to accept an optional `categorySlug` parameter (default: `"standards"`). Before fetching documents, it will:
+- Call `/wp-json/wp/v2/doc_categories?slug=standards` to get the term ID
+- Then append `&doc_categories=<term_id>` to the document fetch URL
 
+Updated URL pattern:
 ```text
-const decodeHtmlEntities = (str: string): string => {
-  return str
-    .replace(/&#8211;/g, '-')   // en-dash
-    .replace(/&#8212;/g, '-')   // em-dash
-    .replace(/&#8217;/g, "'")   // right single quote
-    .replace(/&#8220;/g, '"')   // left double quote
-    .replace(/&#8221;/g, '"')   // right double quote
-    .replace(/&amp;/g, '&')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&#\d+;/g, '')     // strip any remaining numeric entities
-    .replace(/&\w+;/g, '');     // strip any remaining named entities
-};
-
-const normalizeStandardNumber = (str: string): string => {
-  return decodeHtmlEntities(str)
-    .toLowerCase()
-    .replace(/[\/\\:_\-.\s,]+/g, '')
-    .trim();
-};
+/wp-json/wp/v2/dlp_document?per_page=100&page=N&doc_categories=<ID>&_fields=id,title,status,link,date
 ```
 
-#### 2. Show all documents in the modal log (`src/utils/wordpressUtils.ts`)
+Also log the `X-WP-Total` header on the first page for visibility.
 
-Change `showLimit` from 30 to show ALL documents in `checkExistingDlpDocumentWithLogs`, so the user can scroll through and find post 35179. This is a debugging modal, so completeness matters more than brevity.
+#### 2. Update `src/utils/wordpressUtils.ts`
 
-#### 3. Show document ID in the modal log
+Pass `categorySlug: 'standards'` in the request body when calling `fetch-all-dlp-titles`, so the edge function knows to filter. No other client-side changes needed.
 
-Update the log line in `checkExistingDlpDocumentWithLogs` to include the WordPress post ID:
+#### 3. Update log output
 
-```text
-log(`${prefix} [${i + 1}] ID:${doc.id} "${title}" -> "${normalizedTitle}"`, ...);
-```
-
-This way the user can immediately see post 35179 in the list and verify whether the title/normalization is correct.
+Add a log line in `checkExistingDlpDocumentWithLogs` showing: "Filtering by category: standards (ID: XX)" so the user can verify the filter is applied.
 
 ### Files to edit
-- `src/utils/wordpressUtils.ts` -- add `decodeHtmlEntities`, update `normalizeStandardNumber`, increase `showLimit`, add post IDs to log output
+- `supabase/functions/wordpress-proxy/index.ts` -- add category slug resolution and filter to `fetch-all-dlp-titles`
+- `src/utils/wordpressUtils.ts` -- pass `categorySlug` param and update log messaging
+
