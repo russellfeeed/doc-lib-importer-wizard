@@ -5,9 +5,10 @@ import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { PDFViewerModal } from '@/components/ui/pdf-viewer-modal';
-import { Tag, BookCopy, FolderOpen, ChevronRight, AlertTriangle, Building, CheckSquare, Square, FileText, Eye, Trash2, Hash, FileType } from 'lucide-react';
+import { Tag, BookCopy, FolderOpen, ChevronRight, AlertTriangle, Building, CheckSquare, Square, FileText, Eye, Trash2, Hash, FileType, Search } from 'lucide-react';
 import { DocumentFile } from '@/types/document';
 import { fetchWordPressTaxonomies } from '@/utils/wordpressUtils';
+import WpDuplicateCheckModal from './WpDuplicateCheckModal';
 
 interface DocumentMetadataProps {
   document: DocumentFile;
@@ -35,6 +36,7 @@ const DocumentMetadata: React.FC<DocumentMetadataProps> = ({
   const [isPopoverOpen, setIsPopoverOpen] = useState(false);
   const [isSchemePopoverOpen, setIsSchemePopoverOpen] = useState(false);
   const [isPdfModalOpen, setIsPdfModalOpen] = useState(false);
+  const [isDuplicateCheckOpen, setIsDuplicateCheckOpen] = useState(false);
   const [nsiSchemes, setNsiSchemes] = useState<string[]>([]);
   const [isLoadingSchemes, setIsLoadingSchemes] = useState(false);
   const [docCategories, setDocCategories] = useState<any[]>([]);
@@ -148,6 +150,28 @@ const DocumentMetadata: React.FC<DocumentMetadataProps> = ({
 
   return (
     <div>
+      {/* WordPress Duplicate Check for Standards */}
+      {isStandards && document.standardNumber && (
+        <div className="mb-4">
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={() => setIsDuplicateCheckOpen(true)}
+          >
+            <Search className="mr-2 h-4 w-4" />
+            Check WordPress Duplicate
+          </Button>
+          <WpDuplicateCheckModal
+            isOpen={isDuplicateCheckOpen}
+            onClose={() => setIsDuplicateCheckOpen(false)}
+            standardNumber={document.standardNumber || ''}
+            onMatchFound={(match) => {
+              onEdit('wpExisting' as keyof DocumentFile, JSON.stringify(match) as any);
+            }}
+          />
+        </div>
+      )}
+
       {/* Standards-specific fields */}
       {isStandards && (
         <>

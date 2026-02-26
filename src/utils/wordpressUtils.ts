@@ -228,6 +228,83 @@ export const checkExistingDlpDocument = async (
   }
 };
 
+// Check existing DLP document with step-by-step logging callback
+export const checkExistingDlpDocumentWithLogs = async (
+  standardNumber: string,
+  log: (message: string, type: 'info' | 'success' | 'warning' | 'error' | 'detail') => void
+): Promise<{ id: number; title: string; status: string; link: string; date: string } | null> => {
+  log('Checking WordPress credentials...', 'info');
+  const credentials = getWordPressCredentials();
+  if (!credentials) {
+    log('WordPress credentials not configured — cannot check duplicates.', 'error');
+    return null;
+  }
+  log(`Connected to: ${credentials.url}`, 'success');
+
+  if (!standardNumber) {
+    log('No standard number provided — nothing to search for.', 'warning');
+    return null;
+  }
+  log(`Standard number: ${standardNumber}`, 'info');
+
+  const normalizedSearch = normalizeStandardNumber(standardNumber);
+  log(`Normalized search term: "${normalizedSearch}"`, 'info');
+
+  try {
+    const cacheKey = getDlpCacheKey(credentials);
+    const usingCache = dlpDocumentsCache && dlpCacheCredentialsKey === cacheKey;
+    log(usingCache ? 'Using cached DLP documents...' : 'Fetching all DLP documents from WordPress...', 'info');
+
+    const allDocs = await fetchAllDlpDocuments(credentials);
+    log(`${usingCache ? 'Cached' : 'Fetched'}: ${allDocs.length} documents`, 'info');
+
+    log('Comparing against documents...', 'info');
+
+    let match: any = null;
+    const showLimit = 30;
+
+    for (let i = 0; i < allDocs.length; i++) {
+      const doc = allDocs[i];
+      const title = doc.title?.rendered || '(untitled)';
+      const normalizedTitle = normalizeStandardNumber(title);
+      const isMatch = normalizedTitle.includes(normalizedSearch);
+
+      if (i < showLimit) {
+        const prefix = isMatch ? '✅ MATCH' : '  ';
+        log(`${prefix} [${i + 1}] "${title}" → "${normalizedTitle}"`, isMatch ? 'success' : 'detail');
+      }
+
+      if (isMatch && !match) {
+        match = doc;
+        if (i >= showLimit) {
+          log(`✅ MATCH [${i + 1}] "${title}" → "${normalizedTitle}"`, 'success');
+        }
+      }
+    }
+
+    if (allDocs.length > showLimit && !match) {
+      log(`... and ${allDocs.length - showLimit} more documents checked (no match)`, 'detail');
+    }
+
+    if (match) {
+      log(`MATCH FOUND: "${match.title?.rendered}" (ID: ${match.id})`, 'success');
+      return {
+        id: match.id,
+        title: match.title?.rendered || '',
+        status: match.status || '',
+        link: match.link || '',
+        date: match.date || ''
+      };
+    }
+
+    log(`No existing WordPress document found for: "${standardNumber}"`, 'warning');
+    return null;
+  } catch (error: any) {
+    log(`Error: ${error.message || 'Unknown error during duplicate check'}`, 'error');
+    return null;
+  }
+};
+
 // Push a single category to WordPress, creating it if it doesn't exist
 export const pushCategoryToWordPress = async (
   categoryName: string,
