@@ -77,6 +77,11 @@ const FileList: React.FC<FileListProps> = ({ files, onRemoveFile }) => {
                         <span className="font-medium">Tags:</span> {file.tags}
                       </p>
                     )}
+                    {file.wpExisting && (
+                      <p className="text-xs text-amber-600">
+                        <span className="font-medium">⚠️ WP Duplicate:</span> {file.wpExisting.title} (ID: {file.wpExisting.id})
+                      </p>
+                    )}
                   </div>
                 )}
                 {/* Show processing status for incomplete AI processing */}
