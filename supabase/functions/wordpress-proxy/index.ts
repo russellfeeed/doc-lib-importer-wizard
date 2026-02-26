@@ -201,9 +201,37 @@ serve(async (req) => {
           if (catResponse.ok) {
             const categories = await catResponse.json();
             if (categories.length > 0) {
-              const termId = categories[0].id;
-              categoryFilter = `&doc_categories=${termId}`;
-              console.log(`Category "${categorySlug}" resolved to term ID ${termId}`);
+              const parentId = categories[0].id;
+              console.log(`Category "${categorySlug}" resolved to term ID ${parentId}`);
+
+              // Fetch child categories of this parent
+              const childResponse = await fetch(
+                `${baseUrl}/wp-json/wp/v2/doc_categories?parent=${parentId}&per_page=100`,
+                {
+                  headers: {
+                    'Authorization': `Basic ${authString}`,
+                    'Content-Type': 'application/json',
+                    'User-Agent': 'Supabase-Edge-Function'
+                  }
+                }
+              );
+
+              const allIds = [parentId];
+              if (childResponse.ok) {
+                const children = await childResponse.json();
+                if (children.length > 0) {
+                  const childNames = children.map((c: any) => `${c.name} (ID: ${c.id})`).join(', ');
+                  console.log(`Found ${children.length} child categories: ${childNames}`);
+                  allIds.push(...children.map((c: any) => c.id));
+                } else {
+                  console.log('No child categories found');
+                }
+              } else {
+                console.warn(`Failed to fetch child categories (${childResponse.status})`);
+              }
+
+              categoryFilter = `&doc_categories=${allIds.join(',')}`;
+              console.log(`Filtering by term IDs: ${allIds.join(',')}`);
             } else {
               console.warn(`Category slug "${categorySlug}" not found — fetching unfiltered`);
             }
