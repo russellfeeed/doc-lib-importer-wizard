@@ -7,6 +7,7 @@ import { DocumentFile } from '@/types/document';
 import DropZone from './DropZone';
 import FileList from './FileList';
 import AiSettings from './AiSettings';
+import WordPressStatus from './WordPressStatus';
 
 interface FileUploaderProps {
   onFilesUploaded: (files: DocumentFile[]) => void;
@@ -34,8 +35,9 @@ const FileUploader: React.FC<FileUploaderProps> = ({ onFilesUploaded, isStandard
 
   return (
     <div className="space-y-6">
+      {isStandards && <WordPressStatus />}
       <div className="flex justify-between items-center">
-        <h3 className="text-lg font-medium text-gray-700">Upload Settings</h3>
+        <h3 className="text-lg font-medium text-foreground">Upload Settings</h3>
         <AiSettings 
           aiEnabled={aiEnabled} 
           onToggleAi={toggleAI} 

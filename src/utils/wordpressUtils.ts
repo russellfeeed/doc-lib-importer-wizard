@@ -22,6 +22,15 @@ interface CategoryToCreate {
 // Get WordPress credentials from localStorage
 export const getWordPressCredentials = (): WordPressCredentials | null => {
   try {
+    // Primary: read individual keys written by Settings page
+    const url = localStorage.getItem('wp_site_url');
+    const username = localStorage.getItem('wp_username');
+    const password = localStorage.getItem('wp_password');
+    if (url && username && password) {
+      return { url, username, password };
+    }
+
+    // Fallback: legacy single JSON key
     const saved = localStorage.getItem('wp_credentials');
     if (saved) {
       const credentials = JSON.parse(saved);
