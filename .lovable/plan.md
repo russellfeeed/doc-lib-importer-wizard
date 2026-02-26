@@ -1,76 +1,58 @@
 
 
-## Add "Check WordPress Duplicate" Button with Live Search Modal
+## Fix: WordPress Duplicate Check Not Matching (Post 35179)
 
-### Overview
-Add a button on the SingleDocumentEditor (Edit Information page) that triggers the WordPress duplicate check on-demand and displays a modal showing the entire search process in real-time -- fetching documents, normalizing the standard number, and attempting matches.
+### Root Cause
+The edge function successfully fetches 237 DLP documents, but the matching fails. WordPress `title.rendered` contains HTML entities (e.g., `&#8211;` for en-dash `–`, `&#47;` for `/`, `&#8217;` for apostrophe). The `normalizeStandardNumber` function strips certain punctuation characters but does NOT decode HTML entities first, so the normalized title retains garbage like `82117` instead of properly removing dashes.
+
+For example, if WordPress stores the title as:
+`DD CLC/TS 50131&#8211;7:2010`
+
+Normalization produces: `ddclcts50131821172010` (wrong)
+Instead of: `ddclcts5013172010` (correct)
 
 ### Changes
 
-#### 1. New component: `src/components/document/editor/WpDuplicateCheckModal.tsx`
+#### 1. Add HTML entity decoding before normalization (`src/utils/wordpressUtils.ts`)
 
-A dialog modal containing:
-- A "log" area (scrollable) that shows timestamped lines as the check progresses
-- Steps displayed:
-  1. "Checking WordPress credentials..." -> shows site URL or "Not configured"
-  2. "Fetching all DLP documents..." -> "Fetched 342 documents" (or "Using cached: 342 documents")
-  3. "Standard number: PD CLC/TS 50131-2-9:2016"
-  4. "Normalized search term: pdclcts5013129:2016"
-  5. "Comparing against documents..." then lists each title being compared with its normalized form, highlighting near-matches
-  6. Final result: "MATCH FOUND: ..." (green) or "No match found" (amber)
+Update `normalizeStandardNumber` to first decode HTML entities using a simple regex replacement for common entities (`&#8211;`, `&#8212;`, `&#8217;`, `&#8220;`, `&#8221;`, `&amp;`, `&lt;`, `&gt;`, `&#47;`, etc.), then also strip any remaining `&#...;` patterns. This ensures the comparison works regardless of WordPress encoding.
 
-Implementation:
-- Accept `standardNumber` and `isOpen`/`onClose` props
-- Use `useState` for an array of log entries (each with text, type: info/success/warning/error, timestamp)
-- Run the check step-by-step using a refactored version of the logic from `checkExistingDlpDocument`, but instead of just returning a result, it appends log entries as it goes
-- Export a new function `checkExistingDlpDocumentWithLogs` from `wordpressUtils.ts` that accepts a callback `(message: string, type: string) => void` for each step
-- Auto-scroll the log area to the bottom as new entries appear
-
-#### 2. Update `src/utils/wordpressUtils.ts` -- add `checkExistingDlpDocumentWithLogs`
-
-New exported function that mirrors `checkExistingDlpDocument` but calls a `logCallback` at every step:
-- Credential check
-- Fetch start / cache hit
-- Document count
-- Standard number and normalized form
-- Each document comparison (show first 20 individually, then summarize remaining)
-- Match result
-
-Returns the same result type as `checkExistingDlpDocument`.
-
-#### 3. Update `src/components/document/editor/DocumentMetadata.tsx`
-
-Add a "Check WP Duplicate" button (with a Search icon) near the top of the metadata panel, visible only when `isStandards` is true. Clicking it opens the `WpDuplicateCheckModal` with the current document's `standardNumber`.
-
-If a match is found, update the document's `wpExisting` field via `onEdit`.
-
-#### 4. Update `SingleDocumentEditor.tsx`
-
-No changes needed -- the button lives inside `DocumentMetadata` which already has access to the document and `onEdit`.
-
-### Technical Details
-
-**Log entry type:**
 ```text
-interface LogEntry {
-  timestamp: Date;
-  message: string;
-  type: 'info' | 'success' | 'warning' | 'error' | 'detail';
-}
+const decodeHtmlEntities = (str: string): string => {
+  return str
+    .replace(/&#8211;/g, '-')   // en-dash
+    .replace(/&#8212;/g, '-')   // em-dash
+    .replace(/&#8217;/g, "'")   // right single quote
+    .replace(/&#8220;/g, '"')   // left double quote
+    .replace(/&#8221;/g, '"')   // right double quote
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&#\d+;/g, '')     // strip any remaining numeric entities
+    .replace(/&\w+;/g, '');     // strip any remaining named entities
+};
+
+const normalizeStandardNumber = (str: string): string => {
+  return decodeHtmlEntities(str)
+    .toLowerCase()
+    .replace(/[\/\\:_\-.\s,]+/g, '')
+    .trim();
+};
 ```
 
-**`checkExistingDlpDocumentWithLogs` signature:**
+#### 2. Show all documents in the modal log (`src/utils/wordpressUtils.ts`)
+
+Change `showLimit` from 30 to show ALL documents in `checkExistingDlpDocumentWithLogs`, so the user can scroll through and find post 35179. This is a debugging modal, so completeness matters more than brevity.
+
+#### 3. Show document ID in the modal log
+
+Update the log line in `checkExistingDlpDocumentWithLogs` to include the WordPress post ID:
+
 ```text
-export const checkExistingDlpDocumentWithLogs = async (
-  standardNumber: string,
-  log: (message: string, type: string) => void
-): Promise<{ id, title, status, link, date } | null>
+log(`${prefix} [${i + 1}] ID:${doc.id} "${title}" -> "${normalizedTitle}"`, ...);
 ```
 
-**Files to create:**
-- `src/components/document/editor/WpDuplicateCheckModal.tsx`
+This way the user can immediately see post 35179 in the list and verify whether the title/normalization is correct.
 
-**Files to edit:**
-- `src/utils/wordpressUtils.ts` -- add `checkExistingDlpDocumentWithLogs`
-- `src/components/document/editor/DocumentMetadata.tsx` -- add button + modal integration
-
+### Files to edit
+- `src/utils/wordpressUtils.ts` -- add `decodeHtmlEntities`, update `normalizeStandardNumber`, increase `showLimit`, add post IDs to log output
