@@ -1,45 +1,40 @@
 
 
-## Fuzzy Matching for WordPress DLP Document Duplicate Check
+## Fix: Fetch All DLP Documents for Client-Side Fuzzy Matching
 
 ### Problem
-The extracted standard number (e.g., `PD CLC/TS 50131-2-9:2016`) doesn't match the WordPress document title (e.g., `PD CLC TS 50131-2-9_2016`) because special characters differ -- slashes become spaces, colons become underscores, etc.
+The current approach sends the full standard number (e.g., `PD CLC/TS 50131-2-9:2016`) to WordPress's `?search=` parameter. WordPress splits this into keywords and may return no results due to special characters. The fuzzy normalization logic never gets a chance to work because the API returns an empty array.
 
 ### Solution
-Add a normalization function that strips/replaces special characters before comparing, so both strings reduce to the same canonical form for matching.
+Instead of relying on WordPress search, fetch **all** `dlp_document` titles and perform the fuzzy matching entirely client-side. DLP document libraries typically have hundreds to low thousands of entries, so fetching titles only (minimal payload) is practical.
 
-### Implementation
+### Changes
 
-**File: `src/utils/wordpressUtils.ts`**
+#### 1. Update `wordpress-proxy` edge function — new action `fetch-all-dlp-titles`
 
-1. Add a `normalizeStandardNumber` helper function:
-   - Remove or replace `/`, `\`, `:`, `_`, `-`, `.` and whitespace
-   - Lowercase everything
-   - Example: both `"PD CLC/TS 50131-2-9:2016"` and `"PD CLC TS 50131-2-9_2016"` normalize to `"pdclcts50131292016"`
+Add a new action that paginates through all `dlp_document` posts, fetching only `id,title,status,link,date` fields:
 
-2. Update the match logic in `checkExistingDlpDocument` (line 152) to use normalized comparison instead of `includes()`:
-   - Normalize the incoming `standardNumber`
-   - Normalize each `doc.title.rendered`
-   - Match if the normalized title **contains** the normalized standard number
+- First request: `GET /wp-json/wp/v2/dlp_document?per_page=100&page=1&_fields=id,title,status,link,date`
+- Read the `X-WP-TotalPages` response header to determine if more pages exist
+- Loop through all pages, collecting results
+- Return the full array
 
-This is a single-file change of roughly 15 lines -- no new dependencies needed.
+This ensures we get every document regardless of WordPress search quirks.
 
-### Technical Detail
+#### 2. Update `checkExistingDlpDocument` in `src/utils/wordpressUtils.ts`
 
-```text
-function normalizeStandardNumber(str: string): string {
-  return str
-    .toLowerCase()
-    .replace(/[\/\\:_\-.\s,]+/g, '')  // strip all punctuation/whitespace
-    .trim();
-}
-```
+- Change `action` from `'search-dlp-documents'` to `'fetch-all-dlp-titles'`
+- Remove the `searchTerm` parameter (no longer needed server-side)
+- Keep the existing client-side normalization and `includes()` matching — this already works correctly
 
-Matching becomes:
-```text
-const normalizedSearch = normalizeStandardNumber(standardNumber);
-const match = data.find((doc) =>
-  normalizeStandardNumber(doc.title?.rendered || '').includes(normalizedSearch)
-);
-```
+#### 3. Optional: Cache results
+
+Since fetching all titles is heavier than a search query, cache the results in memory (module-level variable) for the duration of the session so subsequent checks during the same upload batch don't re-fetch. Clear cache when credentials change.
+
+### Technical Notes
+
+- The `_fields=id,title,status,link,date` parameter keeps the payload small (no content/body)
+- WordPress REST API default max `per_page` is 100, so pagination is needed for larger libraries
+- The existing `normalizeStandardNumber` function and fuzzy matching logic remain unchanged
+- The old `search-dlp-documents` action can be kept for backward compatibility or removed
 
