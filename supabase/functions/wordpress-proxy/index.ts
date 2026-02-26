@@ -180,72 +180,15 @@ serve(async (req) => {
 
       const baseUrl = url.replace(/\/$/, '');
       const authString = btoa(`${username}:${password}`);
-      const categorySlug = body.categorySlug || null;
       
       try {
-        // If a categorySlug is provided, resolve it to a term ID first
-        let categoryFilter = '';
-        if (categorySlug) {
-          console.log(`Resolving category slug "${categorySlug}" to term ID...`);
-          const catResponse = await fetch(
-            `${baseUrl}/wp-json/wp/v2/doc_categories?slug=${encodeURIComponent(categorySlug)}`,
-            {
-              headers: {
-                'Authorization': `Basic ${authString}`,
-                'Content-Type': 'application/json',
-                'User-Agent': 'Supabase-Edge-Function'
-              }
-            }
-          );
-
-          if (catResponse.ok) {
-            const categories = await catResponse.json();
-            if (categories.length > 0) {
-              const parentId = categories[0].id;
-              console.log(`Category "${categorySlug}" resolved to term ID ${parentId}`);
-
-              // Fetch child categories of this parent
-              const childResponse = await fetch(
-                `${baseUrl}/wp-json/wp/v2/doc_categories?parent=${parentId}&per_page=100`,
-                {
-                  headers: {
-                    'Authorization': `Basic ${authString}`,
-                    'Content-Type': 'application/json',
-                    'User-Agent': 'Supabase-Edge-Function'
-                  }
-                }
-              );
-
-              const allIds = [parentId];
-              if (childResponse.ok) {
-                const children = await childResponse.json();
-                if (children.length > 0) {
-                  const childNames = children.map((c: any) => `${c.name} (ID: ${c.id})`).join(', ');
-                  console.log(`Found ${children.length} child categories: ${childNames}`);
-                  allIds.push(...children.map((c: any) => c.id));
-                } else {
-                  console.log('No child categories found');
-                }
-              } else {
-                console.warn(`Failed to fetch child categories (${childResponse.status})`);
-              }
-
-              categoryFilter = `&doc_categories=${allIds.join(',')}`;
-              console.log(`Filtering by term IDs: ${allIds.join(',')}`);
-            } else {
-              console.warn(`Category slug "${categorySlug}" not found — fetching unfiltered`);
-            }
-          } else {
-            console.warn(`Failed to resolve category slug "${categorySlug}" (${catResponse.status}) — fetching unfiltered`);
-          }
-        }
 
         const allDocuments: any[] = [];
         let page = 1;
         let totalPages = 1;
 
         while (page <= totalPages) {
-          const pageUrl = `${baseUrl}/wp-json/wp/v2/dlp_document?per_page=100&page=${page}${categoryFilter}&_fields=id,title,status,link,date`;
+          const pageUrl = `${baseUrl}/wp-json/wp/v2/dlp_document?per_page=100&page=${page}&_fields=id,title,status,link,date`;
           console.log(`Fetching DLP documents page ${page}: ${pageUrl}`);
           
           const pageResponse = await fetch(pageUrl, {
