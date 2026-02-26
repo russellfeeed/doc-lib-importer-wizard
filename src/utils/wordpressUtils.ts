@@ -180,17 +180,28 @@ export const checkExistingDlpDocument = async (
   standardNumber: string
 ): Promise<{ id: number; title: string; status: string; link: string; date: string } | null> => {
   const credentials = getWordPressCredentials();
-  if (!credentials || !standardNumber) return null;
+  if (!credentials) {
+    console.log('WordPress credentials not configured - skipping DLP duplicate check');
+    return null;
+  }
+  if (!standardNumber) {
+    console.log('No standard number provided - skipping DLP duplicate check');
+    return null;
+  }
 
   try {
+    console.log(`Fetching all DLP documents to check for: "${standardNumber}"`);
     const allDocs = await fetchAllDlpDocuments(credentials);
 
     const normalizedSearch = normalizeStandardNumber(standardNumber);
+    console.log(`Searching ${allDocs.length} documents, normalized search: "${normalizedSearch}"`);
+    
     const match = allDocs.find((doc: any) => 
       normalizeStandardNumber(doc.title?.rendered || '').includes(normalizedSearch)
     );
 
     if (match) {
+      console.log(`Match found: "${match.title?.rendered}" (ID: ${match.id})`);
       return {
         id: match.id,
         title: match.title?.rendered || '',
@@ -200,6 +211,7 @@ export const checkExistingDlpDocument = async (
       };
     }
 
+    console.log(`No existing WordPress document found for: "${standardNumber}"`);
     return null;
   } catch (error) {
     console.error('Error checking existing DLP document:', error);

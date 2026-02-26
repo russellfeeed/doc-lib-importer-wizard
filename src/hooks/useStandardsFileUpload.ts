@@ -94,14 +94,20 @@ export function useStandardsFileUpload({ onFilesUploaded }: UseStandardsFileUplo
               // Check WordPress for existing document
               if (standardNumber) {
                 toast.success(`Extracted standard: ${standardNumber}`);
+                toast.info(`Checking WordPress for existing document: ${standardNumber}...`);
+                console.log(`Checking WordPress for existing DLP document: ${standardNumber}`);
                 try {
                   const existing = await checkExistingDlpDocument(standardNumber);
                   if (existing) {
                     updatedFile = { ...updatedFile, wpExisting: existing };
                     toast.warning(`Standard ${standardNumber} already exists in WordPress`);
+                  } else {
+                    console.log(`No existing WordPress document found for: ${standardNumber}`);
+                    toast.success(`No duplicate found for ${standardNumber}`);
                   }
                 } catch (wpError) {
                   console.error('WordPress check failed (non-blocking):', wpError);
+                  toast.error(`WordPress check failed for ${standardNumber}`);
                 }
               } else if (category) {
                 toast.success(`Standards document "${fileObj.name}" categorized as "${category}"`);
