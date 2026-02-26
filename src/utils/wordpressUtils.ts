@@ -271,7 +271,7 @@ export const checkExistingDlpDocumentWithLogs = async (
     log(usingCache ? 'Using cached DLP documents...' : 'Fetching all DLP documents from WordPress...', 'info');
 
     const allDocs = await fetchAllDlpDocuments(credentials);
-    log(`${usingCache ? 'Cached' : 'Fetched'}: ${allDocs.length} documents (filtered by "standards" category)`, 'info');
+    log(`${usingCache ? 'Cached' : 'Fetched'}: ${allDocs.length} documents`, 'info');
 
     log('Comparing against documents...', 'info');
 
