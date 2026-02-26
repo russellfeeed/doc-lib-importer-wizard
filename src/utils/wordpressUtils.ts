@@ -269,7 +269,7 @@ export const checkExistingDlpDocumentWithLogs = async (
   try {
     const cacheKey = getDlpCacheKey(credentials);
     const usingCache = dlpDocumentsCache && dlpCacheCredentialsKey === cacheKey;
-    log(usingCache ? 'Using cached DLP documents...' : 'Fetching DLP documents from WordPress (category: standards)...', 'info');
+    log(usingCache ? 'Using cached DLP documents...' : 'Fetching DLP documents from WordPress (category: standards + children)...', 'info');
 
     const allDocs = await fetchAllDlpDocuments(credentials);
     log(`${usingCache ? 'Cached' : 'Fetched'}: ${allDocs.length} documents (filtered by "standards" category)`, 'info');
