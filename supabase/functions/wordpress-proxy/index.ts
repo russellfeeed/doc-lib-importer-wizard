@@ -169,6 +169,54 @@ serve(async (req) => {
       }
     }
 
+    // Handle search DLP documents action
+    if (action === 'search-dlp-documents') {
+      const { searchTerm } = body;
+      if (!url || !username || !password || !searchTerm) {
+        return new Response(
+          JSON.stringify({ error: 'Missing required fields: url, username, password, searchTerm' }), 
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const baseUrl = url.replace(/\/$/, '');
+      const authString = btoa(`${username}:${password}`);
+      
+      try {
+        const searchUrl = `${baseUrl}/wp-json/wp/v2/dlp_document?search=${encodeURIComponent(searchTerm)}&per_page=10&_fields=id,title,status,link,date`;
+        console.log(`Searching DLP documents: ${searchUrl}`);
+        
+        const searchResponse = await fetch(searchUrl, {
+          headers: {
+            'Authorization': `Basic ${authString}`,
+            'Content-Type': 'application/json',
+            'User-Agent': 'Supabase-Edge-Function'
+          }
+        });
+
+        if (searchResponse.ok) {
+          const results = await searchResponse.json();
+          console.log(`Found ${results.length} matching DLP documents`);
+          return new Response(JSON.stringify(results), {
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        } else {
+          const errorText = await searchResponse.text();
+          console.error('DLP document search failed:', searchResponse.status, errorText);
+          return new Response(JSON.stringify({ error: 'Failed to search DLP documents', details: errorText }), {
+            status: searchResponse.status,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+      } catch (error) {
+        console.error('DLP document search error:', error);
+        return new Response(JSON.stringify({ error: 'Search failed', details: error.message }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+    }
+
     // For other actions, validate url/username/password
     if (!url || !username || !password) {
       return new Response(

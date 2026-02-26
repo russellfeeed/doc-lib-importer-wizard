@@ -4,6 +4,7 @@ import { toast } from 'sonner';
 import { generateUniqueId, formatFileSize, extractFileType } from '@/utils/fileUtils';
 import { extractTextFromDocument, processStandardsDocumentWithAI, generatePdfThumbnail } from '@/utils/aiUtils';
 import { hasOpenAIKey } from '@/utils/openaiClient';
+import { checkExistingDlpDocument } from '@/utils/wordpressUtils';
 
 interface UseStandardsFileUploadProps {
   onFilesUploaded: (files: DocumentFile[]) => void;
@@ -90,8 +91,18 @@ export function useStandardsFileUpload({ onFilesUploaded }: UseStandardsFileUplo
                 }
               };
               
+              // Check WordPress for existing document
               if (standardNumber) {
                 toast.success(`Extracted standard: ${standardNumber}`);
+                try {
+                  const existing = await checkExistingDlpDocument(standardNumber);
+                  if (existing) {
+                    updatedFile = { ...updatedFile, wpExisting: existing };
+                    toast.warning(`Standard ${standardNumber} already exists in WordPress`);
+                  }
+                } catch (wpError) {
+                  console.error('WordPress check failed (non-blocking):', wpError);
+                }
               } else if (category) {
                 toast.success(`Standards document "${fileObj.name}" categorized as "${category}"`);
               }
