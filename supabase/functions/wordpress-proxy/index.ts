@@ -180,14 +180,44 @@ serve(async (req) => {
 
       const baseUrl = url.replace(/\/$/, '');
       const authString = btoa(`${username}:${password}`);
+      const categorySlug = body.categorySlug || null;
       
       try {
+        // If a categorySlug is provided, resolve it to a term ID first
+        let categoryFilter = '';
+        if (categorySlug) {
+          console.log(`Resolving category slug "${categorySlug}" to term ID...`);
+          const catResponse = await fetch(
+            `${baseUrl}/wp-json/wp/v2/doc_categories?slug=${encodeURIComponent(categorySlug)}`,
+            {
+              headers: {
+                'Authorization': `Basic ${authString}`,
+                'Content-Type': 'application/json',
+                'User-Agent': 'Supabase-Edge-Function'
+              }
+            }
+          );
+
+          if (catResponse.ok) {
+            const categories = await catResponse.json();
+            if (categories.length > 0) {
+              const termId = categories[0].id;
+              categoryFilter = `&doc_categories=${termId}`;
+              console.log(`Category "${categorySlug}" resolved to term ID ${termId}`);
+            } else {
+              console.warn(`Category slug "${categorySlug}" not found — fetching unfiltered`);
+            }
+          } else {
+            console.warn(`Failed to resolve category slug "${categorySlug}" (${catResponse.status}) — fetching unfiltered`);
+          }
+        }
+
         const allDocuments: any[] = [];
         let page = 1;
         let totalPages = 1;
 
         while (page <= totalPages) {
-          const pageUrl = `${baseUrl}/wp-json/wp/v2/dlp_document?per_page=100&page=${page}&_fields=id,title,status,link,date`;
+          const pageUrl = `${baseUrl}/wp-json/wp/v2/dlp_document?per_page=100&page=${page}${categoryFilter}&_fields=id,title,status,link,date`;
           console.log(`Fetching DLP documents page ${page}: ${pageUrl}`);
           
           const pageResponse = await fetch(pageUrl, {
@@ -209,8 +239,9 @@ serve(async (req) => {
 
           if (page === 1) {
             const totalPagesHeader = pageResponse.headers.get('X-WP-TotalPages');
+            const totalItemsHeader = pageResponse.headers.get('X-WP-Total');
             totalPages = totalPagesHeader ? parseInt(totalPagesHeader, 10) : 1;
-            console.log(`Total DLP document pages: ${totalPages}`);
+            console.log(`Total DLP documents: ${totalItemsHeader || 'unknown'}, pages: ${totalPages}`);
           }
 
           const results = await pageResponse.json();

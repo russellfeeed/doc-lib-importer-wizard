@@ -185,7 +185,8 @@ const fetchAllDlpDocuments = async (credentials: WordPressCredentials): Promise<
       url: credentials.url,
       username: credentials.username,
       password: credentials.password,
-      action: 'fetch-all-dlp-titles'
+      action: 'fetch-all-dlp-titles',
+      categorySlug: 'standards'
     }
   });
 
@@ -268,10 +269,10 @@ export const checkExistingDlpDocumentWithLogs = async (
   try {
     const cacheKey = getDlpCacheKey(credentials);
     const usingCache = dlpDocumentsCache && dlpCacheCredentialsKey === cacheKey;
-    log(usingCache ? 'Using cached DLP documents...' : 'Fetching all DLP documents from WordPress...', 'info');
+    log(usingCache ? 'Using cached DLP documents...' : 'Fetching DLP documents from WordPress (category: standards)...', 'info');
 
     const allDocs = await fetchAllDlpDocuments(credentials);
-    log(`${usingCache ? 'Cached' : 'Fetched'}: ${allDocs.length} documents`, 'info');
+    log(`${usingCache ? 'Cached' : 'Fetched'}: ${allDocs.length} documents (filtered by "standards" category)`, 'info');
 
     log('Comparing against documents...', 'info');
 
