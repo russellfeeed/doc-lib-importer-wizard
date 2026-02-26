@@ -28,6 +28,13 @@ export interface DocumentFile {
     model?: string;
     tokensUsed?: number;
   };
+  wpExisting?: {
+    id: number;
+    title: string;
+    status: string;
+    link: string;
+    date: string;
+  } | null;
 }
 
 export interface CSVData {

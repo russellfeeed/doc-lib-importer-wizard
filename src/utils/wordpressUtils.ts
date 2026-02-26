@@ -128,6 +128,48 @@ export const fetchWordPressTaxonomies = async (
   }
 };
 
+// Check if a DLP document already exists in WordPress by standard number
+export const checkExistingDlpDocument = async (
+  standardNumber: string
+): Promise<{ id: number; title: string; status: string; link: string; date: string } | null> => {
+  const credentials = getWordPressCredentials();
+  if (!credentials || !standardNumber) return null;
+
+  try {
+    const { data, error } = await supabase.functions.invoke('wordpress-proxy', {
+      body: {
+        url: credentials.url,
+        username: credentials.username,
+        password: credentials.password,
+        action: 'search-dlp-documents',
+        searchTerm: standardNumber
+      }
+    });
+
+    if (error || !Array.isArray(data) || data.length === 0) return null;
+
+    // Find exact or close match
+    const match = data.find((doc: any) => 
+      doc.title?.rendered?.includes(standardNumber)
+    );
+
+    if (match) {
+      return {
+        id: match.id,
+        title: match.title?.rendered || '',
+        status: match.status || '',
+        link: match.link || '',
+        date: match.date || ''
+      };
+    }
+
+    return null;
+  } catch (error) {
+    console.error('Error checking existing DLP document:', error);
+    return null;
+  }
+};
+
 // Push a single category to WordPress, creating it if it doesn't exist
 export const pushCategoryToWordPress = async (
   categoryName: string,

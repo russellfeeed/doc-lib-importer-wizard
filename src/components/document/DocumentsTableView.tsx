@@ -319,6 +319,7 @@ const DocumentsTableView: React.FC<DocumentsTableViewProps> = ({
                 />
               </TableHead>
               {isStandards && <TableHead>Standard #</TableHead>}
+              {isStandards && <TableHead>WP Status</TableHead>}
               {isStandards && <TableHead>Title</TableHead>}
               <TableHead>Name</TableHead>
               <TableHead>Categories</TableHead>
@@ -351,6 +352,21 @@ const DocumentsTableView: React.FC<DocumentsTableViewProps> = ({
                         className="w-32"
                         placeholder="Standard #"
                       />
+                    </TableCell>
+                  )}
+                  {isStandards && (
+                    <TableCell>
+                      {doc.wpExisting ? (
+                        <a href={doc.wpExisting.link} target="_blank" rel="noopener noreferrer">
+                          <Badge className="bg-orange-500 hover:bg-orange-600 text-white cursor-pointer">
+                            Exists in WP
+                          </Badge>
+                        </a>
+                      ) : doc.wpExisting === null ? (
+                        <Badge className="bg-green-500 hover:bg-green-600 text-white">New</Badge>
+                      ) : (
+                        <Badge variant="secondary">Not checked</Badge>
+                      )}
                     </TableCell>
                   )}
                   {isStandards && (
