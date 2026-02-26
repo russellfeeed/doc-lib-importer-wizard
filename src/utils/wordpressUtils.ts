@@ -128,6 +128,14 @@ export const fetchWordPressTaxonomies = async (
   }
 };
 
+// Normalize a standard number by stripping punctuation/whitespace for fuzzy comparison
+const normalizeStandardNumber = (str: string): string => {
+  return str
+    .toLowerCase()
+    .replace(/[\/\\:_\-.\s,]+/g, '')
+    .trim();
+};
+
 // Check if a DLP document already exists in WordPress by standard number
 export const checkExistingDlpDocument = async (
   standardNumber: string
@@ -148,9 +156,10 @@ export const checkExistingDlpDocument = async (
 
     if (error || !Array.isArray(data) || data.length === 0) return null;
 
-    // Find exact or close match
+    // Find match using normalized comparison
+    const normalizedSearch = normalizeStandardNumber(standardNumber);
     const match = data.find((doc: any) => 
-      doc.title?.rendered?.includes(standardNumber)
+      normalizeStandardNumber(doc.title?.rendered || '').includes(normalizedSearch)
     );
 
     if (match) {
