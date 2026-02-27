@@ -61,8 +61,13 @@ serve(async (req) => {
         const responseData = await userMeResponse.json();
         console.log(`WordPress /users/me response status: ${userMeResponse.status}`);
 
-        return new Response(JSON.stringify(responseData), {
-          status: userMeResponse.status,
+        // Always return 200 so the client can read the response body;
+        // include the original WP status for the caller to inspect.
+        return new Response(JSON.stringify({
+          wp_status: userMeResponse.status,
+          ...responseData
+        }), {
+          status: 200,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       } catch (error) {
