@@ -1,25 +1,38 @@
 
 
-## Fix: Strip Spaces from WordPress Application Passwords
+## Investigate: Fetch WordPress Categories and Add Status Parameter to DLP Document Fetch
 
 ### Problem
-WordPress Application Passwords are displayed with spaces for readability (e.g., `abcd efgh ijkl mnop`), but the REST API expects them without spaces in the Basic Auth header. The current code passes the password as-is to `btoa()`, causing a 401 "not logged in" error.
+The DLP document fetch (`fetch-all-dlp-titles`) currently requests:
+```
+/wp-json/wp/v2/dlp_document?per_page=100&page=1&_fields=id,title,status,link,date
+```
 
-### Solution
-Strip all spaces from the `password` field at the top of the edge function, before it is used anywhere. This is a single-line fix that affects all auth paths.
+Two potential issues:
+1. **Missing `status` parameter** -- WordPress REST API defaults to `status=publish`, hiding drafts, private, and pending documents
+2. **Category structure** -- Standards may be nested under categories like "Standards > System" and "Standards > Service"; we need to verify these categories exist and whether category-based filtering affects results
 
 ### Changes
 
-**`supabase/functions/wordpress-proxy/index.ts`**
+**1. Edge function: `supabase/functions/wordpress-proxy/index.ts`**
 
-- After destructuring `password` from the request body (around line 38), add a line to strip spaces:
-  ```
-  const cleanPassword = password ? password.replace(/\s+/g, '') : password;
-  ```
-- Replace all usages of `password` in `btoa()` calls with `cleanPassword` (lines 50, 96, 165, 224, 330 -- five occurrences total)
+- Add a new action `fetch-wp-categories` that:
+  - Calls `GET {url}/wp-json/wp/v2/dlp_document_category?per_page=100&search={searchTerm}` (or equivalent taxonomy endpoint)
+  - Returns the category list so we can inspect IDs, names, parent relationships, and post counts
+  - Falls back to trying common taxonomy slugs: `dlp_document_category`, `category`, `doc_category`
 
-This single change fixes authentication for `/users/me`, `fetch-all-dlp-titles`, `test-connection`, `check-taxonomies`, and all other WordPress API calls.
+- Update the `fetch-all-dlp-titles` action to include `&status=publish,draft,private,pending` so all document statuses are returned
+
+**2. Client utility: `src/utils/wordpressUtils.ts`**
+
+In `checkExistingDlpDocumentWithLogs`, after the `/users/me` call and before fetching documents:
+- Call the new `fetch-wp-categories` action with search terms "standards", "system", "service"
+- Log each matching category with its ID, name, parent ID, and post count
+- This will reveal whether documents are organized by category and if any categories are restricting results
+
+Also log the `X-WP-Total` header value that comes back from the document fetch so we can see if the total changes after adding the status parameter.
 
 ### Files to modify
-- `supabase/functions/wordpress-proxy/index.ts` -- strip spaces from password, use cleaned value in all auth headers
+- `supabase/functions/wordpress-proxy/index.ts` -- add `fetch-wp-categories` action; add `&status=publish,draft,private,pending` to DLP fetch URL
+- `src/utils/wordpressUtils.ts` -- add category inspection logging in `checkExistingDlpDocumentWithLogs`
 
