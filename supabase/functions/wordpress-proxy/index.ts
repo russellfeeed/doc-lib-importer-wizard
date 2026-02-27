@@ -37,6 +37,43 @@ serve(async (req) => {
       siteUrl // for test-connection action
     } = body;
 
+    // Handle fetch-user-me action
+    if (action === 'fetch-user-me') {
+      if (!siteUrl || !username || !password) {
+        return new Response(
+          JSON.stringify({ error: 'Missing required fields: siteUrl, username, password' }), 
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const baseUrl = siteUrl.replace(/\/$/, '');
+      const authString = btoa(`${username}:${password}`);
+      
+      try {
+        const userMeResponse = await fetch(`${baseUrl}/wp-json/wp/v2/users/me`, {
+          headers: {
+            'Authorization': `Basic ${authString}`,
+            'Content-Type': 'application/json',
+            'User-Agent': 'Supabase-Edge-Function'
+          }
+        });
+
+        const responseData = await userMeResponse.json();
+        console.log(`WordPress /users/me response status: ${userMeResponse.status}`);
+
+        return new Response(JSON.stringify(responseData), {
+          status: userMeResponse.status,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      } catch (error) {
+        console.error('WordPress /users/me error:', error);
+        return new Response(JSON.stringify({ error: 'Failed to fetch /users/me', details: error.message }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+    }
+
     // Handle test connection action
     if (action === 'test-connection') {
       if (!siteUrl || !username || !password) {
