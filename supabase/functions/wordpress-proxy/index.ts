@@ -284,7 +284,7 @@ serve(async (req) => {
         let totalPages = 1;
 
         while (page <= totalPages) {
-          const pageUrl = `${baseUrl}/wp-json/wp/v2/dlp_document?per_page=100&page=${page}&doc_categories=649,645&_fields=id,title,status,link,date`;
+          const pageUrl = `${baseUrl}/wp-json/wp/v2/dlp_document?per_page=100&page=${page}&_fields=id,title,status,link,date,doc_categories`;
           console.log(`Fetching DLP documents page ${page}: ${pageUrl}`);
           
           const pageResponse = await fetch(pageUrl, {
@@ -316,8 +316,14 @@ serve(async (req) => {
           page++;
         }
 
-        console.log(`Fetched ${allDocuments.length} total DLP documents`);
-        return new Response(JSON.stringify(allDocuments), {
+        // Filter to only documents in target categories (649=System, 645=Service)
+        const targetCategories = [649, 645];
+        const filtered = allDocuments.filter(doc =>
+          Array.isArray(doc.doc_categories) &&
+          doc.doc_categories.some((id: number) => targetCategories.includes(id))
+        );
+        console.log(`Fetched ${allDocuments.length} total DLP documents, ${filtered.length} match categories ${targetCategories.join(',')}`);
+        return new Response(JSON.stringify(filtered), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       } catch (error) {
