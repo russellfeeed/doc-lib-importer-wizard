@@ -284,7 +284,7 @@ serve(async (req) => {
         let totalPages = 1;
 
         while (page <= totalPages) {
-          const pageUrl = `${baseUrl}/wp-json/wp/v2/dlp_document?per_page=100&page=${page}&_fields=id,title,status,link,date`;
+          const pageUrl = `${baseUrl}/wp-json/wp/v2/dlp_document?per_page=100&page=${page}&doc_categories=649,645&_fields=id,title,status,link,date`;
           console.log(`Fetching DLP documents page ${page}: ${pageUrl}`);
           
           const pageResponse = await fetch(pageUrl, {
