@@ -277,6 +277,41 @@ export const checkExistingDlpDocumentWithLogs = async (
     log(`/users/me failed: ${e.message || 'unknown error'}`, 'warning');
   }
 
+  // --- Category inspection ---
+  log('Inspecting WordPress categories (searching: standards, system, service)...', 'info');
+  for (const term of ['standards', 'system', 'service']) {
+    try {
+      const { data: catData, error: catError } = await supabase.functions.invoke('wordpress-proxy', {
+        body: {
+          url: credentials.url,
+          username: credentials.username,
+          password: credentials.password,
+          action: 'fetch-wp-categories',
+          searchTerm: term,
+        }
+      });
+      if (catError) {
+        log(`Category search "${term}" error: ${catError.message}`, 'warning');
+      } else {
+        for (const [slug, result] of Object.entries(catData || {})) {
+          const r = result as any;
+          if (r.success && r.categories?.length > 0) {
+            log(`Taxonomy "${slug}" — "${term}": ${r.categories.length} matches (total in taxonomy: ${r.total})`, 'success');
+            for (const cat of r.categories) {
+              log(`  ID:${cat.id}  name:"${cat.name}"  parent:${cat.parent}  count:${cat.count}`, 'detail');
+            }
+          } else if (r.success) {
+            log(`Taxonomy "${slug}" — "${term}": no matches`, 'info');
+          } else {
+            log(`Taxonomy "${slug}" — "${term}": failed (status ${r.status || r.error})`, 'warning');
+          }
+        }
+      }
+    } catch (e: any) {
+      log(`Category search "${term}" failed: ${e.message}`, 'warning');
+    }
+  }
+
   if (!standardNumber) {
     log('No standard number provided — nothing to search for.', 'warning');
     return null;
@@ -289,7 +324,7 @@ export const checkExistingDlpDocumentWithLogs = async (
   try {
     const cacheKey = getDlpCacheKey(credentials);
     const usingCache = dlpDocumentsCache && dlpCacheCredentialsKey === cacheKey;
-    log(usingCache ? 'Using cached DLP documents...' : 'Fetching all DLP documents from WordPress...', 'info');
+    log(usingCache ? 'Using cached DLP documents...' : 'Fetching all DLP documents (now including draft/private/pending)...', 'info');
 
     const allDocs = await fetchAllDlpDocuments(credentials);
     log(`${usingCache ? 'Cached' : 'Fetched'}: ${allDocs.length} documents`, 'info');

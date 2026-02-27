@@ -214,6 +214,57 @@ serve(async (req) => {
       }
     }
 
+    // Handle fetch WordPress categories for a custom post type taxonomy
+    if (action === 'fetch-wp-categories') {
+      const site = url || siteUrl;
+      if (!site || !username || !password) {
+        return new Response(
+          JSON.stringify({ error: 'Missing required fields: url/siteUrl, username, password' }), 
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const baseUrl = site.replace(/\/$/, '');
+      const authString = btoa(`${username}:${cleanPassword}`);
+      const searchTerm = body.searchTerm || '';
+      
+      // Try multiple taxonomy slugs to find the right one
+      const slugsToTry = ['dlp_document_category', 'doc_categories', 'category'];
+      const results: Record<string, any> = {};
+
+      for (const slug of slugsToTry) {
+        try {
+          const catUrl = `${baseUrl}/wp-json/wp/v2/${slug}?per_page=100${searchTerm ? `&search=${encodeURIComponent(searchTerm)}` : ''}&_fields=id,name,slug,parent,count,description`;
+          console.log(`Trying taxonomy slug "${slug}": ${catUrl}`);
+          
+          const catResponse = await fetch(catUrl, {
+            headers: {
+              'Authorization': `Basic ${authString}`,
+              'Content-Type': 'application/json',
+              'User-Agent': 'Supabase-Edge-Function'
+            }
+          });
+
+          if (catResponse.ok) {
+            const cats = await catResponse.json();
+            const total = catResponse.headers.get('X-WP-Total') || String(cats.length);
+            console.log(`Taxonomy "${slug}": ${cats.length} results (total: ${total})`);
+            results[slug] = { success: true, categories: cats, total: parseInt(total, 10) };
+          } else {
+            console.log(`Taxonomy "${slug}" failed: ${catResponse.status}`);
+            results[slug] = { success: false, status: catResponse.status };
+          }
+        } catch (e) {
+          console.log(`Taxonomy "${slug}" error: ${e.message}`);
+          results[slug] = { success: false, error: e.message };
+        }
+      }
+
+      return new Response(JSON.stringify(results), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
     // Handle fetch all DLP document titles (paginated)
     if (action === 'fetch-all-dlp-titles') {
       if (!url || !username || !password) {
@@ -233,7 +284,7 @@ serve(async (req) => {
         let totalPages = 1;
 
         while (page <= totalPages) {
-          const pageUrl = `${baseUrl}/wp-json/wp/v2/dlp_document?per_page=100&page=${page}&_fields=id,title,status,link,date`;
+          const pageUrl = `${baseUrl}/wp-json/wp/v2/dlp_document?per_page=100&page=${page}&status=publish,draft,private,pending&_fields=id,title,status,link,date`;
           console.log(`Fetching DLP documents page ${page}: ${pageUrl}`);
           
           const pageResponse = await fetch(pageUrl, {
