@@ -1,28 +1,42 @@
 
 
-## Filter DLP Document Fetch by Category IDs 649 and 645
+## Fix: Filter DLP Documents Client-Side by Category
 
 ### Problem
-The `fetch-all-dlp-titles` action currently fetches **all** `dlp_document` posts, but we only care about the 120 documents in categories 649 (System) and 645 (Service). Fetching everything wastes API calls and returns irrelevant results.
+The `doc_categories=649,645` query parameter is silently ignored by WordPress REST API when filtering `dlp_document` posts. This happens because the custom taxonomy likely doesn't have `query_var => true` set in its WordPress registration, so the REST API doesn't recognize it as a filter. We cannot change the WordPress server configuration.
 
-### Change
+### Solution
+Revert the URL to the original unfiltered fetch, but request the `doc_categories` field in the response so we can filter client-side. This way we fetch all DLP documents but only cache the ones belonging to categories 649 or 645.
+
+### Changes
 
 **`supabase/functions/wordpress-proxy/index.ts`** (line 287)
 
-Add `&doc_categories=649,645` to the WordPress REST API query URL. WordPress supports filtering by taxonomy terms using the taxonomy slug as a query parameter with comma-separated term IDs.
+1. Remove `&doc_categories=649,645` from the URL
+2. Add `doc_categories` to the `_fields` parameter so each document includes its category IDs
 
 Current:
 ```
-/wp-json/wp/v2/dlp_document?per_page=100&page=${page}&_fields=id,title,status,link,date
+...?per_page=100&page=${page}&doc_categories=649,645&_fields=id,title,status,link,date
 ```
 
 Updated:
 ```
-/wp-json/wp/v2/dlp_document?per_page=100&page=${page}&doc_categories=649,645&_fields=id,title,status,link,date
+...?per_page=100&page=${page}&_fields=id,title,status,link,date,doc_categories
 ```
 
-This single URL change filters results to only documents in the System (649) and Service (645) categories, reducing the result set to the ~120 relevant standards documents.
+3. After fetching all pages, filter the results to only include documents where `doc_categories` contains 649 or 645:
+
+```typescript
+const targetCategories = [649, 645];
+const filtered = allDocuments.filter(doc =>
+  Array.isArray(doc.doc_categories) &&
+  doc.doc_categories.some(id => targetCategories.includes(id))
+);
+```
+
+4. Log the count before and after filtering for debugging visibility
 
 ### Files to modify
-- `supabase/functions/wordpress-proxy/index.ts` -- add `&doc_categories=649,645` to the fetch URL on line 287
+- `supabase/functions/wordpress-proxy/index.ts` -- update fetch URL and add client-side category filtering
 
