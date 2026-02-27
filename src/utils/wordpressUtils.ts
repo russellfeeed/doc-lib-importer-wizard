@@ -257,6 +257,26 @@ export const checkExistingDlpDocumentWithLogs = async (
   log(`Connected to: ${credentials.url}`, 'success');
   log(`API user: ${credentials.username}`, 'info');
 
+  // Verify authentication via /users/me
+  try {
+    log(`GET ${credentials.url}/wp-json/wp/v2/users/me`, 'info');
+    const { data: userMeData, error: userMeError } = await supabase.functions.invoke('wordpress-proxy', {
+      body: {
+        siteUrl: credentials.url,
+        username: credentials.username,
+        password: credentials.password,
+        action: 'fetch-user-me',
+      }
+    });
+    if (userMeError) {
+      log(`/users/me error: ${userMeError.message}`, 'warning');
+    } else {
+      log(`Response: ${JSON.stringify(userMeData, null, 2)}`, 'info');
+    }
+  } catch (e: any) {
+    log(`/users/me failed: ${e.message || 'unknown error'}`, 'warning');
+  }
+
   if (!standardNumber) {
     log('No standard number provided — nothing to search for.', 'warning');
     return null;
