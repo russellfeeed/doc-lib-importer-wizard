@@ -37,6 +37,9 @@ serve(async (req) => {
       siteUrl // for test-connection action
     } = body;
 
+    // Strip spaces from Application Passwords (WordPress displays them with spaces for readability)
+    const cleanPassword = password ? password.replace(/\s+/g, '') : password;
+
     // Handle fetch-user-me action
     if (action === 'fetch-user-me') {
       if (!siteUrl || !username || !password) {
@@ -47,7 +50,7 @@ serve(async (req) => {
       }
 
       const baseUrl = siteUrl.replace(/\/$/, '');
-      const authString = btoa(`${username}:${password}`);
+      const authString = btoa(`${username}:${cleanPassword}`);
       
       try {
         const userMeResponse = await fetch(`${baseUrl}/wp-json/wp/v2/users/me`, {
@@ -92,7 +95,7 @@ serve(async (req) => {
       }
 
       const baseUrl = siteUrl.replace(/\/$/, '');
-      const authString = btoa(`${username}:${password}`);
+      const authString = btoa(`${username}:${cleanPassword}`);
       
       try {
         // Use a simple endpoint that we know works - just fetch a basic endpoint
@@ -162,7 +165,7 @@ serve(async (req) => {
       }
 
       const baseUrl = siteUrl.replace(/\/$/, '');
-      const authString = btoa(`${username}:${password}`);
+      const authString = btoa(`${username}:${cleanPassword}`);
       
       try {
         const taxonomyResponse = await fetch(`${baseUrl}/wp-json/wp/v2/taxonomies`, {
@@ -221,7 +224,7 @@ serve(async (req) => {
       }
 
       const baseUrl = url.replace(/\/$/, '');
-      const authString = btoa(`${username}:${password}`);
+      const authString = btoa(`${username}:${cleanPassword}`);
       
       try {
 
@@ -327,7 +330,7 @@ serve(async (req) => {
     };
     
     // WordPress API authentication using Application Passwords method
-    const authString = btoa(`${username}:${password}`);
+    const authString = btoa(`${username}:${cleanPassword}`);
     headers['Authorization'] = `Basic ${authString}`;
     
     // Make request to WordPress API
