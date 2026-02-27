@@ -229,7 +229,7 @@ serve(async (req) => {
       const searchTerm = body.searchTerm || '';
       
       // Try multiple taxonomy slugs to find the right one
-      const slugsToTry = ['dlp_document_category', 'doc_categories', 'category'];
+      const slugsToTry = ['doc_categories'];
       const results: Record<string, any> = {};
 
       for (const slug of slugsToTry) {
