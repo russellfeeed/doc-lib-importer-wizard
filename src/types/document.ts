@@ -34,6 +34,9 @@ export interface DocumentFile {
     status: string;
     link: string;
     date: string;
+    excerpt?: string;
+    categories?: string;
+    tags?: string;
   } | null;
 }
 
