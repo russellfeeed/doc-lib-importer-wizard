@@ -127,8 +127,8 @@ async function getWpSessionAuth(
   }
 }
 
-// Helper: fetch with Basic Auth, falling back to cookie-based auth
-// if the server strips the Authorization header (returns rest_not_logged_in).
+// Helper: fetch with Basic Auth, falling back to URL-embedded credentials,
+// then cookie-based auth if the server strips the Authorization header.
 async function wpFetch(
   url: string,
   username: string,
@@ -151,34 +151,50 @@ async function wpFetch(
   if (response.status === 401) {
     const bodyText = await response.text();
     if (bodyText.includes('rest_not_logged_in')) {
-      console.log('Authorization header stripped by server, trying cookie-based auth...');
+      console.log('Authorization header stripped by server, trying URL-embedded credentials...');
       
-      // Extract base URL from the API URL
+      // Fallback 1: URL-embedded credentials (works on some Apache/Nginx configs)
       const urlObj = new URL(url);
-      const baseUrl = `${urlObj.protocol}//${urlObj.host}`;
+      urlObj.username = encodeURIComponent(username);
+      urlObj.password = encodeURIComponent(password);
       
-      const session = await getWpSessionAuth(baseUrl, username, password);
-      if (session) {
-        const cookieHeaders: Record<string, string> = {
+      response = await fetch(urlObj.toString(), {
+        method: options.method || 'GET',
+        headers: {
           'Content-Type': 'application/json',
           'User-Agent': 'Supabase-Edge-Function',
-          'Cookie': session.cookies,
-          'X-WP-Nonce': session.nonce,
-        };
+        },
+        ...(options.body && { body: options.body }),
+      });
+      console.log(`URL-embedded auth response status: ${response.status}`);
+      
+      if (response.status === 401) {
+        const bodyText2 = await response.text();
+        console.log('URL-embedded auth also failed, trying cookie-based auth...');
         
-        response = await fetch(url, {
-          method: options.method || 'GET',
-          headers: cookieHeaders,
-          ...(options.body && { body: options.body }),
-        });
-        console.log(`Cookie-based auth response status: ${response.status}`);
-      } else {
-        // Return original error response
-        response = new Response(bodyText, {
-          status: response.status,
-          statusText: response.statusText,
-          headers: response.headers,
-        });
+        // Fallback 2: Cookie-based auth via wp-login.php
+        const baseUrl = `${urlObj.protocol}//${urlObj.host}`;
+        const session = await getWpSessionAuth(baseUrl, username, password);
+        if (session) {
+          const cookieHeaders: Record<string, string> = {
+            'Content-Type': 'application/json',
+            'User-Agent': 'Supabase-Edge-Function',
+            'Cookie': session.cookies,
+            'X-WP-Nonce': session.nonce,
+          };
+          
+          response = await fetch(url, {
+            method: options.method || 'GET',
+            headers: cookieHeaders,
+            ...(options.body && { body: options.body }),
+          });
+          console.log(`Cookie-based auth response status: ${response.status}`);
+        } else {
+          response = new Response(bodyText2, {
+            status: 401,
+            statusText: 'Unauthorized',
+          });
+        }
       }
     } else {
       response = new Response(bodyText, {
