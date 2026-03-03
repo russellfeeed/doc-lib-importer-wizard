@@ -1,6 +1,10 @@
-import React from 'react';
-import { CheckCircle, AlertTriangle } from 'lucide-react';
+import React, { useState } from 'react';
+import { CheckCircle, AlertTriangle, Upload, Loader2 } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+import { toast } from 'sonner';
+import { DocumentFile } from '@/types/document';
+import { uploadAndUpdateDlpDocument } from '@/utils/wordpressUtils';
 
 interface ComparisonRow {
   field: string;
@@ -11,10 +15,37 @@ interface ComparisonRow {
 
 interface WpComparisonPanelProps {
   rows: ComparisonRow[];
+  document: DocumentFile;
+  onEdit: (field: keyof DocumentFile, value: string | boolean | Record<string, string>) => void;
 }
 
-const WpComparisonPanel: React.FC<WpComparisonPanelProps> = ({ rows }) => {
+const WpComparisonPanel: React.FC<WpComparisonPanelProps> = ({ rows, document, onEdit }) => {
+  const [isUploading, setIsUploading] = useState(false);
   const hasDifferences = rows.some(r => r.isDifferent);
+  const hasMatchedDoc = !!document.wpExisting?.id;
+  const hasFile = !!document.file;
+
+  const handleUploadAndUpdate = async () => {
+    setIsUploading(true);
+    try {
+      const result = await uploadAndUpdateDlpDocument(document);
+      if (result.success) {
+        toast.success('File uploaded and WordPress document updated successfully');
+        if (result.relativePdaPath) {
+          onEdit('fileUrl', result.relativePdaPath);
+        }
+        if (result.pdaUrl) {
+          onEdit('directUrl', result.pdaUrl);
+        }
+      } else {
+        toast.error(`Upload failed: ${result.error}`);
+      }
+    } catch (err: any) {
+      toast.error(`Upload error: ${err.message}`);
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   return (
     <div className="rounded-md border">
@@ -61,6 +92,31 @@ const WpComparisonPanel: React.FC<WpComparisonPanelProps> = ({ rows }) => {
           ))}
         </TableBody>
       </Table>
+      {hasMatchedDoc && (
+        <div className="p-3 border-t">
+          <Button
+            variant="default"
+            className="w-full"
+            onClick={handleUploadAndUpdate}
+            disabled={isUploading || !hasFile}
+          >
+            {isUploading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Uploading & Updating...
+              </>
+            ) : (
+              <>
+                <Upload className="mr-2 h-4 w-4" />
+                Upload to Media Library & Update Document Library
+              </>
+            )}
+          </Button>
+          {!hasFile && (
+            <p className="text-xs text-muted-foreground mt-1">No local file available for upload</p>
+          )}
+        </div>
+      )}
     </div>
   );
 };
