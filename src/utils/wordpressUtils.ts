@@ -366,6 +366,52 @@ export const checkExistingDlpDocumentWithLogs = async (
   }
 };
 
+// Fetch full detail for a single DLP document (with resolved category/tag names)
+export const fetchDlpDocumentDetail = async (
+  documentId: number
+): Promise<{ id: number; title: string; excerpt: string; categories: string; tags: string; status: string; link: string; date: string } | null> => {
+  const credentials = getWordPressCredentials();
+  if (!credentials) return null;
+
+  try {
+    const { data, error } = await supabase.functions.invoke('wordpress-proxy', {
+      body: {
+        url: credentials.url,
+        username: credentials.username,
+        password: credentials.password,
+        action: 'fetch-dlp-detail',
+        documentId,
+      }
+    });
+
+    if (error) {
+      console.error('Failed to fetch DLP document detail:', error);
+      return null;
+    }
+
+    return data;
+  } catch (error) {
+    console.error('Error fetching DLP document detail:', error);
+    return null;
+  }
+};
+
+// Compare local document fields with WordPress data
+export const compareDocumentFields = (
+  local: { name: string; excerpt: string; categories: string; tags: string },
+  wp: { title: string; excerpt: string; categories: string; tags: string }
+): Array<{ field: string; localValue: string; wpValue: string; isDifferent: boolean }> => {
+  const stripHtml = (s: string) => s.replace(/<[^>]*>/g, '').trim();
+  const norm = (s: string) => stripHtml(s).toLowerCase().replace(/\s+/g, ' ').trim();
+
+  return [
+    { field: 'Title', localValue: local.name, wpValue: stripHtml(wp.title), isDifferent: norm(local.name) !== norm(wp.title) },
+    { field: 'Excerpt', localValue: local.excerpt, wpValue: stripHtml(wp.excerpt), isDifferent: norm(local.excerpt) !== norm(wp.excerpt) },
+    { field: 'Categories', localValue: local.categories, wpValue: wp.categories, isDifferent: norm(local.categories) !== norm(wp.categories) },
+    { field: 'Tags', localValue: local.tags, wpValue: wp.tags, isDifferent: norm(local.tags) !== norm(wp.tags) },
+  ];
+};
+
 // Push a single category to WordPress, creating it if it doesn't exist
 export const pushCategoryToWordPress = async (
   categoryName: string,

@@ -7,8 +7,9 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { PDFViewerModal } from '@/components/ui/pdf-viewer-modal';
 import { Tag, BookCopy, FolderOpen, ChevronRight, AlertTriangle, Building, CheckSquare, Square, FileText, Eye, Trash2, Hash, FileType, Search } from 'lucide-react';
 import { DocumentFile } from '@/types/document';
-import { fetchWordPressTaxonomies } from '@/utils/wordpressUtils';
+import { fetchWordPressTaxonomies, compareDocumentFields } from '@/utils/wordpressUtils';
 import WpDuplicateCheckModal from './WpDuplicateCheckModal';
+import WpComparisonPanel from './WpComparisonPanel';
 
 interface DocumentMetadataProps {
   document: DocumentFile;
@@ -166,8 +167,20 @@ const DocumentMetadata: React.FC<DocumentMetadataProps> = ({
             onClose={() => setIsDuplicateCheckOpen(false)}
             standardNumber={document.standardNumber || ''}
             onMatchFound={(match) => {
-              onEdit('wpExisting' as keyof DocumentFile, JSON.stringify(match) as any);
+              onEdit('wpExisting' as keyof DocumentFile, match as any);
             }}
+          />
+        </div>
+      )}
+
+      {/* WordPress Comparison Panel */}
+      {document.wpExisting && document.wpExisting.excerpt !== undefined && (
+        <div className="mb-4">
+          <WpComparisonPanel
+            rows={compareDocumentFields(
+              { name: document.name, excerpt: document.excerpt, categories: document.categories, tags: document.tags },
+              { title: document.wpExisting.title, excerpt: document.wpExisting.excerpt || '', categories: document.wpExisting.categories || '', tags: document.wpExisting.tags || '' }
+            )}
           />
         </div>
       )}

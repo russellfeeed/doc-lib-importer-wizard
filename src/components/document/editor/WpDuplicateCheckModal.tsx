@@ -7,7 +7,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { checkExistingDlpDocumentWithLogs } from '@/utils/wordpressUtils';
+import { checkExistingDlpDocumentWithLogs, fetchDlpDocumentDetail } from '@/utils/wordpressUtils';
 
 interface LogEntry {
   timestamp: Date;
@@ -15,11 +15,22 @@ interface LogEntry {
   type: 'info' | 'success' | 'warning' | 'error' | 'detail';
 }
 
+interface WpDetailedMatch {
+  id: number;
+  title: string;
+  status: string;
+  link: string;
+  date: string;
+  excerpt?: string;
+  categories?: string;
+  tags?: string;
+}
+
 interface WpDuplicateCheckModalProps {
   isOpen: boolean;
   onClose: () => void;
   standardNumber: string;
-  onMatchFound?: (match: { id: number; title: string; status: string; link: string; date: string }) => void;
+  onMatchFound?: (match: WpDetailedMatch) => void;
 }
 
 const typeColors: Record<string, string> = {
@@ -51,8 +62,27 @@ const WpDuplicateCheckModal: React.FC<WpDuplicateCheckModalProps> = ({
 
     const run = async () => {
       const result = await checkExistingDlpDocumentWithLogs(standardNumber, addLog);
-      if (result && onMatchFound) {
-        onMatchFound(result);
+      if (result) {
+        // Fetch full detail with resolved categories/tags
+        addLog(`Fetching full document detail for ID ${result.id}...`, 'info');
+        const detail = await fetchDlpDocumentDetail(result.id);
+        
+        const enrichedMatch: WpDetailedMatch = {
+          ...result,
+          excerpt: detail?.excerpt || '',
+          categories: detail?.categories || '',
+          tags: detail?.tags || '',
+        };
+        
+        if (detail) {
+          addLog(`Detail fetched — Categories: "${detail.categories}", Tags: "${detail.tags}"`, 'success');
+        } else {
+          addLog('Could not fetch full detail — comparison will be limited', 'warning');
+        }
+        
+        if (onMatchFound) {
+          onMatchFound(enrichedMatch);
+        }
       }
       setIsRunning(false);
     };

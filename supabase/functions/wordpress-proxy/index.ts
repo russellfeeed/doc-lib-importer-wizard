@@ -452,6 +452,82 @@ serve(async (req) => {
       }
     }
 
+    // Handle fetch single DLP document detail with resolved terms
+    if (action === 'fetch-dlp-detail') {
+      const docId = body.documentId;
+      if (!url || !username || !password || !docId) {
+        return new Response(
+          JSON.stringify({ error: 'Missing required fields: url, username, password, documentId' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const baseUrl2 = url.replace(/\/$/, '');
+
+      try {
+        // Fetch the document
+        const docUrl = `${baseUrl2}/wp-json/wp/v2/dlp_document/${docId}?_fields=id,title,excerpt,status,link,date,doc_categories,doc_tags`;
+        console.log(`Fetching DLP document detail: ${docUrl}`);
+        const docResponse = await wpFetch(docUrl, username, cleanPassword);
+
+        if (!docResponse.ok) {
+          const errorText = await docResponse.text();
+          return new Response(JSON.stringify({ error: 'Failed to fetch document detail', details: errorText }), {
+            status: docResponse.status,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+          });
+        }
+
+        const doc = await docResponse.json();
+
+        // Resolve category IDs to names
+        let categoryNames: string[] = [];
+        if (Array.isArray(doc.doc_categories) && doc.doc_categories.length > 0) {
+          const catIds = doc.doc_categories.join(',');
+          const catUrl = `${baseUrl2}/wp-json/wp/v2/doc_categories?include=${catIds}&_fields=id,name`;
+          const catResp = await wpFetch(catUrl, username, cleanPassword);
+          if (catResp.ok) {
+            const cats = await catResp.json();
+            categoryNames = cats.map((c: any) => c.name);
+          }
+        }
+
+        // Resolve tag IDs to names
+        let tagNames: string[] = [];
+        if (Array.isArray(doc.doc_tags) && doc.doc_tags.length > 0) {
+          const tagIds = doc.doc_tags.join(',');
+          const tagUrl = `${baseUrl2}/wp-json/wp/v2/doc_tags?include=${tagIds}&_fields=id,name`;
+          const tagResp = await wpFetch(tagUrl, username, cleanPassword);
+          if (tagResp.ok) {
+            const tags = await tagResp.json();
+            tagNames = tags.map((t: any) => t.name);
+          }
+        }
+
+        const result = {
+          id: doc.id,
+          title: doc.title?.rendered || '',
+          excerpt: doc.excerpt?.rendered || '',
+          categories: categoryNames.join(', '),
+          tags: tagNames.join(', '),
+          status: doc.status || '',
+          link: doc.link || '',
+          date: doc.date || '',
+        };
+
+        console.log(`DLP detail resolved: categories=[${categoryNames}], tags=[${tagNames}]`);
+        return new Response(JSON.stringify(result), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      } catch (error) {
+        console.error('DLP document detail error:', error);
+        return new Response(JSON.stringify({ error: 'Failed to fetch document detail', details: error.message }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+    }
+
     // For other actions, validate url/username/password
     if (!url || !username || !password) {
       return new Response(
