@@ -5,6 +5,54 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+// Helper: fetch with Basic Auth, falling back to URL-embedded credentials
+// if the server strips the Authorization header (returns rest_not_logged_in).
+async function wpFetch(
+  url: string,
+  username: string,
+  password: string,
+  options: { method?: string; body?: string } = {}
+): Promise<Response> {
+  const authString = btoa(`${username}:${password}`);
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'User-Agent': 'Supabase-Edge-Function',
+    'Authorization': `Basic ${authString}`,
+  };
+
+  let response = await fetch(url, {
+    method: options.method || 'GET',
+    headers,
+    ...(options.body && { body: options.body }),
+  });
+
+  if (response.status === 401) {
+    const bodyText = await response.text();
+    if (bodyText.includes('rest_not_logged_in')) {
+      console.log('Authorization header stripped by server, retrying with URL-embedded credentials');
+      const urlObj = new URL(url);
+      urlObj.username = username;
+      urlObj.password = password;
+      const { Authorization: _, ...headersWithoutAuth } = headers;
+      response = await fetch(urlObj.toString(), {
+        method: options.method || 'GET',
+        headers: headersWithoutAuth as Record<string, string>,
+        ...(options.body && { body: options.body }),
+      });
+      console.log(`Fallback auth response status: ${response.status}`);
+    } else {
+      // Re-wrap the already-consumed body into a new Response
+      response = new Response(bodyText, {
+        status: response.status,
+        statusText: response.statusText,
+        headers: response.headers,
+      });
+    }
+  }
+
+  return response;
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -50,16 +98,9 @@ serve(async (req) => {
       }
 
       const baseUrl = siteUrl.replace(/\/$/, '');
-      const authString = btoa(`${username}:${cleanPassword}`);
       
       try {
-        const userMeResponse = await fetch(`${baseUrl}/wp-json/wp/v2/users/me`, {
-          headers: {
-            'Authorization': `Basic ${authString}`,
-            'Content-Type': 'application/json',
-            'User-Agent': 'Supabase-Edge-Function'
-          }
-        });
+        const userMeResponse = await wpFetch(`${baseUrl}/wp-json/wp/v2/users/me`, username, cleanPassword);
 
         const responseData = await userMeResponse.json();
         console.log(`WordPress /users/me response status: ${userMeResponse.status}`);
@@ -95,17 +136,9 @@ serve(async (req) => {
       }
 
       const baseUrl = siteUrl.replace(/\/$/, '');
-      const authString = btoa(`${username}:${cleanPassword}`);
       
       try {
-        // Use a simple endpoint that we know works - just fetch a basic endpoint
-        const testResponse = await fetch(`${baseUrl}/wp-json/wp/v2/types`, {
-          headers: {
-            'Authorization': `Basic ${authString}`,
-            'Content-Type': 'application/json',
-            'User-Agent': 'Supabase-Edge-Function'
-          }
-        });
+        const testResponse = await wpFetch(`${baseUrl}/wp-json/wp/v2/types`, username, cleanPassword);
 
         console.log(`WordPress test response status: ${testResponse.status}`);
         
@@ -165,16 +198,9 @@ serve(async (req) => {
       }
 
       const baseUrl = siteUrl.replace(/\/$/, '');
-      const authString = btoa(`${username}:${cleanPassword}`);
       
       try {
-        const taxonomyResponse = await fetch(`${baseUrl}/wp-json/wp/v2/taxonomies`, {
-          headers: {
-            'Authorization': `Basic ${authString}`,
-            'Content-Type': 'application/json',
-            'User-Agent': 'Supabase-Edge-Function'
-          }
-        });
+        const taxonomyResponse = await wpFetch(`${baseUrl}/wp-json/wp/v2/taxonomies`, username, cleanPassword);
 
         console.log(`WordPress taxonomies response status: ${taxonomyResponse.status}`);
         
@@ -225,10 +251,8 @@ serve(async (req) => {
       }
 
       const baseUrl = site.replace(/\/$/, '');
-      const authString = btoa(`${username}:${cleanPassword}`);
       const searchTerm = body.searchTerm || '';
       
-      // Try multiple taxonomy slugs to find the right one
       const slugsToTry = ['doc_categories'];
       const results: Record<string, any> = {};
 
@@ -237,13 +261,7 @@ serve(async (req) => {
           const catUrl = `${baseUrl}/wp-json/wp/v2/${slug}?per_page=100${searchTerm ? `&search=${encodeURIComponent(searchTerm)}` : ''}&_fields=id,name,slug,parent,count,description`;
           console.log(`Trying taxonomy slug "${slug}": ${catUrl}`);
           
-          const catResponse = await fetch(catUrl, {
-            headers: {
-              'Authorization': `Basic ${authString}`,
-              'Content-Type': 'application/json',
-              'User-Agent': 'Supabase-Edge-Function'
-            }
-          });
+          const catResponse = await wpFetch(catUrl, username, cleanPassword);
 
           if (catResponse.ok) {
             const cats = await catResponse.json();
@@ -275,10 +293,8 @@ serve(async (req) => {
       }
 
       const baseUrl = url.replace(/\/$/, '');
-      const authString = btoa(`${username}:${cleanPassword}`);
       
       try {
-
         const allDocuments: any[] = [];
         let page = 1;
         let totalPages = 1;
@@ -287,13 +303,7 @@ serve(async (req) => {
           const pageUrl = `${baseUrl}/wp-json/wp/v2/dlp_document?per_page=100&page=${page}&_fields=id,title,status,link,date,doc_categories`;
           console.log(`Fetching DLP documents page ${page}: ${pageUrl}`);
           
-          const pageResponse = await fetch(pageUrl, {
-            headers: {
-              'Authorization': `Basic ${authString}`,
-              'Content-Type': 'application/json',
-              'User-Agent': 'Supabase-Edge-Function'
-            }
-          });
+          const pageResponse = await wpFetch(pageUrl, username, cleanPassword);
 
           if (!pageResponse.ok) {
             const errorText = await pageResponse.text();
@@ -380,21 +390,10 @@ serve(async (req) => {
     
     console.log(`Making ${method} request to: ${wordpressUrl}`);
     
-    // Prepare headers
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-      'User-Agent': 'Supabase-Edge-Function'
-    };
-    
-    // WordPress API authentication using Application Passwords method
-    const authString = btoa(`${username}:${cleanPassword}`);
-    headers['Authorization'] = `Basic ${authString}`;
-    
-    // Make request to WordPress API
-    const response = await fetch(wordpressUrl, {
+    // Use the wpFetch helper which handles auth header fallback
+    const response = await wpFetch(wordpressUrl, username, cleanPassword, {
       method,
-      headers,
-      ...(requestBody && { body: requestBody })
+      body: requestBody,
     });
 
     if (!response.ok) {
