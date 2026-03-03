@@ -5,7 +5,97 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
-// Helper: fetch with Basic Auth, falling back to URL-embedded credentials
+// Helper: Authenticate via wp-login.php and return session cookies + nonce
+async function getWpSessionAuth(
+  baseUrl: string,
+  username: string,
+  password: string
+): Promise<{ cookies: string; nonce: string } | null> {
+  try {
+    console.log('Attempting cookie-based WordPress authentication...');
+    
+    // Step 1: POST to wp-login.php to get session cookies
+    const loginBody = new URLSearchParams({
+      log: username,
+      pwd: password,
+      'wp-submit': 'Log In',
+      redirect_to: `${baseUrl}/wp-admin/`,
+      testcookie: '1',
+    });
+
+    const loginResponse = await fetch(`${baseUrl}/wp-login.php`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'User-Agent': 'Supabase-Edge-Function',
+        'Cookie': 'wordpress_test_cookie=WP%20Cookie%20check',
+      },
+      body: loginBody.toString(),
+      redirect: 'manual', // Don't follow redirects, we need the Set-Cookie headers
+    });
+
+    console.log(`wp-login.php response status: ${loginResponse.status}`);
+
+    // Collect Set-Cookie headers
+    const setCookieHeaders: string[] = [];
+    loginResponse.headers.forEach((value, key) => {
+      if (key.toLowerCase() === 'set-cookie') {
+        setCookieHeaders.push(value);
+      }
+    });
+
+    if (setCookieHeaders.length === 0) {
+      console.log('No cookies received from wp-login.php');
+      return null;
+    }
+
+    // Parse cookies into a single cookie string
+    const cookieParts = setCookieHeaders.map(c => c.split(';')[0]);
+    const cookieString = cookieParts.join('; ');
+    console.log(`Got ${cookieParts.length} cookies from wp-login.php`);
+
+    // Step 2: Fetch the REST API nonce from wp-admin
+    const adminResponse = await fetch(`${baseUrl}/wp-admin/admin-ajax.php?action=rest-nonce`, {
+      headers: {
+        'Cookie': cookieString,
+        'User-Agent': 'Supabase-Edge-Function',
+      },
+    });
+
+    let nonce = '';
+    if (adminResponse.ok) {
+      nonce = (await adminResponse.text()).trim();
+      console.log(`Got REST nonce: ${nonce}`);
+    } else {
+      // Try getting nonce from wp-admin page as fallback
+      console.log('rest-nonce action not available, trying wp-admin page...');
+      const adminPageResponse = await fetch(`${baseUrl}/wp-admin/`, {
+        headers: {
+          'Cookie': cookieString,
+          'User-Agent': 'Supabase-Edge-Function',
+        },
+      });
+      const adminHtml = await adminPageResponse.text();
+      const nonceMatch = adminHtml.match(/wpApiSettings["\s]*?:.*?"nonce"\s*:\s*"([a-f0-9]+)"/);
+      if (nonceMatch) {
+        nonce = nonceMatch[1];
+        console.log(`Got REST nonce from admin page: ${nonce}`);
+      }
+    }
+
+    if (!nonce) {
+      console.log('Could not obtain REST API nonce');
+      return null;
+    }
+
+    return { cookies: cookieString, nonce };
+  } catch (error) {
+    console.error('Cookie-based auth failed:', error);
+    return null;
+  }
+}
+
+// Helper: fetch with Basic Auth, falling back to cookie-based auth
 // if the server strips the Authorization header (returns rest_not_logged_in).
 async function wpFetch(
   url: string,
@@ -29,19 +119,36 @@ async function wpFetch(
   if (response.status === 401) {
     const bodyText = await response.text();
     if (bodyText.includes('rest_not_logged_in')) {
-      console.log('Authorization header stripped by server, retrying with URL-embedded credentials');
+      console.log('Authorization header stripped by server, trying cookie-based auth...');
+      
+      // Extract base URL from the API URL
       const urlObj = new URL(url);
-      urlObj.username = username;
-      urlObj.password = password;
-      const { Authorization: _, ...headersWithoutAuth } = headers;
-      response = await fetch(urlObj.toString(), {
-        method: options.method || 'GET',
-        headers: headersWithoutAuth as Record<string, string>,
-        ...(options.body && { body: options.body }),
-      });
-      console.log(`Fallback auth response status: ${response.status}`);
+      const baseUrl = `${urlObj.protocol}//${urlObj.host}`;
+      
+      const session = await getWpSessionAuth(baseUrl, username, password);
+      if (session) {
+        const cookieHeaders: Record<string, string> = {
+          'Content-Type': 'application/json',
+          'User-Agent': 'Supabase-Edge-Function',
+          'Cookie': session.cookies,
+          'X-WP-Nonce': session.nonce,
+        };
+        
+        response = await fetch(url, {
+          method: options.method || 'GET',
+          headers: cookieHeaders,
+          ...(options.body && { body: options.body }),
+        });
+        console.log(`Cookie-based auth response status: ${response.status}`);
+      } else {
+        // Return original error response
+        response = new Response(bodyText, {
+          status: response.status,
+          statusText: response.statusText,
+          headers: response.headers,
+        });
+      }
     } else {
-      // Re-wrap the already-consumed body into a new Response
       response = new Response(bodyText, {
         status: response.status,
         statusText: response.statusText,
