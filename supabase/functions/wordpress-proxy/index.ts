@@ -44,9 +44,8 @@ async function getWpSessionAuth(
       }
     });
 
-    // Also check for multiple cookies in a single header (some proxies combine them)
     if (setCookieHeaders.length === 0) {
-      console.log('No cookies received from wp-login.php — login likely failed');
+      console.log('No cookies received from wp-login.php');
       return null;
     }
 
@@ -54,13 +53,6 @@ async function getWpSessionAuth(
     const cookieParts = setCookieHeaders.map(c => c.split(';')[0]);
     const cookieString = cookieParts.join('; ');
     console.log(`Got ${cookieParts.length} cookies from wp-login.php`);
-    
-    // A successful WP login should return wordpress_logged_in_* cookie
-    const hasLoggedInCookie = cookieParts.some(c => c.includes('wordpress_logged_in'));
-    if (!hasLoggedInCookie) {
-      console.log(`Warning: No wordpress_logged_in cookie found. Cookie names: ${cookieParts.map(c => c.split('=')[0]).join(', ')}`);
-      // Still continue — some setups use different cookie names
-    }
 
     // Step 2: Fetch the REST API nonce from wp-admin
     const adminResponse = await fetch(`${baseUrl}/wp-admin/admin-ajax.php?action=rest-nonce`, {
@@ -72,17 +64,9 @@ async function getWpSessionAuth(
 
     let nonce = '';
     if (adminResponse.ok) {
-      const nonceText = (await adminResponse.text()).trim();
-      // rest-nonce should return a short alphanumeric string
-      if (/^[a-f0-9]{6,12}$/.test(nonceText)) {
-        nonce = nonceText;
-        console.log(`Got REST nonce via admin-ajax: ${nonce}`);
-      } else {
-        console.log(`rest-nonce response was not a valid nonce: "${nonceText.substring(0, 80)}"`);
-      }
-    }
-    
-    if (!nonce) {
+      nonce = (await adminResponse.text()).trim();
+      console.log(`Got REST nonce: ${nonce}`);
+    } else {
       // Try getting nonce from wp-admin page as fallback
       console.log('rest-nonce action not available, trying wp-admin page...');
       const adminPageResponse = await fetch(`${baseUrl}/wp-admin/`, {
@@ -90,28 +74,12 @@ async function getWpSessionAuth(
           'Cookie': cookieString,
           'User-Agent': 'Supabase-Edge-Function',
         },
-        redirect: 'follow',
       });
       const adminHtml = await adminPageResponse.text();
-      console.log(`wp-admin page response status: ${adminPageResponse.status}, length: ${adminHtml.length}`);
-      
-      // Try multiple nonce patterns WordPress may use
-      const noncePatterns = [
-        /wpApiSettings\s*[=:]\s*\{[^}]*?"nonce"\s*:\s*"([a-f0-9]+)"/,
-        /"nonce"\s*:\s*"([a-f0-9]+)".*?wpApiSettings/,
-        /wp\.apiFetch\.nonceMiddleware\s*=\s*wp\.apiFetch\.createNonceMiddleware\(\s*"([a-f0-9]+)"\s*\)/,
-        /_wpnonce['"]\s*:\s*['"]([a-f0-9]+)['"]/,
-        /rest_nonce['"]\s*:\s*['"]([a-f0-9]+)['"]/,
-        /"nonce"\s*:\s*"([a-f0-9]+)"/,
-      ];
-      
-      for (const pattern of noncePatterns) {
-        const match = adminHtml.match(pattern);
-        if (match) {
-          nonce = match[1];
-          console.log(`Got REST nonce from admin page (pattern: ${pattern.source.substring(0, 30)}): ${nonce}`);
-          break;
-        }
+      const nonceMatch = adminHtml.match(/wpApiSettings["\s]*?:.*?"nonce"\s*:\s*"([a-f0-9]+)"/);
+      if (nonceMatch) {
+        nonce = nonceMatch[1];
+        console.log(`Got REST nonce from admin page: ${nonce}`);
       }
     }
 
@@ -127,8 +95,8 @@ async function getWpSessionAuth(
   }
 }
 
-// Helper: fetch with Basic Auth, falling back to URL-embedded credentials,
-// then cookie-based auth if the server strips the Authorization header.
+// Helper: fetch with Basic Auth, falling back to cookie-based auth
+// if the server strips the Authorization header (returns rest_not_logged_in).
 async function wpFetch(
   url: string,
   username: string,
@@ -151,50 +119,34 @@ async function wpFetch(
   if (response.status === 401) {
     const bodyText = await response.text();
     if (bodyText.includes('rest_not_logged_in')) {
-      console.log('Authorization header stripped by server, trying URL-embedded credentials...');
+      console.log('Authorization header stripped by server, trying cookie-based auth...');
       
-      // Fallback 1: URL-embedded credentials (works on some Apache/Nginx configs)
+      // Extract base URL from the API URL
       const urlObj = new URL(url);
-      urlObj.username = encodeURIComponent(username);
-      urlObj.password = encodeURIComponent(password);
+      const baseUrl = `${urlObj.protocol}//${urlObj.host}`;
       
-      response = await fetch(urlObj.toString(), {
-        method: options.method || 'GET',
-        headers: {
+      const session = await getWpSessionAuth(baseUrl, username, password);
+      if (session) {
+        const cookieHeaders: Record<string, string> = {
           'Content-Type': 'application/json',
           'User-Agent': 'Supabase-Edge-Function',
-        },
-        ...(options.body && { body: options.body }),
-      });
-      console.log(`URL-embedded auth response status: ${response.status}`);
-      
-      if (response.status === 401) {
-        const bodyText2 = await response.text();
-        console.log('URL-embedded auth also failed, trying cookie-based auth...');
+          'Cookie': session.cookies,
+          'X-WP-Nonce': session.nonce,
+        };
         
-        // Fallback 2: Cookie-based auth via wp-login.php
-        const baseUrl = `${urlObj.protocol}//${urlObj.host}`;
-        const session = await getWpSessionAuth(baseUrl, username, password);
-        if (session) {
-          const cookieHeaders: Record<string, string> = {
-            'Content-Type': 'application/json',
-            'User-Agent': 'Supabase-Edge-Function',
-            'Cookie': session.cookies,
-            'X-WP-Nonce': session.nonce,
-          };
-          
-          response = await fetch(url, {
-            method: options.method || 'GET',
-            headers: cookieHeaders,
-            ...(options.body && { body: options.body }),
-          });
-          console.log(`Cookie-based auth response status: ${response.status}`);
-        } else {
-          response = new Response(bodyText2, {
-            status: 401,
-            statusText: 'Unauthorized',
-          });
-        }
+        response = await fetch(url, {
+          method: options.method || 'GET',
+          headers: cookieHeaders,
+          ...(options.body && { body: options.body }),
+        });
+        console.log(`Cookie-based auth response status: ${response.status}`);
+      } else {
+        // Return original error response
+        response = new Response(bodyText, {
+          status: response.status,
+          statusText: response.statusText,
+          headers: response.headers,
+        });
       }
     } else {
       response = new Response(bodyText, {
@@ -573,283 +525,6 @@ serve(async (req) => {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
-      }
-    }
-
-    // Handle upload-and-update-dlp action
-    if (action === 'upload-and-update-dlp') {
-      const { documentId, fileData, fileName, fileType, title, excerpt, categories, tags } = body;
-      if (!url || !username || !password || !documentId || !fileData || !fileName) {
-        return new Response(
-          JSON.stringify({ error: 'Missing required fields for upload-and-update-dlp' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      const baseUrl3 = url.replace(/\/$/, '');
-
-      try {
-        // Step A: Upload file to WordPress Media Library via cookie auth
-        console.log(`Uploading file "${fileName}" to WordPress media library...`);
-        const session = await getWpSessionAuth(baseUrl3, username, cleanPassword);
-        if (!session) {
-          return new Response(
-            JSON.stringify({ error: 'Failed to authenticate with WordPress for file upload' }),
-            { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-
-        // Decode base64 to binary
-        const binaryStr = atob(fileData);
-        const bytes = new Uint8Array(binaryStr.length);
-        for (let i = 0; i < binaryStr.length; i++) {
-          bytes[i] = binaryStr.charCodeAt(i);
-        }
-
-        const formData = new FormData();
-        formData.append('file', new Blob([bytes], { type: fileType || 'application/pdf' }), fileName);
-
-        const mediaResponse = await fetch(`${baseUrl3}/wp-json/wp/v2/media`, {
-          method: 'POST',
-          headers: {
-            'Cookie': session.cookies,
-            'X-WP-Nonce': session.nonce,
-            'User-Agent': 'Supabase-Edge-Function',
-          },
-          body: formData,
-        });
-
-        if (!mediaResponse.ok) {
-          const mediaErr = await mediaResponse.text();
-          console.error('Media upload failed:', mediaResponse.status, mediaErr);
-          return new Response(
-            JSON.stringify({ error: 'Failed to upload file to WordPress media library', details: mediaErr }),
-            { status: mediaResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-
-        const mediaResult = await mediaResponse.json();
-        const sourceUrl = mediaResult.source_url || '';
-        console.log(`Media uploaded successfully. source_url: ${sourceUrl}`);
-
-        // Step B: Derive _pda protected path
-        const pdaUrl = sourceUrl.replace('/wp-content/uploads/', '/wp-content/uploads/_pda/');
-        const urlObj2 = new URL(sourceUrl);
-        const relativePdaPath = pdaUrl.replace(`${urlObj2.protocol}//${urlObj2.host}`, '');
-        console.log(`Derived _pda URL: ${pdaUrl}, relative: ${relativePdaPath}`);
-
-        // Step C: Resolve category and tag names to term IDs
-        const resolveTermIds = async (names: string, taxonomy: string): Promise<number[]> => {
-          if (!names || !names.trim()) return [];
-          const termNames = names.split(',').map(n => n.trim()).filter(Boolean);
-          const ids: number[] = [];
-          for (const name of termNames) {
-            try {
-              const searchUrl = `${baseUrl3}/wp-json/wp/v2/${taxonomy}?search=${encodeURIComponent(name)}&_fields=id,name`;
-              const resp = await wpFetch(searchUrl, username, cleanPassword);
-              if (resp.ok) {
-                const results = await resp.json();
-                const exact = results.find((r: any) => r.name.toLowerCase() === name.toLowerCase());
-                if (exact) ids.push(exact.id);
-                else if (results.length > 0) ids.push(results[0].id);
-              }
-            } catch (e) {
-              console.error(`Failed to resolve term "${name}" in ${taxonomy}:`, e);
-            }
-          }
-          return ids;
-        };
-
-        const categoryIds = await resolveTermIds(categories || '', 'doc_categories');
-        const tagIds = await resolveTermIds(tags || '', 'doc_tags');
-        console.log(`Resolved categories: [${categoryIds}], tags: [${tagIds}]`);
-
-        // Step D: Update the DLP document
-        const updateBody: Record<string, any> = {
-          title: title || '',
-          excerpt: excerpt || '',
-        };
-        if (categoryIds.length > 0) updateBody.doc_categories = categoryIds;
-        if (tagIds.length > 0) updateBody.doc_tags = tagIds;
-        // Set the file URL meta field - try the standard Barn2 DLP meta key
-        updateBody.meta = {
-          _dlp_document_file_url: relativePdaPath,
-        };
-
-        console.log(`Updating DLP document ${documentId}...`);
-        const updateResponse = await wpFetch(
-          `${baseUrl3}/wp-json/wp/v2/dlp_document/${documentId}`,
-          username,
-          cleanPassword,
-          { method: 'POST', body: JSON.stringify(updateBody) }
-        );
-
-        if (!updateResponse.ok) {
-          const updateErr = await updateResponse.text();
-          console.error('DLP document update failed:', updateResponse.status, updateErr);
-          return new Response(
-            JSON.stringify({ error: 'Failed to update DLP document', details: updateErr }),
-            { status: updateResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-
-        const updateResult = await updateResponse.json();
-        console.log(`DLP document ${documentId} updated successfully`);
-
-        return new Response(JSON.stringify({
-          success: true,
-          mediaId: mediaResult.id,
-          sourceUrl,
-          pdaUrl,
-          relativePdaPath,
-          documentId: updateResult.id,
-        }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-      } catch (error) {
-        console.error('Upload-and-update-dlp error:', error);
-        return new Response(
-          JSON.stringify({ error: 'Upload and update failed', details: error.message }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-    }
-
-    // Handle upload-and-update-dlp action
-    if (action === 'upload-and-update-dlp') {
-      const { documentId, fileData, fileName, fileType, title, excerpt, categories, tags } = body;
-      if (!url || !username || !password || !documentId || !fileData || !fileName) {
-        return new Response(
-          JSON.stringify({ error: 'Missing required fields for upload-and-update-dlp' }),
-          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-
-      const baseUrl3 = url.replace(/\/$/, '');
-
-      try {
-        // Step A: Upload file to WordPress Media Library via cookie auth
-        console.log(`Uploading file "${fileName}" to WordPress media library...`);
-        const session = await getWpSessionAuth(baseUrl3, username, cleanPassword);
-        if (!session) {
-          return new Response(
-            JSON.stringify({ error: 'Failed to authenticate with WordPress for file upload' }),
-            { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-
-        // Decode base64 to binary
-        const binaryStr = atob(fileData);
-        const bytes = new Uint8Array(binaryStr.length);
-        for (let i = 0; i < binaryStr.length; i++) {
-          bytes[i] = binaryStr.charCodeAt(i);
-        }
-
-        const formData = new FormData();
-        formData.append('file', new Blob([bytes], { type: fileType || 'application/pdf' }), fileName);
-
-        const mediaResponse = await fetch(`${baseUrl3}/wp-json/wp/v2/media`, {
-          method: 'POST',
-          headers: {
-            'Cookie': session.cookies,
-            'X-WP-Nonce': session.nonce,
-            'User-Agent': 'Supabase-Edge-Function',
-          },
-          body: formData,
-        });
-
-        if (!mediaResponse.ok) {
-          const mediaErr = await mediaResponse.text();
-          console.error('Media upload failed:', mediaResponse.status, mediaErr);
-          return new Response(
-            JSON.stringify({ error: 'Failed to upload file to WordPress media library', details: mediaErr }),
-            { status: mediaResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-
-        const mediaResult = await mediaResponse.json();
-        const sourceUrl = mediaResult.source_url || '';
-        console.log(`Media uploaded successfully. source_url: ${sourceUrl}`);
-
-        // Step B: Derive _pda protected path
-        const pdaUrl = sourceUrl.replace('/wp-content/uploads/', '/wp-content/uploads/_pda/');
-        const urlObj2 = new URL(sourceUrl);
-        const relativePdaPath = pdaUrl.replace(`${urlObj2.protocol}//${urlObj2.host}`, '');
-        console.log(`Derived _pda URL: ${pdaUrl}, relative: ${relativePdaPath}`);
-
-        // Step C: Resolve category and tag names to term IDs
-        const resolveTermIds = async (names: string, taxonomy: string): Promise<number[]> => {
-          if (!names || !names.trim()) return [];
-          const termNames = names.split(',').map(n => n.trim()).filter(Boolean);
-          const ids: number[] = [];
-          for (const name of termNames) {
-            try {
-              const searchUrl = `${baseUrl3}/wp-json/wp/v2/${taxonomy}?search=${encodeURIComponent(name)}&_fields=id,name`;
-              const resp = await wpFetch(searchUrl, username, cleanPassword);
-              if (resp.ok) {
-                const results = await resp.json();
-                const exact = results.find((r: any) => r.name.toLowerCase() === name.toLowerCase());
-                if (exact) ids.push(exact.id);
-                else if (results.length > 0) ids.push(results[0].id);
-              }
-            } catch (e) {
-              console.error(`Failed to resolve term "${name}" in ${taxonomy}:`, e);
-            }
-          }
-          return ids;
-        };
-
-        const categoryIds = await resolveTermIds(categories || '', 'doc_categories');
-        const tagIds = await resolveTermIds(tags || '', 'doc_tags');
-        console.log(`Resolved categories: [${categoryIds}], tags: [${tagIds}]`);
-
-        // Step D: Update the DLP document
-        const updateBody: Record<string, any> = {
-          title: title || '',
-          excerpt: excerpt || '',
-        };
-        if (categoryIds.length > 0) updateBody.doc_categories = categoryIds;
-        if (tagIds.length > 0) updateBody.doc_tags = tagIds;
-        updateBody.meta = {
-          _dlp_document_file_url: relativePdaPath,
-        };
-
-        console.log(`Updating DLP document ${documentId}...`);
-        const updateResponse = await wpFetch(
-          `${baseUrl3}/wp-json/wp/v2/dlp_document/${documentId}`,
-          username,
-          cleanPassword,
-          { method: 'POST', body: JSON.stringify(updateBody) }
-        );
-
-        if (!updateResponse.ok) {
-          const updateErr = await updateResponse.text();
-          console.error('DLP document update failed:', updateResponse.status, updateErr);
-          return new Response(
-            JSON.stringify({ error: 'Failed to update DLP document', details: updateErr }),
-            { status: updateResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
-
-        const updateResult = await updateResponse.json();
-        console.log(`DLP document ${documentId} updated successfully`);
-
-        return new Response(JSON.stringify({
-          success: true,
-          mediaId: mediaResult.id,
-          sourceUrl,
-          pdaUrl,
-          relativePdaPath,
-          documentId: updateResult.id,
-        }), {
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
-        });
-      } catch (error) {
-        console.error('Upload-and-update-dlp error:', error);
-        return new Response(
-          JSON.stringify({ error: 'Upload and update failed', details: error.message }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
       }
     }
 

@@ -181,8 +181,6 @@ const DocumentMetadata: React.FC<DocumentMetadataProps> = ({
               { name: document.name, excerpt: document.excerpt, categories: document.categories, tags: document.tags },
               { title: document.wpExisting.title, excerpt: document.wpExisting.excerpt || '', categories: document.wpExisting.categories || '', tags: document.wpExisting.tags || '' }
             )}
-            document={document}
-            onEdit={onEdit}
           />
         </div>
       )}

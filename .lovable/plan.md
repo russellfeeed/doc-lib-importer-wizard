@@ -1,48 +1,47 @@
 
 
-## Upload to Media Library & Update Document Library
+## Feature: Compare WordPress Document with Local Edit Information
 
 ### What it does
-Adds a button (visible when a WordPress duplicate match exists) that:
-1. Uploads the local file to the WordPress Media Library
-2. Takes the returned media URL and derives the correct File URL / Direct URL
-3. Updates the matched DLP document (by ID) with the new file URL plus current local metadata (title, excerpt, categories, tags)
+After the "Check WordPress Duplicate" finds a match, fetch the full WordPress document details and display a side-by-side comparison highlighting differences between the WordPress version and the local Edit Information fields.
 
-### Technical approach
+### Current behavior
+- `fetch-all-dlp-titles` returns only `id, title, status, link, date, doc_categories`
+- `WpDuplicateCheckModal` shows a log of the search process
+- If matched, `wpExisting` is set on the document with minimal info (`id, title, status, link, date`)
+- The orange alert banner in `SingleDocumentEditor` just shows the match exists
 
-**1. New `upload-and-update-dlp` action in `supabase/functions/wordpress-proxy/index.ts`**
+### Plan
 
-Since `wordpress-proxy` already has the cookie-based auth fallback (`wpFetch`), and the `wordpress-upload` function does not, the new action lives here. It needs a `wpFetchFormData` variant of `wpFetch` that sends `multipart/form-data` instead of JSON (for the media upload step). Steps inside the handler:
+**1. Add a new edge function action: `fetch-dlp-document-detail`**
+- In `supabase/functions/wordpress-proxy/index.ts`, add a handler for `action: 'fetch-dlp-detail'`
+- Fetches a single DLP document by ID: `/wp-json/wp/v2/dlp_document/{id}?_fields=id,title,excerpt,content,status,link,date,doc_categories,doc_tags`
+- Also resolves `doc_categories` and `doc_tags` term IDs to their names (fetch `/wp-json/wp/v2/doc_categories?include=X,Y` and similar for tags)
+- Returns structured data: `{ title, excerpt, categories, tags, status, link, date }`
 
-- Receive: `{ documentId, fileData (base64), fileName, fileType, title, excerpt, categories, tags }`
-- **Step A**: Upload file to `/wp-json/wp/v2/media` using FormData (with cookie-auth fallback)
-- **Step B**: Get `source_url` from the response — derive the `_pda` protected path variant
-- **Step C**: Resolve category/tag names to term IDs via `/wp-json/wp/v2/doc_categories?search=X` and `/wp-json/wp/v2/doc_tags?search=X`
-- **Step D**: PUT to `/wp-json/wp/v2/dlp_document/{documentId}` with `{ title, excerpt, doc_categories: [ids], doc_tags: [ids], _file_url: derivedUrl }` — the exact meta key for the file URL will need to match what Barn2 DLP expects (likely `_dlp_document_file_url` or similar custom field)
+**2. Expand `wpExisting` type in `src/types/document.ts`**
+- Add optional fields: `excerpt`, `categories`, `tags` to the `wpExisting` interface
 
-**2. New client utility in `src/utils/wordpressUtils.ts`**
+**3. Update `WpDuplicateCheckModal`**
+- After a match is found, automatically fetch the full document detail using the new action
+- Pass the enriched match data back via `onMatchFound`
 
-- `uploadAndUpdateDlpDocument(document: DocumentFile)`: reads the File object as base64, calls the edge function, returns success/error status
-- Handles the base64 conversion client-side before sending
+**4. Create a new `WpComparisonPanel` component**
+- Displayed in `DocumentMetadata` (or `SingleDocumentEditor`) when `wpExisting` has detailed data
+- Shows a compact comparison table with rows for: Title, Excerpt, Categories, Tags
+- Each row shows "WordPress" vs "Local" values
+- Highlights rows where values differ (e.g., amber/yellow background, or a "differs" badge)
+- Fields that match get a green checkmark
 
-**3. Button in `src/components/document/editor/WpComparisonPanel.tsx`**
-
-- Add an "Upload & Update in WordPress" button at the bottom of the comparison panel
-- Shows a loading spinner during the operation
-- On success: toast notification with the new URL; updates `fileUrl` and `directUrl` on the document via `onEdit`
-- On error: toast with error message
-
-**4. Prop threading**
-
-- `WpComparisonPanel` needs the `document` object and `onEdit` callback (currently only receives `rows`)
-- `DocumentMetadata` already has both — pass them down
+**5. Add comparison utility in `src/utils/wordpressUtils.ts`**
+- `compareDocumentFields(local: DocumentFile, wpData: wpExisting)` returns an array of `{ field, localValue, wpValue, isDifferent }` objects
+- Normalize strings before comparison (trim, lowercase for matching)
 
 ### Files to modify
-- `supabase/functions/wordpress-proxy/index.ts` — add `wpFetchFormData` helper + `upload-and-update-dlp` action (~80 lines)
-- `src/utils/wordpressUtils.ts` — add `uploadAndUpdateDlpDocument` function
-- `src/components/document/editor/WpComparisonPanel.tsx` — add button + state, accept new props
-- `src/components/document/editor/DocumentMetadata.tsx` — pass document + onEdit to WpComparisonPanel
-
-### Key detail: File URL transformation
-The media upload returns a URL like `https://domain/wp-content/uploads/2026/03/file.pdf`. For standards, this needs to become the `_pda` protected variant: `/wp-content/uploads/_pda/2026/03/file.pdf` (relative for File URL) and full absolute for Direct URL. The edge function will derive this from the `source_url` returned by WordPress.
+- `supabase/functions/wordpress-proxy/index.ts` — new `fetch-dlp-detail` action
+- `src/types/document.ts` — extend `wpExisting` type
+- `src/utils/wordpressUtils.ts` — add fetch detail function + comparison helper
+- `src/components/document/editor/WpDuplicateCheckModal.tsx` — fetch detail after match
+- `src/components/document/editor/WpComparisonPanel.tsx` — new component for diff display
+- `src/components/document/editor/DocumentMetadata.tsx` — render `WpComparisonPanel` when data available
 
