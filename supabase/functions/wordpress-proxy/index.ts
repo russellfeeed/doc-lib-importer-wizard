@@ -44,8 +44,9 @@ async function getWpSessionAuth(
       }
     });
 
+    // Also check for multiple cookies in a single header (some proxies combine them)
     if (setCookieHeaders.length === 0) {
-      console.log('No cookies received from wp-login.php');
+      console.log('No cookies received from wp-login.php — login likely failed');
       return null;
     }
 
@@ -53,6 +54,13 @@ async function getWpSessionAuth(
     const cookieParts = setCookieHeaders.map(c => c.split(';')[0]);
     const cookieString = cookieParts.join('; ');
     console.log(`Got ${cookieParts.length} cookies from wp-login.php`);
+    
+    // A successful WP login should return wordpress_logged_in_* cookie
+    const hasLoggedInCookie = cookieParts.some(c => c.includes('wordpress_logged_in'));
+    if (!hasLoggedInCookie) {
+      console.log(`Warning: No wordpress_logged_in cookie found. Cookie names: ${cookieParts.map(c => c.split('=')[0]).join(', ')}`);
+      // Still continue — some setups use different cookie names
+    }
 
     // Step 2: Fetch the REST API nonce from wp-admin
     const adminResponse = await fetch(`${baseUrl}/wp-admin/admin-ajax.php?action=rest-nonce`, {
@@ -64,9 +72,17 @@ async function getWpSessionAuth(
 
     let nonce = '';
     if (adminResponse.ok) {
-      nonce = (await adminResponse.text()).trim();
-      console.log(`Got REST nonce: ${nonce}`);
-    } else {
+      const nonceText = (await adminResponse.text()).trim();
+      // rest-nonce should return a short alphanumeric string
+      if (/^[a-f0-9]{6,12}$/.test(nonceText)) {
+        nonce = nonceText;
+        console.log(`Got REST nonce via admin-ajax: ${nonce}`);
+      } else {
+        console.log(`rest-nonce response was not a valid nonce: "${nonceText.substring(0, 80)}"`);
+      }
+    }
+    
+    if (!nonce) {
       // Try getting nonce from wp-admin page as fallback
       console.log('rest-nonce action not available, trying wp-admin page...');
       const adminPageResponse = await fetch(`${baseUrl}/wp-admin/`, {
@@ -74,12 +90,28 @@ async function getWpSessionAuth(
           'Cookie': cookieString,
           'User-Agent': 'Supabase-Edge-Function',
         },
+        redirect: 'follow',
       });
       const adminHtml = await adminPageResponse.text();
-      const nonceMatch = adminHtml.match(/wpApiSettings["\s]*?:.*?"nonce"\s*:\s*"([a-f0-9]+)"/);
-      if (nonceMatch) {
-        nonce = nonceMatch[1];
-        console.log(`Got REST nonce from admin page: ${nonce}`);
+      console.log(`wp-admin page response status: ${adminPageResponse.status}, length: ${adminHtml.length}`);
+      
+      // Try multiple nonce patterns WordPress may use
+      const noncePatterns = [
+        /wpApiSettings\s*[=:]\s*\{[^}]*?"nonce"\s*:\s*"([a-f0-9]+)"/,
+        /"nonce"\s*:\s*"([a-f0-9]+)".*?wpApiSettings/,
+        /wp\.apiFetch\.nonceMiddleware\s*=\s*wp\.apiFetch\.createNonceMiddleware\(\s*"([a-f0-9]+)"\s*\)/,
+        /_wpnonce['"]\s*:\s*['"]([a-f0-9]+)['"]/,
+        /rest_nonce['"]\s*:\s*['"]([a-f0-9]+)['"]/,
+        /"nonce"\s*:\s*"([a-f0-9]+)"/,
+      ];
+      
+      for (const pattern of noncePatterns) {
+        const match = adminHtml.match(pattern);
+        if (match) {
+          nonce = match[1];
+          console.log(`Got REST nonce from admin page (pattern: ${pattern.source.substring(0, 30)}): ${nonce}`);
+          break;
+        }
       }
     }
 
