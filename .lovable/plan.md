@@ -1,42 +1,47 @@
 
 
-## Fix: Filter DLP Documents Client-Side by Category
+## Feature: Compare WordPress Document with Local Edit Information
 
-### Problem
-The `doc_categories=649,645` query parameter is silently ignored by WordPress REST API when filtering `dlp_document` posts. This happens because the custom taxonomy likely doesn't have `query_var => true` set in its WordPress registration, so the REST API doesn't recognize it as a filter. We cannot change the WordPress server configuration.
+### What it does
+After the "Check WordPress Duplicate" finds a match, fetch the full WordPress document details and display a side-by-side comparison highlighting differences between the WordPress version and the local Edit Information fields.
 
-### Solution
-Revert the URL to the original unfiltered fetch, but request the `doc_categories` field in the response so we can filter client-side. This way we fetch all DLP documents but only cache the ones belonging to categories 649 or 645.
+### Current behavior
+- `fetch-all-dlp-titles` returns only `id, title, status, link, date, doc_categories`
+- `WpDuplicateCheckModal` shows a log of the search process
+- If matched, `wpExisting` is set on the document with minimal info (`id, title, status, link, date`)
+- The orange alert banner in `SingleDocumentEditor` just shows the match exists
 
-### Changes
+### Plan
 
-**`supabase/functions/wordpress-proxy/index.ts`** (line 287)
+**1. Add a new edge function action: `fetch-dlp-document-detail`**
+- In `supabase/functions/wordpress-proxy/index.ts`, add a handler for `action: 'fetch-dlp-detail'`
+- Fetches a single DLP document by ID: `/wp-json/wp/v2/dlp_document/{id}?_fields=id,title,excerpt,content,status,link,date,doc_categories,doc_tags`
+- Also resolves `doc_categories` and `doc_tags` term IDs to their names (fetch `/wp-json/wp/v2/doc_categories?include=X,Y` and similar for tags)
+- Returns structured data: `{ title, excerpt, categories, tags, status, link, date }`
 
-1. Remove `&doc_categories=649,645` from the URL
-2. Add `doc_categories` to the `_fields` parameter so each document includes its category IDs
+**2. Expand `wpExisting` type in `src/types/document.ts`**
+- Add optional fields: `excerpt`, `categories`, `tags` to the `wpExisting` interface
 
-Current:
-```
-...?per_page=100&page=${page}&doc_categories=649,645&_fields=id,title,status,link,date
-```
+**3. Update `WpDuplicateCheckModal`**
+- After a match is found, automatically fetch the full document detail using the new action
+- Pass the enriched match data back via `onMatchFound`
 
-Updated:
-```
-...?per_page=100&page=${page}&_fields=id,title,status,link,date,doc_categories
-```
+**4. Create a new `WpComparisonPanel` component**
+- Displayed in `DocumentMetadata` (or `SingleDocumentEditor`) when `wpExisting` has detailed data
+- Shows a compact comparison table with rows for: Title, Excerpt, Categories, Tags
+- Each row shows "WordPress" vs "Local" values
+- Highlights rows where values differ (e.g., amber/yellow background, or a "differs" badge)
+- Fields that match get a green checkmark
 
-3. After fetching all pages, filter the results to only include documents where `doc_categories` contains 649 or 645:
-
-```typescript
-const targetCategories = [649, 645];
-const filtered = allDocuments.filter(doc =>
-  Array.isArray(doc.doc_categories) &&
-  doc.doc_categories.some(id => targetCategories.includes(id))
-);
-```
-
-4. Log the count before and after filtering for debugging visibility
+**5. Add comparison utility in `src/utils/wordpressUtils.ts`**
+- `compareDocumentFields(local: DocumentFile, wpData: wpExisting)` returns an array of `{ field, localValue, wpValue, isDifferent }` objects
+- Normalize strings before comparison (trim, lowercase for matching)
 
 ### Files to modify
-- `supabase/functions/wordpress-proxy/index.ts` -- update fetch URL and add client-side category filtering
+- `supabase/functions/wordpress-proxy/index.ts` — new `fetch-dlp-detail` action
+- `src/types/document.ts` — extend `wpExisting` type
+- `src/utils/wordpressUtils.ts` — add fetch detail function + comparison helper
+- `src/components/document/editor/WpDuplicateCheckModal.tsx` — fetch detail after match
+- `src/components/document/editor/WpComparisonPanel.tsx` — new component for diff display
+- `src/components/document/editor/DocumentMetadata.tsx` — render `WpComparisonPanel` when data available
 
