@@ -610,9 +610,9 @@ serve(async (req) => {
         const sourceUrl = mediaResult.source_url || '';
         console.log(`Media uploaded successfully. source_url: ${sourceUrl}`);
 
-        // Step B: Derive _pda protected path
-        const pdaUrl = sourceUrl.replace('/wp-content/uploads/', '/wp-content/uploads/_pda/');
-        const urlObj2 = new URL(sourceUrl);
+        // Step B: Derive _pda protected path (avoid double _pda)
+        const pdaUrl = sourceUrl.includes('/_pda/') ? sourceUrl : sourceUrl.replace('/wp-content/uploads/', '/wp-content/uploads/_pda/');
+        const urlObj2 = new URL(pdaUrl);
         const relativePdaPath = pdaUrl.replace(`${urlObj2.protocol}//${urlObj2.host}`, '');
         console.log(`Derived _pda URL: ${pdaUrl}, relative: ${relativePdaPath}`);
 
@@ -649,9 +649,9 @@ serve(async (req) => {
         };
         if (categoryIds.length > 0) updateBody.doc_categories = categoryIds;
         if (tagIds.length > 0) updateBody.doc_tags = tagIds;
-        // Set the file URL meta field - try the standard Barn2 DLP meta key
+        // Link the uploaded media attachment to the DLP document
         updateBody.meta = {
-          _dlp_document_file_url: relativePdaPath,
+          _dlp_attached_file_id: mediaResult.id,
         };
 
         console.log(`Updating DLP document ${documentId}...`);
