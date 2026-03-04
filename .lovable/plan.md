@@ -1,43 +1,48 @@
 
 
-## Fix: Upload & Update Document Library
+## Upload to Media Library & Update Document Library
 
-### Problems Found
+### What it does
+Adds a button (visible when a WordPress duplicate match exists) that:
+1. Uploads the local file to the WordPress Media Library
+2. Takes the returned media URL and derives the correct File URL / Direct URL
+3. Updates the matched DLP document (by ID) with the new file URL plus current local metadata (title, excerpt, categories, tags)
 
-**1. Double `_pda` in path** - The logs show:
-```
-source_url: .../wp-content/uploads/_pda/2026/03/PD-CLC-TS-50131-2-9_2016.pdf
-Derived _pda URL: .../wp-content/uploads/_pda/_pda/2026/03/...
-```
-The WP Prevent Direct Access plugin already places uploaded files in `_pda/`, so the code's blanket `.replace('/uploads/', '/uploads/_pda/')` creates a double `_pda/_pda/` path.
+### Technical approach
 
-**2. Wrong meta key for file URL** - The code sets `meta: { _dlp_document_file_url: ... }` but Barn2 DLP links files via `_dlp_attached_file_id` (the media attachment ID, not a URL). This is confirmed by the WordPress plugin at line 408: `update_post_meta($post_id, '_dlp_attached_file_id', $attachment_id)`. The REST API likely ignores the unregistered meta key silently.
+**1. New `upload-and-update-dlp` action in `supabase/functions/wordpress-proxy/index.ts`**
 
-**3. Categories not resolved** - "System" is a child category under "Standards" and the search API may not return it correctly. Less critical but worth noting.
+Since `wordpress-proxy` already has the cookie-based auth fallback (`wpFetch`), and the `wordpress-upload` function does not, the new action lives here. It needs a `wpFetchFormData` variant of `wpFetch` that sends `multipart/form-data` instead of JSON (for the media upload step). Steps inside the handler:
 
-### Fix Plan
+- Receive: `{ documentId, fileData (base64), fileName, fileType, title, excerpt, categories, tags }`
+- **Step A**: Upload file to `/wp-json/wp/v2/media` using FormData (with cookie-auth fallback)
+- **Step B**: Get `source_url` from the response — derive the `_pda` protected path variant
+- **Step C**: Resolve category/tag names to term IDs via `/wp-json/wp/v2/doc_categories?search=X` and `/wp-json/wp/v2/doc_tags?search=X`
+- **Step D**: PUT to `/wp-json/wp/v2/dlp_document/{documentId}` with `{ title, excerpt, doc_categories: [ids], doc_tags: [ids], _file_url: derivedUrl }` — the exact meta key for the file URL will need to match what Barn2 DLP expects (likely `_dlp_document_file_url` or similar custom field)
 
-**File: `supabase/functions/wordpress-proxy/index.ts`** (both copies of the action block)
+**2. New client utility in `src/utils/wordpressUtils.ts`**
 
-1. **Fix the `_pda` path derivation**: Check if `source_url` already contains `/_pda/` before applying the replacement. If it does, use it as-is.
+- `uploadAndUpdateDlpDocument(document: DocumentFile)`: reads the File object as base64, calls the edge function, returns success/error status
+- Handles the base64 conversion client-side before sending
 
-2. **Use `_dlp_attached_file_id` instead of `_dlp_document_file_url`**: Set the attachment ID from the media upload response (`mediaResult.id`) on the DLP document. This is how Barn2 DLP actually links a file to a document.
+**3. Button in `src/components/document/editor/WpComparisonPanel.tsx`**
 
-3. **Also set the file URL via the DLP's custom field**: Barn2 DLP also supports a URL-based file reference. From the screenshot, the document uses "File URL" mode. The correct approach is to update both:
-   - `_dlp_attached_file_id` → `mediaResult.id` 
-   - And pass the URL using the `content` or a known registered meta field
+- Add an "Upload & Update in WordPress" button at the bottom of the comparison panel
+- Shows a loading spinner during the operation
+- On success: toast notification with the new URL; updates `fileUrl` and `directUrl` on the document via `onEdit`
+- On error: toast with error message
 
-   Actually, the simplest reliable approach: just set `_dlp_attached_file_id` to the new media ID. Barn2 DLP will derive the URL from the attachment automatically.
+**4. Prop threading**
 
-4. **Fix duplicate action block**: There are two identical `upload-and-update-dlp` blocks (lines 557-694 and 696-832). Remove the duplicate.
+- `WpComparisonPanel` needs the `document` object and `onEdit` callback (currently only receives `rows`)
+- `DocumentMetadata` already has both — pass them down
 
-### Changes
+### Files to modify
+- `supabase/functions/wordpress-proxy/index.ts` — add `wpFetchFormData` helper + `upload-and-update-dlp` action (~80 lines)
+- `src/utils/wordpressUtils.ts` — add `uploadAndUpdateDlpDocument` function
+- `src/components/document/editor/WpComparisonPanel.tsx` — add button + state, accept new props
+- `src/components/document/editor/DocumentMetadata.tsx` — pass document + onEdit to WpComparisonPanel
 
-**`supabase/functions/wordpress-proxy/index.ts`**:
-- Fix `_pda` path: only apply replacement if `source_url` doesn't already contain `/_pda/`
-- Replace `meta: { _dlp_document_file_url: relativePdaPath }` with `meta: { _dlp_attached_file_id: mediaResult.id }`
-- Remove the duplicate action block
-- Return the correct `pdaUrl` and `relativePdaPath` to the client
-
-**`src/utils/wordpressUtils.ts`** - no changes needed (it already handles the response correctly)
+### Key detail: File URL transformation
+The media upload returns a URL like `https://domain/wp-content/uploads/2026/03/file.pdf`. For standards, this needs to become the `_pda` protected variant: `/wp-content/uploads/_pda/2026/03/file.pdf` (relative for File URL) and full absolute for Direct URL. The edge function will derive this from the `source_url` returned by WordPress.
 
