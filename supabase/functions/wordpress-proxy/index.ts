@@ -119,34 +119,60 @@ async function wpFetch(
   if (response.status === 401) {
     const bodyText = await response.text();
     if (bodyText.includes('rest_not_logged_in')) {
-      console.log('Authorization header stripped by server, trying cookie-based auth...');
+      console.log('Authorization header stripped by server, trying URL-embedded credentials...');
       
-      // Extract base URL from the API URL
+      // Attempt 2: URL-embedded credentials (user:pass@host)
       const urlObj = new URL(url);
-      const baseUrl = `${urlObj.protocol}//${urlObj.host}`;
+      urlObj.username = encodeURIComponent(username);
+      urlObj.password = encodeURIComponent(password);
       
-      const session = await getWpSessionAuth(baseUrl, username, password);
-      if (session) {
-        const cookieHeaders: Record<string, string> = {
-          'Content-Type': 'application/json',
-          'User-Agent': 'Supabase-Edge-Function',
-          'Cookie': session.cookies,
-          'X-WP-Nonce': session.nonce,
-        };
-        
-        response = await fetch(url, {
-          method: options.method || 'GET',
-          headers: cookieHeaders,
-          ...(options.body && { body: options.body }),
-        });
-        console.log(`Cookie-based auth response status: ${response.status}`);
-      } else {
-        // Return original error response
-        response = new Response(bodyText, {
-          status: response.status,
-          statusText: response.statusText,
-          headers: response.headers,
-        });
+      const urlEmbedHeaders: Record<string, string> = {
+        'User-Agent': 'Supabase-Edge-Function',
+      };
+      if (options.body) urlEmbedHeaders['Content-Type'] = 'application/json';
+      
+      response = await fetch(urlObj.toString(), {
+        method: options.method || 'GET',
+        headers: urlEmbedHeaders,
+        ...(options.body && { body: options.body }),
+      });
+      console.log(`URL-embedded auth response status: ${response.status}`);
+      
+      if (response.status === 401) {
+        const bodyText2 = await response.text();
+        if (bodyText2.includes('rest_not_logged_in')) {
+          console.log('URL-embedded auth also failed, trying cookie-based auth...');
+          
+          const baseUrl = `${urlObj.protocol}//${urlObj.host}`;
+          const session = await getWpSessionAuth(baseUrl, username, password);
+          if (session) {
+            const cookieHeaders: Record<string, string> = {
+              'Content-Type': 'application/json',
+              'User-Agent': 'Supabase-Edge-Function',
+              'Cookie': session.cookies,
+              'X-WP-Nonce': session.nonce,
+            };
+            
+            response = await fetch(url, {
+              method: options.method || 'GET',
+              headers: cookieHeaders,
+              ...(options.body && { body: options.body }),
+            });
+            console.log(`Cookie-based auth response status: ${response.status}`);
+          } else {
+            response = new Response(bodyText2, {
+              status: response.status,
+              statusText: response.statusText,
+              headers: response.headers,
+            });
+          }
+        } else {
+          response = new Response(bodyText2, {
+            status: response.status,
+            statusText: response.statusText,
+            headers: response.headers,
+          });
+        }
       }
     } else {
       response = new Response(bodyText, {
