@@ -126,12 +126,14 @@ async function wpFetch(
       urlObj.username = encodeURIComponent(username);
       urlObj.password = encodeURIComponent(password);
       
+      const urlEmbedHeaders: Record<string, string> = {
+        'User-Agent': 'Supabase-Edge-Function',
+      };
+      if (options.body) urlEmbedHeaders['Content-Type'] = 'application/json';
+      
       response = await fetch(urlObj.toString(), {
         method: options.method || 'GET',
-        headers: {
-          'Content-Type': options.body !== undefined ? 'application/json' : '',
-          'User-Agent': 'Supabase-Edge-Function',
-        },
+        headers: urlEmbedHeaders,
         ...(options.body && { body: options.body }),
       });
       console.log(`URL-embedded auth response status: ${response.status}`);
