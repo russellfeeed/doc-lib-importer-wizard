@@ -652,6 +652,7 @@ serve(async (req) => {
         // Link the uploaded media attachment to the DLP document
         updateBody.meta = {
           _dlp_attached_file_id: mediaResult.id,
+          _dlp_document_link_type: 'file',
         };
 
         console.log(`Updating DLP document ${documentId}...`);
