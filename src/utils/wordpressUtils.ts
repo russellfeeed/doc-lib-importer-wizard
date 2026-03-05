@@ -414,8 +414,9 @@ export const compareDocumentFields = (
 
 // Upload file to WordPress Media Library and update the matched DLP document
 export const uploadAndUpdateDlpDocument = async (
-  document: import('@/types/document').DocumentFile
-): Promise<{ success: boolean; pdaUrl?: string; relativePdaPath?: string; error?: string }> => {
+  document: import('@/types/document').DocumentFile,
+  onProgress?: (step: 'converting' | 'uploading' | 'done', detail?: string) => void
+): Promise<{ success: boolean; mediaId?: number; sourceUrl?: string; pdaUrl?: string; relativePdaPath?: string; error?: string }> => {
   const credentials = getWordPressCredentials();
   if (!credentials) {
     return { success: false, error: 'WordPress credentials not configured' };
@@ -430,6 +431,7 @@ export const uploadAndUpdateDlpDocument = async (
   }
 
   // Convert file to base64
+  onProgress?.('converting', document.file.name);
   const fileData = await new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => {
@@ -443,6 +445,7 @@ export const uploadAndUpdateDlpDocument = async (
   });
 
   try {
+    onProgress?.('uploading');
     const { data, error } = await supabase.functions.invoke('wordpress-proxy', {
       body: {
         url: credentials.url,
@@ -465,8 +468,11 @@ export const uploadAndUpdateDlpDocument = async (
     }
 
     if (data?.success) {
+      onProgress?.('done');
       return {
         success: true,
+        mediaId: data.mediaId,
+        sourceUrl: data.sourceUrl,
         pdaUrl: data.pdaUrl,
         relativePdaPath: data.relativePdaPath,
       };

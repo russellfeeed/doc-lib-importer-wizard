@@ -1,48 +1,48 @@
 
 
-## Progress Modal for Upload & Update
+## Upload to Media Library & Update Document Library
 
-### What
-Replace the inline button loading state with a modal dialog that shows step-by-step progress as the upload and update happens. The modal will display each stage with status indicators:
+### What it does
+Adds a button (visible when a WordPress duplicate match exists) that:
+1. Uploads the local file to the WordPress Media Library
+2. Takes the returned media URL and derives the correct File URL / Direct URL
+3. Updates the matched DLP document (by ID) with the new file URL plus current local metadata (title, excerpt, categories, tags)
 
-1. **Converting file** — preparing base64 data
-2. **Uploading to Media Library** — sending file to WordPress
-3. **Updating Document Library** — updating metadata, categories, tags, and file link
-4. **Complete** — summary with media ID and URLs
+### Technical approach
 
-### Approach
+**1. New `upload-and-update-dlp` action in `supabase/functions/wordpress-proxy/index.ts`**
 
-**1. New component: `src/components/document/editor/WpUploadProgressModal.tsx`**
+Since `wordpress-proxy` already has the cookie-based auth fallback (`wpFetch`), and the `wordpress-upload` function does not, the new action lives here. It needs a `wpFetchFormData` variant of `wpFetch` that sends `multipart/form-data` instead of JSON (for the media upload step). Steps inside the handler:
 
-A Dialog component that receives:
-- `open: boolean`, `onOpenChange`
-- `steps: { label: string; status: 'pending' | 'active' | 'done' | 'error'; detail?: string }[]`
-- `isComplete: boolean`, `error?: string`
-- `result?: { mediaId, sourceUrl, pdaUrl, relativePdaPath }`
+- Receive: `{ documentId, fileData (base64), fileName, fileType, title, excerpt, categories, tags }`
+- **Step A**: Upload file to `/wp-json/wp/v2/media` using FormData (with cookie-auth fallback)
+- **Step B**: Get `source_url` from the response — derive the `_pda` protected path variant
+- **Step C**: Resolve category/tag names to term IDs via `/wp-json/wp/v2/doc_categories?search=X` and `/wp-json/wp/v2/doc_tags?search=X`
+- **Step D**: PUT to `/wp-json/wp/v2/dlp_document/{documentId}` with `{ title, excerpt, doc_categories: [ids], doc_tags: [ids], _file_url: derivedUrl }` — the exact meta key for the file URL will need to match what Barn2 DLP expects (likely `_dlp_document_file_url` or similar custom field)
 
-Renders a vertical list of steps, each with a spinner (active), check (done), or X (error) icon. On completion, shows a success summary with the media ID and URLs.
+**2. New client utility in `src/utils/wordpressUtils.ts`**
 
-**2. Modify `WpComparisonPanel.tsx`**
+- `uploadAndUpdateDlpDocument(document: DocumentFile)`: reads the File object as base64, calls the edge function, returns success/error status
+- Handles the base64 conversion client-side before sending
 
-- Add state for `showModal`, `steps[]`, and `result`
-- Refactor `handleUploadAndUpdate` to update step statuses as progress occurs
-- Since the edge function is a single call, we simulate granular steps:
-  - Step 1 ("Converting file") completes after base64 conversion (move conversion here from `wordpressUtils.ts`)
-  - Step 2 ("Uploading & updating") goes active when calling the edge function
-  - Step 3 ("Complete") on success
-- Open the modal when the button is clicked
-- Render `<WpUploadProgressModal />` at the bottom
+**3. Button in `src/components/document/editor/WpComparisonPanel.tsx`**
 
-**3. Refactor `src/utils/wordpressUtils.ts` — `uploadAndUpdateDlpDocument`**
+- Add an "Upload & Update in WordPress" button at the bottom of the comparison panel
+- Shows a loading spinner during the operation
+- On success: toast notification with the new URL; updates `fileUrl` and `directUrl` on the document via `onEdit`
+- On error: toast with error message
 
-Add an optional `onProgress` callback parameter so the caller can track stages:
-```ts
-onProgress?: (step: string) => void
-```
-Called at key points: `'converting'`, `'uploading'`, `'complete'`.
+**4. Prop threading**
 
-### Files to create/modify
-- **Create** `src/components/document/editor/WpUploadProgressModal.tsx`
-- **Modify** `src/components/document/editor/WpComparisonPanel.tsx` — add modal state, step tracking, render modal
-- **Modify** `src/utils/wordpressUtils.ts` — add `onProgress` callback to `uploadAndUpdateDlpDocument`
+- `WpComparisonPanel` needs the `document` object and `onEdit` callback (currently only receives `rows`)
+- `DocumentMetadata` already has both — pass them down
+
+### Files to modify
+- `supabase/functions/wordpress-proxy/index.ts` — add `wpFetchFormData` helper + `upload-and-update-dlp` action (~80 lines)
+- `src/utils/wordpressUtils.ts` — add `uploadAndUpdateDlpDocument` function
+- `src/components/document/editor/WpComparisonPanel.tsx` — add button + state, accept new props
+- `src/components/document/editor/DocumentMetadata.tsx` — pass document + onEdit to WpComparisonPanel
+
+### Key detail: File URL transformation
+The media upload returns a URL like `https://domain/wp-content/uploads/2026/03/file.pdf`. For standards, this needs to become the `_pda` protected variant: `/wp-content/uploads/_pda/2026/03/file.pdf` (relative for File URL) and full absolute for Direct URL. The edge function will derive this from the `source_url` returned by WordPress.
 
