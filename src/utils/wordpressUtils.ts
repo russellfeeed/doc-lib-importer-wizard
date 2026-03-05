@@ -175,10 +175,11 @@ export const clearDlpDocumentsCache = () => {
 // Fetch all DLP document titles (with session cache)
 const fetchAllDlpDocuments = async (credentials: WordPressCredentials): Promise<any[]> => {
   const cacheKey = getDlpCacheKey(credentials);
-  // Always fetch fresh data - never use cache
-  {
-    console.log(`Fetching fresh DLP documents (cache disabled)`);
+  if (dlpDocumentsCache && dlpCacheCredentialsKey === cacheKey) {
+    console.log(`Using cached DLP documents (${dlpDocumentsCache.length} items)`);
+    return dlpDocumentsCache;
   }
+  console.log('Fetching fresh DLP documents...');
 
   const { data, error } = await supabase.functions.invoke('wordpress-proxy', {
     body: {
@@ -256,61 +257,6 @@ export const checkExistingDlpDocumentWithLogs = async (
   }
   log(`Connected to: ${credentials.url}`, 'success');
   log(`API user: ${credentials.username}`, 'info');
-
-  // Verify authentication via /users/me
-  try {
-    log(`GET ${credentials.url}/wp-json/wp/v2/users/me`, 'info');
-    const { data: userMeData, error: userMeError } = await supabase.functions.invoke('wordpress-proxy', {
-      body: {
-        siteUrl: credentials.url,
-        username: credentials.username,
-        password: credentials.password,
-        action: 'fetch-user-me',
-      }
-    });
-    if (userMeError) {
-      log(`/users/me error: ${userMeError.message}`, 'warning');
-    } else {
-      log(`Response: ${JSON.stringify(userMeData, null, 2)}`, 'info');
-    }
-  } catch (e: any) {
-    log(`/users/me failed: ${e.message || 'unknown error'}`, 'warning');
-  }
-
-  // --- Category inspection ---
-  log('Inspecting WordPress categories (searching: standards, system, service)...', 'info');
-  for (const term of ['standards', 'system', 'service']) {
-    try {
-      const { data: catData, error: catError } = await supabase.functions.invoke('wordpress-proxy', {
-        body: {
-          url: credentials.url,
-          username: credentials.username,
-          password: credentials.password,
-          action: 'fetch-wp-categories',
-          searchTerm: term,
-        }
-      });
-      if (catError) {
-        log(`Category search "${term}" error: ${catError.message}`, 'warning');
-      } else {
-        for (const [slug, result] of Object.entries(catData || {})) {
-          const r = result as any;
-          if (r.success && r.categories?.length > 0) {
-            log(`Taxonomy "${slug}" — "${term}": ${r.categories.length} matches (total in taxonomy: ${r.total})`, 'success');
-            for (const cat of r.categories) {
-              log(`  ID:${cat.id}  name:"${cat.name}"  parent:${cat.parent}  count:${cat.count}`, 'detail');
-            }
-          } else if (r.success) {
-            log(`Taxonomy "${slug}" — "${term}": no matches`, 'info');
-          } else {
-            log(`Taxonomy "${slug}" — "${term}": failed (status ${r.status || r.error})`, 'warning');
-          }
-        }
-      }
-    } catch (e: any) {
-      log(`Category search "${term}" failed: ${e.message}`, 'warning');
-    }
-  }
 
   if (!standardNumber) {
     log('No standard number provided — nothing to search for.', 'warning');

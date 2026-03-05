@@ -1,41 +1,48 @@
 
 
-## WordPress Duplicate Check: API Efficiency Analysis
+## Upload to Media Library & Update Document Library
 
-### Current Problem
+### What it does
+Adds a button (visible when a WordPress duplicate match exists) that:
+1. Uploads the local file to the WordPress Media Library
+2. Takes the returned media URL and derives the correct File URL / Direct URL
+3. Updates the matched DLP document (by ID) with the new file URL plus current local metadata (title, excerpt, categories, tags)
 
-Each duplicate check triggers **5-6 separate edge function invocations**, each of which independently authenticates against WordPress (wp-login.php + cookie + nonce). Here's the breakdown:
+### Technical approach
 
-| # | Call | Purpose | Necessary? |
-|---|------|---------|------------|
-| 1 | `fetch-user-me` | Diagnostic — verify auth | No (debugging only) |
-| 2 | `fetch-wp-categories` "standards" | Diagnostic — inspect categories | No |
-| 3 | `fetch-wp-categories` "system" | Diagnostic — inspect categories | No |
-| 4 | `fetch-wp-categories` "service" | Diagnostic — inspect categories | No |
-| 5 | `fetch-all-dlp-titles` | **The actual duplicate check** | Yes |
-| 6 | `fetch-dlp-detail` | Fetch detail if match found | Yes |
+**1. New `upload-and-update-dlp` action in `supabase/functions/wordpress-proxy/index.ts`**
 
-So **4 out of 6 calls are purely diagnostic** and were added during debugging. Each triggers a full WordPress login cycle (wp-login.php POST + admin page fetch for nonce). That's likely what's causing rate limiting.
+Since `wordpress-proxy` already has the cookie-based auth fallback (`wpFetch`), and the `wordpress-upload` function does not, the new action lives here. It needs a `wpFetchFormData` variant of `wpFetch` that sends `multipart/form-data` instead of JSON (for the media upload step). Steps inside the handler:
 
-Additionally, the in-memory cache is explicitly disabled (line 178: "Always fetch fresh data - never use cache"), so even consecutive checks re-fetch all documents.
+- Receive: `{ documentId, fileData (base64), fileName, fileType, title, excerpt, categories, tags }`
+- **Step A**: Upload file to `/wp-json/wp/v2/media` using FormData (with cookie-auth fallback)
+- **Step B**: Get `source_url` from the response — derive the `_pda` protected path variant
+- **Step C**: Resolve category/tag names to term IDs via `/wp-json/wp/v2/doc_categories?search=X` and `/wp-json/wp/v2/doc_tags?search=X`
+- **Step D**: PUT to `/wp-json/wp/v2/dlp_document/{documentId}` with `{ title, excerpt, doc_categories: [ids], doc_tags: [ids], _file_url: derivedUrl }` — the exact meta key for the file URL will need to match what Barn2 DLP expects (likely `_dlp_document_file_url` or similar custom field)
 
-### Proposed Fix
+**2. New client utility in `src/utils/wordpressUtils.ts`**
 
-**1. Remove diagnostic calls from `checkExistingDlpDocumentWithLogs`**
+- `uploadAndUpdateDlpDocument(document: DocumentFile)`: reads the File object as base64, calls the edge function, returns success/error status
+- Handles the base64 conversion client-side before sending
 
-Strip out the `fetch-user-me` and the 3x `fetch-wp-categories` loop. These were useful for initial debugging but are now unnecessary overhead. The function should go straight to fetching DLP documents.
+**3. Button in `src/components/document/editor/WpComparisonPanel.tsx`**
 
-**2. Re-enable the session cache**
+- Add an "Upload & Update in WordPress" button at the bottom of the comparison panel
+- Shows a loading spinner during the operation
+- On success: toast notification with the new URL; updates `fileUrl` and `directUrl` on the document via `onEdit`
+- On error: toast with error message
 
-Allow `fetchAllDlpDocuments` to use its in-memory cache when credentials haven't changed. The "Clear WP Cache" button already exists for manual resets. This reduces repeated checks from ~5 calls to 0-1 calls.
+**4. Prop threading**
 
-**3. Keep the log modal useful**
-
-The modal will still show: credential check, normalized search term, document comparison list, and match result — just without the 4 extra WordPress round-trips.
+- `WpComparisonPanel` needs the `document` object and `onEdit` callback (currently only receives `rows`)
+- `DocumentMetadata` already has both — pass them down
 
 ### Files to modify
+- `supabase/functions/wordpress-proxy/index.ts` — add `wpFetchFormData` helper + `upload-and-update-dlp` action (~80 lines)
+- `src/utils/wordpressUtils.ts` — add `uploadAndUpdateDlpDocument` function
+- `src/components/document/editor/WpComparisonPanel.tsx` — add button + state, accept new props
+- `src/components/document/editor/DocumentMetadata.tsx` — pass document + onEdit to WpComparisonPanel
 
-- **`src/utils/wordpressUtils.ts`** — Remove the `fetch-user-me` call and the `fetch-wp-categories` loop from `checkExistingDlpDocumentWithLogs`; re-enable cache in `fetchAllDlpDocuments`
-
-This reduces each duplicate check from 5-6 API calls to 1-2 (or 0-1 with cache).
+### Key detail: File URL transformation
+The media upload returns a URL like `https://domain/wp-content/uploads/2026/03/file.pdf`. For standards, this needs to become the `_pda` protected variant: `/wp-content/uploads/_pda/2026/03/file.pdf` (relative for File URL) and full absolute for Direct URL. The edge function will derive this from the `source_url` returned by WordPress.
 
