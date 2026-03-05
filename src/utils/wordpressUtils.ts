@@ -431,6 +431,7 @@ export const uploadAndUpdateDlpDocument = async (
   }
 
   // Convert file to base64
+  onProgress?.('converting', document.file.name);
   const fileData = await new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => {
@@ -444,6 +445,7 @@ export const uploadAndUpdateDlpDocument = async (
   });
 
   try {
+    onProgress?.('uploading');
     const { data, error } = await supabase.functions.invoke('wordpress-proxy', {
       body: {
         url: credentials.url,
@@ -466,8 +468,11 @@ export const uploadAndUpdateDlpDocument = async (
     }
 
     if (data?.success) {
+      onProgress?.('done');
       return {
         success: true,
+        mediaId: data.mediaId,
+        sourceUrl: data.sourceUrl,
         pdaUrl: data.pdaUrl,
         relativePdaPath: data.relativePdaPath,
       };

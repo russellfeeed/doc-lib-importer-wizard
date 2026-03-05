@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { CheckCircle, AlertTriangle, Upload, Loader2 } from 'lucide-react';
+import { CheckCircle, AlertTriangle, Upload } from 'lucide-react';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { DocumentFile } from '@/types/document';
 import { uploadAndUpdateDlpDocument } from '@/utils/wordpressUtils';
+import WpUploadProgressModal, { UploadStep, UploadResult } from './WpUploadProgressModal';
 
 interface ComparisonRow {
   field: string;
@@ -19,31 +20,66 @@ interface WpComparisonPanelProps {
   onEdit: (field: keyof DocumentFile, value: string | boolean | Record<string, string>) => void;
 }
 
+const initialSteps: UploadStep[] = [
+  { label: 'Converting file to base64', status: 'pending' },
+  { label: 'Uploading to Media Library & updating document', status: 'pending' },
+  { label: 'Complete', status: 'pending' },
+];
+
 const WpComparisonPanel: React.FC<WpComparisonPanelProps> = ({ rows, document, onEdit }) => {
-  const [isUploading, setIsUploading] = useState(false);
+  const [showModal, setShowModal] = useState(false);
+  const [steps, setSteps] = useState<UploadStep[]>(initialSteps);
+  const [uploadError, setUploadError] = useState<string | undefined>();
+  const [uploadResult, setUploadResult] = useState<UploadResult | undefined>();
+
   const hasDifferences = rows.some(r => r.isDifferent);
   const hasMatchedDoc = !!document.wpExisting?.id;
   const hasFile = !!document.file;
+  const isUploading = showModal && !uploadResult && !uploadError;
+
+  const updateStep = (index: number, updates: Partial<UploadStep>) => {
+    setSteps(prev => prev.map((s, i) => i === index ? { ...s, ...updates } : s));
+  };
 
   const handleUploadAndUpdate = async () => {
-    setIsUploading(true);
+    setSteps(initialSteps.map(s => ({ ...s })));
+    setUploadError(undefined);
+    setUploadResult(undefined);
+    setShowModal(true);
+
     try {
-      const result = await uploadAndUpdateDlpDocument(document);
+      const result = await uploadAndUpdateDlpDocument(document, (step, detail) => {
+        if (step === 'converting') {
+          updateStep(0, { status: 'active', detail });
+        } else if (step === 'uploading') {
+          updateStep(0, { status: 'done' });
+          updateStep(1, { status: 'active', detail: 'Sending to WordPress…' });
+        } else if (step === 'done') {
+          updateStep(1, { status: 'done' });
+          updateStep(2, { status: 'done' });
+        }
+      });
+
       if (result.success) {
-        toast.success('File uploaded and WordPress document updated successfully');
-        if (result.relativePdaPath) {
-          onEdit('fileUrl', result.relativePdaPath);
-        }
-        if (result.pdaUrl) {
-          onEdit('directUrl', result.pdaUrl);
-        }
+        updateStep(1, { status: 'done' });
+        updateStep(2, { status: 'done', detail: `Media ID: ${result.mediaId}` });
+        setUploadResult({
+          mediaId: result.mediaId,
+          sourceUrl: result.sourceUrl,
+          pdaUrl: result.pdaUrl,
+          relativePdaPath: result.relativePdaPath,
+        });
+        toast.success('File uploaded and document updated');
+        if (result.relativePdaPath) onEdit('fileUrl', result.relativePdaPath);
+        if (result.pdaUrl) onEdit('directUrl', result.pdaUrl);
       } else {
-        toast.error(`Upload failed: ${result.error}`);
+        const failIdx = steps.findIndex(s => s.status === 'active' || s.status === 'pending');
+        if (failIdx >= 0) updateStep(failIdx, { status: 'error' });
+        setUploadError(result.error || 'Upload failed');
       }
     } catch (err: any) {
-      toast.error(`Upload error: ${err.message}`);
-    } finally {
-      setIsUploading(false);
+      setUploadError(err.message);
+      setSteps(prev => prev.map(s => s.status === 'active' ? { ...s, status: 'error' } : s));
     }
   };
 
@@ -100,23 +136,22 @@ const WpComparisonPanel: React.FC<WpComparisonPanelProps> = ({ rows, document, o
             onClick={handleUploadAndUpdate}
             disabled={isUploading || !hasFile}
           >
-            {isUploading ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Uploading & Updating...
-              </>
-            ) : (
-              <>
-                <Upload className="mr-2 h-4 w-4" />
-                Upload to Media Library & Update Document Library
-              </>
-            )}
+            <Upload className="mr-2 h-4 w-4" />
+            Upload to Media Library & Update Document Library
           </Button>
           {!hasFile && (
             <p className="text-xs text-muted-foreground mt-1">No local file available for upload</p>
           )}
         </div>
       )}
+
+      <WpUploadProgressModal
+        open={showModal}
+        onOpenChange={setShowModal}
+        steps={steps}
+        error={uploadError}
+        result={uploadResult}
+      />
     </div>
   );
 };
