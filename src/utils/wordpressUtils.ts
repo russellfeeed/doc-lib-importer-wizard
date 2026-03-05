@@ -175,10 +175,11 @@ export const clearDlpDocumentsCache = () => {
 // Fetch all DLP document titles (with session cache)
 const fetchAllDlpDocuments = async (credentials: WordPressCredentials): Promise<any[]> => {
   const cacheKey = getDlpCacheKey(credentials);
-  // Always fetch fresh data - never use cache
-  {
-    console.log(`Fetching fresh DLP documents (cache disabled)`);
+  if (dlpDocumentsCache && dlpCacheCredentialsKey === cacheKey) {
+    console.log(`Using cached DLP documents (${dlpDocumentsCache.length} items)`);
+    return dlpDocumentsCache;
   }
+  console.log('Fetching fresh DLP documents...');
 
   const { data, error } = await supabase.functions.invoke('wordpress-proxy', {
     body: {
