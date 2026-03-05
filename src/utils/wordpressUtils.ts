@@ -414,8 +414,9 @@ export const compareDocumentFields = (
 
 // Upload file to WordPress Media Library and update the matched DLP document
 export const uploadAndUpdateDlpDocument = async (
-  document: import('@/types/document').DocumentFile
-): Promise<{ success: boolean; pdaUrl?: string; relativePdaPath?: string; error?: string }> => {
+  document: import('@/types/document').DocumentFile,
+  onProgress?: (step: 'converting' | 'uploading' | 'done', detail?: string) => void
+): Promise<{ success: boolean; mediaId?: number; sourceUrl?: string; pdaUrl?: string; relativePdaPath?: string; error?: string }> => {
   const credentials = getWordPressCredentials();
   if (!credentials) {
     return { success: false, error: 'WordPress credentials not configured' };
