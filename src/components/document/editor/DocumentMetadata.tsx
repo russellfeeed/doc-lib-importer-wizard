@@ -173,6 +173,14 @@ const DocumentMetadata: React.FC<DocumentMetadataProps> = ({
         </div>
       )}
 
+      {/* WordPress Post ID badge */}
+      {document.wpExisting && (
+        <div className="mb-4 flex items-center gap-2 text-sm rounded-md border border-blue-200 bg-blue-50 px-3 py-2 text-blue-800">
+          <Hash className="h-4 w-4 shrink-0" />
+          <span>WordPress Post ID: <strong>{document.wpExisting.id}</strong></span>
+        </div>
+      )}
+
       {/* WordPress Comparison Panel */}
       {document.wpExisting && document.wpExisting.excerpt !== undefined && (
         <div className="mb-4">
