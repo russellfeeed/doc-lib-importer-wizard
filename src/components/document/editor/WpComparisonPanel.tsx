@@ -4,7 +4,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { DocumentFile } from '@/types/document';
-import { uploadAndUpdateDlpDocument } from '@/utils/wordpressUtils';
+import { uploadAndUpdateDlpDocument, type UploadProgressStep } from '@/utils/wordpressUtils';
 import WpUploadProgressModal, { UploadStep, UploadResult } from './WpUploadProgressModal';
 
 interface ComparisonRow {
