@@ -554,12 +554,12 @@ serve(async (req) => {
       }
     }
 
-    // Handle upload-and-update-dlp action
-    if (action === 'upload-and-update-dlp') {
-      const { documentId, fileData, fileName, fileType, title, excerpt, categories, tags } = body;
-      if (!url || !username || !password || !documentId || !fileData || !fileName) {
+    // Handle upload-media-only action (Step 1: upload file to Media Library)
+    if (action === 'upload-media-only') {
+      const { fileData, fileName, fileType } = body;
+      if (!url || !username || !password || !fileData || !fileName) {
         return new Response(
-          JSON.stringify({ error: 'Missing required fields for upload-and-update-dlp' }),
+          JSON.stringify({ error: 'Missing required fields for upload-media-only' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -567,8 +567,7 @@ serve(async (req) => {
       const baseUrl3 = url.replace(/\/$/, '');
 
       try {
-        // Step A: Upload file to WordPress Media Library via cookie auth
-        console.log(`Uploading file "${fileName}" to WordPress media library...`);
+        console.log(`[upload-media-only] Uploading file "${fileName}"...`);
         const session = await getWpSessionAuth(baseUrl3, username, cleanPassword);
         if (!session) {
           return new Response(
@@ -577,7 +576,6 @@ serve(async (req) => {
           );
         }
 
-        // Decode base64 to binary
         const binaryStr = atob(fileData);
         const bytes = new Uint8Array(binaryStr.length);
         for (let i = 0; i < binaryStr.length; i++) {
@@ -599,7 +597,7 @@ serve(async (req) => {
 
         if (!mediaResponse.ok) {
           const mediaErr = await mediaResponse.text();
-          console.error('Media upload failed:', mediaResponse.status, mediaErr);
+          console.error('[upload-media-only] Media upload failed:', mediaResponse.status, mediaErr);
           return new Response(
             JSON.stringify({ error: 'Failed to upload file to WordPress media library', details: mediaErr }),
             { status: mediaResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -608,28 +606,210 @@ serve(async (req) => {
 
         const mediaResult = await mediaResponse.json();
         const sourceUrl = mediaResult.source_url || '';
-        console.log(`Media uploaded successfully. source_url: ${sourceUrl}`);
+        console.log(`[upload-media-only] Success. Media ID: ${mediaResult.id}, source_url: ${sourceUrl}`);
 
-        // Step B: Derive _pda protected path (avoid double _pda)
+        // Derive _pda protected path
         const pdaUrl = sourceUrl.includes('/_pda/') ? sourceUrl : sourceUrl.replace('/wp-content/uploads/', '/wp-content/uploads/_pda/');
         const urlObj2 = new URL(pdaUrl);
         const relativePdaPath = pdaUrl.replace(`${urlObj2.protocol}//${urlObj2.host}`, '');
-        console.log(`Derived _pda URL: ${pdaUrl}, relative: ${relativePdaPath}`);
 
-        // Step C: Resolve category and tag names to term IDs
+        return new Response(JSON.stringify({
+          success: true,
+          mediaId: mediaResult.id,
+          sourceUrl,
+          pdaUrl,
+          relativePdaPath,
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      } catch (error) {
+        console.error('[upload-media-only] error:', error);
+        return new Response(
+          JSON.stringify({ error: 'Media upload failed', details: error.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    // Handle update-dlp-only action (Step 2: resolve terms + update document)
+    if (action === 'update-dlp-only') {
+      const { documentId, mediaId, title, excerpt, categories, tags } = body;
+      if (!url || !username || !password || !documentId) {
+        return new Response(
+          JSON.stringify({ error: 'Missing required fields for update-dlp-only' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const baseUrl3 = url.replace(/\/$/, '');
+
+      try {
+        // Resolve category and tag names to term IDs
+        const resolveTermIds = async (names: string, taxonomy: string): Promise<{ ids: number[]; resolved: Record<string, number | null> }> => {
+          const resolved: Record<string, number | null> = {};
+          if (!names || !names.trim()) return { ids: [], resolved };
+          const termNames = names.split(',').map(n => n.trim()).filter(Boolean);
+          const ids: number[] = [];
+          for (const name of termNames) {
+            try {
+              // Try search first
+              const searchUrl = `${baseUrl3}/wp-json/wp/v2/${taxonomy}?search=${encodeURIComponent(name)}&_fields=id,name,slug`;
+              const resp = await wpFetch(searchUrl, username, cleanPassword);
+              if (resp.ok) {
+                const results = await resp.json();
+                // Exact name match
+                let match = results.find((r: any) => r.name.toLowerCase() === name.toLowerCase());
+                // Slug match fallback
+                if (!match) {
+                  const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+                  match = results.find((r: any) => r.slug === slug);
+                }
+                if (match) {
+                  ids.push(match.id);
+                  resolved[name] = match.id;
+                  console.log(`[update-dlp-only] Resolved "${name}" → ID ${match.id} (${taxonomy})`);
+                } else {
+                  resolved[name] = null;
+                  console.log(`[update-dlp-only] No match for "${name}" in ${taxonomy}. Search returned: ${JSON.stringify(results.map((r: any) => r.name))}`);
+                }
+              }
+            } catch (e) {
+              console.error(`[update-dlp-only] Failed to resolve term "${name}" in ${taxonomy}:`, e);
+              resolved[name] = null;
+            }
+          }
+          return { ids, resolved };
+        };
+
+        console.log(`[update-dlp-only] Resolving categories: "${categories}", tags: "${tags}"`);
+        const catResult = await resolveTermIds(categories || '', 'doc_categories');
+        const tagResult = await resolveTermIds(tags || '', 'doc_tags');
+        console.log(`[update-dlp-only] Resolved categories: [${catResult.ids}], tags: [${tagResult.ids}]`);
+
+        // Build update body
+        const updateBody: Record<string, any> = {
+          title: title || '',
+          excerpt: excerpt || '',
+        };
+        if (catResult.ids.length > 0) updateBody.doc_categories = catResult.ids;
+        if (tagResult.ids.length > 0) updateBody.doc_tags = tagResult.ids;
+        if (mediaId) {
+          updateBody.meta = {
+            _dlp_attached_file_id: mediaId,
+            _dlp_document_link_type: 'file',
+          };
+        }
+
+        console.log(`[update-dlp-only] Updating DLP document ${documentId}...`);
+        const updateResponse = await wpFetch(
+          `${baseUrl3}/wp-json/wp/v2/dlp_document/${documentId}`,
+          username,
+          cleanPassword,
+          { method: 'POST', body: JSON.stringify(updateBody) }
+        );
+
+        if (!updateResponse.ok) {
+          const updateErr = await updateResponse.text();
+          console.error('[update-dlp-only] Update failed:', updateResponse.status, updateErr);
+          return new Response(
+            JSON.stringify({ error: 'Failed to update DLP document', details: updateErr }),
+            { status: updateResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const updateResult = await updateResponse.json();
+        console.log(`[update-dlp-only] Document ${documentId} updated successfully`);
+
+        return new Response(JSON.stringify({
+          success: true,
+          documentId: updateResult.id,
+          categoryIds: catResult.ids,
+          tagIds: tagResult.ids,
+          resolvedCategories: catResult.resolved,
+          resolvedTags: tagResult.resolved,
+        }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      } catch (error) {
+        console.error('[update-dlp-only] error:', error);
+        return new Response(
+          JSON.stringify({ error: 'Document update failed', details: error.message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    // Handle legacy upload-and-update-dlp action (kept for backward compatibility)
+    if (action === 'upload-and-update-dlp') {
+      const { documentId, fileData, fileName, fileType, title, excerpt, categories, tags } = body;
+      if (!url || !username || !password || !documentId || !fileData || !fileName) {
+        return new Response(
+          JSON.stringify({ error: 'Missing required fields for upload-and-update-dlp' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const baseUrl3 = url.replace(/\/$/, '');
+
+      try {
+        console.log(`Uploading file "${fileName}" to WordPress media library...`);
+        const session = await getWpSessionAuth(baseUrl3, username, cleanPassword);
+        if (!session) {
+          return new Response(
+            JSON.stringify({ error: 'Failed to authenticate with WordPress for file upload' }),
+            { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const binaryStr = atob(fileData);
+        const bytes = new Uint8Array(binaryStr.length);
+        for (let i = 0; i < binaryStr.length; i++) {
+          bytes[i] = binaryStr.charCodeAt(i);
+        }
+
+        const formData = new FormData();
+        formData.append('file', new Blob([bytes], { type: fileType || 'application/pdf' }), fileName);
+
+        const mediaResponse = await fetch(`${baseUrl3}/wp-json/wp/v2/media`, {
+          method: 'POST',
+          headers: {
+            'Cookie': session.cookies,
+            'X-WP-Nonce': session.nonce,
+            'User-Agent': 'Supabase-Edge-Function',
+          },
+          body: formData,
+        });
+
+        if (!mediaResponse.ok) {
+          const mediaErr = await mediaResponse.text();
+          return new Response(
+            JSON.stringify({ error: 'Failed to upload file to WordPress media library', details: mediaErr }),
+            { status: mediaResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const mediaResult = await mediaResponse.json();
+        const sourceUrl = mediaResult.source_url || '';
+        const pdaUrl = sourceUrl.includes('/_pda/') ? sourceUrl : sourceUrl.replace('/wp-content/uploads/', '/wp-content/uploads/_pda/');
+        const urlObj2 = new URL(pdaUrl);
+        const relativePdaPath = pdaUrl.replace(`${urlObj2.protocol}//${urlObj2.host}`, '');
+
         const resolveTermIds = async (names: string, taxonomy: string): Promise<number[]> => {
           if (!names || !names.trim()) return [];
           const termNames = names.split(',').map(n => n.trim()).filter(Boolean);
           const ids: number[] = [];
           for (const name of termNames) {
             try {
-              const searchUrl = `${baseUrl3}/wp-json/wp/v2/${taxonomy}?search=${encodeURIComponent(name)}&_fields=id,name`;
+              const searchUrl = `${baseUrl3}/wp-json/wp/v2/${taxonomy}?search=${encodeURIComponent(name)}&_fields=id,name,slug`;
               const resp = await wpFetch(searchUrl, username, cleanPassword);
               if (resp.ok) {
                 const results = await resp.json();
-                const exact = results.find((r: any) => r.name.toLowerCase() === name.toLowerCase());
-                if (exact) ids.push(exact.id);
-                else if (results.length > 0) ids.push(results[0].id);
+                let match = results.find((r: any) => r.name.toLowerCase() === name.toLowerCase());
+                if (!match) {
+                  const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+                  match = results.find((r: any) => r.slug === slug);
+                }
+                if (match) ids.push(match.id);
               }
             } catch (e) {
               console.error(`Failed to resolve term "${name}" in ${taxonomy}:`, e);
@@ -640,22 +820,18 @@ serve(async (req) => {
 
         const categoryIds = await resolveTermIds(categories || '', 'doc_categories');
         const tagIds = await resolveTermIds(tags || '', 'doc_tags');
-        console.log(`Resolved categories: [${categoryIds}], tags: [${tagIds}]`);
 
-        // Step D: Update the DLP document
         const updateBody: Record<string, any> = {
           title: title || '',
           excerpt: excerpt || '',
         };
         if (categoryIds.length > 0) updateBody.doc_categories = categoryIds;
         if (tagIds.length > 0) updateBody.doc_tags = tagIds;
-        // Link the uploaded media attachment to the DLP document
         updateBody.meta = {
           _dlp_attached_file_id: mediaResult.id,
           _dlp_document_link_type: 'file',
         };
 
-        console.log(`Updating DLP document ${documentId}...`);
         const updateResponse = await wpFetch(
           `${baseUrl3}/wp-json/wp/v2/dlp_document/${documentId}`,
           username,
@@ -665,7 +841,6 @@ serve(async (req) => {
 
         if (!updateResponse.ok) {
           const updateErr = await updateResponse.text();
-          console.error('DLP document update failed:', updateResponse.status, updateErr);
           return new Response(
             JSON.stringify({ error: 'Failed to update DLP document', details: updateErr }),
             { status: updateResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -673,7 +848,6 @@ serve(async (req) => {
         }
 
         const updateResult = await updateResponse.json();
-        console.log(`DLP document ${documentId} updated successfully`);
 
         return new Response(JSON.stringify({
           success: true,

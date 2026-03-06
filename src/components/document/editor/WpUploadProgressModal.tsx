@@ -14,6 +14,11 @@ export interface UploadResult {
   sourceUrl?: string;
   pdaUrl?: string;
   relativePdaPath?: string;
+  categoryIds?: number[];
+  tagIds?: number[];
+  resolvedCategories?: Record<string, number | null>;
+  resolvedTags?: Record<string, number | null>;
+  documentId?: number;
 }
 
 interface WpUploadProgressModalProps {
@@ -99,6 +104,26 @@ const WpUploadProgressModal: React.FC<WpUploadProgressModalProps> = ({
                 <span className="text-muted-foreground">Protected URL:</span>
                 <span className="truncate">{result.pdaUrl}</span>
               </p>
+            )}
+            {result.resolvedCategories && Object.keys(result.resolvedCategories).length > 0 && (
+              <div>
+                <span className="text-muted-foreground">Categories:</span>
+                {Object.entries(result.resolvedCategories).map(([name, id]) => (
+                  <span key={name} className={`ml-1 ${id ? '' : 'text-destructive'}`}>
+                    {name}{id ? ` → ${id}` : ' (not found)'}
+                  </span>
+                ))}
+              </div>
+            )}
+            {result.resolvedTags && Object.keys(result.resolvedTags).length > 0 && (
+              <div>
+                <span className="text-muted-foreground">Tags:</span>
+                {Object.entries(result.resolvedTags).map(([name, id]) => (
+                  <span key={name} className={`ml-1 ${id ? '' : 'text-destructive'}`}>
+                    {name}{id ? ` → ${id}` : ' (not found)'}
+                  </span>
+                ))}
+              </div>
             )}
           </div>
         )}
