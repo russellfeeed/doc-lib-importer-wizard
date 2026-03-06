@@ -1,48 +1,48 @@
 
 
-## Upload to Media Library & Update Document Library
+## More Granular Upload Progress Modal
 
-### What it does
-Adds a button (visible when a WordPress duplicate match exists) that:
-1. Uploads the local file to the WordPress Media Library
-2. Takes the returned media URL and derives the correct File URL / Direct URL
-3. Updates the matched DLP document (by ID) with the new file URL plus current local metadata (title, excerpt, categories, tags)
+### Problem
+The current modal lumps "Uploading to Media Library & updating document" into a single step because it's one edge function call. The user can't see what's happening inside, and the logs show categories are resolving to `[]` (empty) which needs visibility.
 
-### Technical approach
+### Approach: Split into 2 sequential edge function calls
 
-**1. New `upload-and-update-dlp` action in `supabase/functions/wordpress-proxy/index.ts`**
+Instead of one monolithic `upload-and-update-dlp` action, split into:
+1. **`upload-media-only`** — uploads file to Media Library, returns `mediaId`, `sourceUrl`, `pdaUrl`
+2. **`update-dlp-only`** — resolves terms, updates document metadata + attachment link, returns resolved IDs and update result
 
-Since `wordpress-proxy` already has the cookie-based auth fallback (`wpFetch`), and the `wordpress-upload` function does not, the new action lives here. It needs a `wpFetchFormData` variant of `wpFetch` that sends `multipart/form-data` instead of JSON (for the media upload step). Steps inside the handler:
+This gives real-time progress across 5 modal steps:
 
-- Receive: `{ documentId, fileData (base64), fileName, fileType, title, excerpt, categories, tags }`
-- **Step A**: Upload file to `/wp-json/wp/v2/media` using FormData (with cookie-auth fallback)
-- **Step B**: Get `source_url` from the response — derive the `_pda` protected path variant
-- **Step C**: Resolve category/tag names to term IDs via `/wp-json/wp/v2/doc_categories?search=X` and `/wp-json/wp/v2/doc_tags?search=X`
-- **Step D**: PUT to `/wp-json/wp/v2/dlp_document/{documentId}` with `{ title, excerpt, doc_categories: [ids], doc_tags: [ids], _file_url: derivedUrl }` — the exact meta key for the file URL will need to match what Barn2 DLP expects (likely `_dlp_document_file_url` or similar custom field)
+```text
+ 1. Converting file to base64          ✅ PD CLC TS 50131-2-9_2016.pdf
+ 2. Uploading to Media Library          ✅ Media ID: 35331
+ 3. Resolving categories & tags         ✅ Categories: [12, 45] · Tags: [74, 655, 656]
+ 4. Updating DLP document               ✅ Post 35179 updated
+ 5. Complete                            ✅
+```
 
-**2. New client utility in `src/utils/wordpressUtils.ts`**
+### Files to change
 
-- `uploadAndUpdateDlpDocument(document: DocumentFile)`: reads the File object as base64, calls the edge function, returns success/error status
-- Handles the base64 conversion client-side before sending
+**1. `supabase/functions/wordpress-proxy/index.ts`**
+- Add new action `upload-media-only`: just steps A+B from current code (upload file, derive PDA path), return `{ mediaId, sourceUrl, pdaUrl, relativePdaPath }`
+- Add new action `update-dlp-only`: takes `documentId`, `mediaId`, `title`, `excerpt`, `categories`, `tags` — does steps C+D (resolve terms, update document), returns `{ categoryIds, tagIds, documentId, success }`
+- Keep existing `upload-and-update-dlp` for backward compatibility
+- Redeploy edge function
 
-**3. Button in `src/components/document/editor/WpComparisonPanel.tsx`**
+**2. `src/utils/wordpressUtils.ts`**
+- Replace `uploadAndUpdateDlpDocument` with two sequential calls: `uploadMediaToWordPress` and `updateDlpDocumentMeta`
+- Keep the combined wrapper function but now calling the two steps internally with progress callbacks at each boundary
+- New progress stages: `'converting'`, `'uploading-media'`, `'resolving-terms'`, `'updating-document'`, `'done'`
 
-- Add an "Upload & Update in WordPress" button at the bottom of the comparison panel
-- Shows a loading spinner during the operation
-- On success: toast notification with the new URL; updates `fileUrl` and `directUrl` on the document via `onEdit`
-- On error: toast with error message
+**3. `src/components/document/editor/WpComparisonPanel.tsx`**
+- Update `initialSteps` to 5 steps
+- Update `handleUploadAndUpdate` to map new progress stages to the 5 steps
+- Show resolved term IDs and media ID in step details
 
-**4. Prop threading**
+**4. `src/components/document/editor/WpUploadProgressModal.tsx`**
+- Update `UploadResult` to include `categoryIds`, `tagIds`
+- Show resolved taxonomy info in the result summary
 
-- `WpComparisonPanel` needs the `document` object and `onEdit` callback (currently only receives `rows`)
-- `DocumentMetadata` already has both — pass them down
-
-### Files to modify
-- `supabase/functions/wordpress-proxy/index.ts` — add `wpFetchFormData` helper + `upload-and-update-dlp` action (~80 lines)
-- `src/utils/wordpressUtils.ts` — add `uploadAndUpdateDlpDocument` function
-- `src/components/document/editor/WpComparisonPanel.tsx` — add button + state, accept new props
-- `src/components/document/editor/DocumentMetadata.tsx` — pass document + onEdit to WpComparisonPanel
-
-### Key detail: File URL transformation
-The media upload returns a URL like `https://domain/wp-content/uploads/2026/03/file.pdf`. For standards, this needs to become the `_pda` protected variant: `/wp-content/uploads/_pda/2026/03/file.pdf` (relative for File URL) and full absolute for Direct URL. The edge function will derive this from the `source_url` returned by WordPress.
+### Debugging insight
+The logs show `Resolved categories: []` — the category names from the document aren't matching any `doc_categories` terms. The granular modal will make this visible so the user can see exactly which terms resolved and which didn't.
 
