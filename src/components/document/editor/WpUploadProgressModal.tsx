@@ -14,6 +14,11 @@ export interface UploadResult {
   sourceUrl?: string;
   pdaUrl?: string;
   relativePdaPath?: string;
+  categoryIds?: number[];
+  tagIds?: number[];
+  resolvedCategories?: Record<string, number | null>;
+  resolvedTags?: Record<string, number | null>;
+  documentId?: number;
 }
 
 interface WpUploadProgressModalProps {
