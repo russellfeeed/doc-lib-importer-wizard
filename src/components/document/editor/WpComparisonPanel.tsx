@@ -22,7 +22,9 @@ interface WpComparisonPanelProps {
 
 const initialSteps: UploadStep[] = [
   { label: 'Converting file to base64', status: 'pending' },
-  { label: 'Uploading to Media Library & updating document', status: 'pending' },
+  { label: 'Uploading to Media Library', status: 'pending' },
+  { label: 'Resolving categories & tags', status: 'pending' },
+  { label: 'Updating DLP document', status: 'pending' },
   { label: 'Complete', status: 'pending' },
 ];
 
