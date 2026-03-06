@@ -49,34 +49,56 @@ const WpComparisonPanel: React.FC<WpComparisonPanelProps> = ({ rows, document, o
     setUploadResult(undefined);
     setShowModal(true);
 
+    const stepMap: Record<UploadProgressStep, number> = {
+      'converting': 0,
+      'uploading-media': 1,
+      'resolving-terms': 2,
+      'updating-document': 3,
+      'done': 4,
+    };
+
     try {
       const result = await uploadAndUpdateDlpDocument(document, (step, detail) => {
-        if (step === 'converting') {
-          updateStep(0, { status: 'active', detail });
-        } else if (step === 'uploading') {
-          updateStep(0, { status: 'done' });
-          updateStep(1, { status: 'active', detail: 'Sending to WordPress…' });
-        } else if (step === 'done') {
-          updateStep(1, { status: 'done' });
-          updateStep(2, { status: 'done' });
+        const idx = stepMap[step];
+        // Mark all previous steps as done
+        for (let i = 0; i < idx; i++) {
+          updateStep(i, { status: 'done' });
+        }
+        if (step === 'done') {
+          updateStep(idx, { status: 'done' });
+        } else {
+          updateStep(idx, { status: 'active', detail });
         }
       });
 
       if (result.success) {
-        updateStep(1, { status: 'done' });
-        updateStep(2, { status: 'done', detail: `Media ID: ${result.mediaId}` });
+        // Ensure all steps are done
+        for (let i = 0; i <= 4; i++) updateStep(i, { status: 'done' });
+        updateStep(1, { detail: `Media ID: ${result.mediaId}` });
+        if (result.categoryIds || result.tagIds) {
+          const catStr = result.categoryIds?.length ? `Categories: [${result.categoryIds.join(', ')}]` : 'Categories: none';
+          const tagStr = result.tagIds?.length ? `Tags: [${result.tagIds.join(', ')}]` : 'Tags: none';
+          updateStep(2, { detail: `${catStr} · ${tagStr}` });
+        }
+        updateStep(3, { detail: `Post ${result.documentId} updated` });
         setUploadResult({
           mediaId: result.mediaId,
           sourceUrl: result.sourceUrl,
           pdaUrl: result.pdaUrl,
           relativePdaPath: result.relativePdaPath,
+          categoryIds: result.categoryIds,
+          tagIds: result.tagIds,
+          resolvedCategories: result.resolvedCategories,
+          resolvedTags: result.resolvedTags,
+          documentId: result.documentId,
         });
         toast.success('File uploaded and document updated');
         if (result.relativePdaPath) onEdit('fileUrl', result.relativePdaPath);
         if (result.pdaUrl) onEdit('directUrl', result.pdaUrl);
       } else {
-        const failIdx = steps.findIndex(s => s.status === 'active' || s.status === 'pending');
-        if (failIdx >= 0) updateStep(failIdx, { status: 'error' });
+        // Mark the failed step
+        const failStepIdx = result.errorStep ? stepMap[result.errorStep] : steps.findIndex(s => s.status === 'active' || s.status === 'pending');
+        if (failStepIdx >= 0) updateStep(failStepIdx, { status: 'error' });
         setUploadError(result.error || 'Upload failed');
       }
     } catch (err: any) {

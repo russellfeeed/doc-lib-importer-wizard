@@ -359,10 +359,28 @@ export const compareDocumentFields = (
 };
 
 // Upload file to WordPress Media Library and update the matched DLP document
+// Now uses two sequential edge function calls for granular progress
+export type UploadProgressStep = 'converting' | 'uploading-media' | 'resolving-terms' | 'updating-document' | 'done';
+
+export interface UploadAndUpdateResult {
+  success: boolean;
+  mediaId?: number;
+  sourceUrl?: string;
+  pdaUrl?: string;
+  relativePdaPath?: string;
+  categoryIds?: number[];
+  tagIds?: number[];
+  resolvedCategories?: Record<string, number | null>;
+  resolvedTags?: Record<string, number | null>;
+  documentId?: number;
+  error?: string;
+  errorStep?: UploadProgressStep;
+}
+
 export const uploadAndUpdateDlpDocument = async (
   document: import('@/types/document').DocumentFile,
-  onProgress?: (step: 'converting' | 'uploading' | 'done', detail?: string) => void
-): Promise<{ success: boolean; mediaId?: number; sourceUrl?: string; pdaUrl?: string; relativePdaPath?: string; error?: string }> => {
+  onProgress?: (step: UploadProgressStep, detail?: string) => void
+): Promise<UploadAndUpdateResult> => {
   const credentials = getWordPressCredentials();
   if (!credentials) {
     return { success: false, error: 'WordPress credentials not configured' };
@@ -376,13 +394,12 @@ export const uploadAndUpdateDlpDocument = async (
     return { success: false, error: 'No file available for upload' };
   }
 
-  // Convert file to base64
+  // Step 1: Convert file to base64
   onProgress?.('converting', document.file.name);
   const fileData = await new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => {
       const result = reader.result as string;
-      // Strip the data URL prefix
       const base64 = result.split(',')[1];
       resolve(base64);
     };
@@ -391,17 +408,40 @@ export const uploadAndUpdateDlpDocument = async (
   });
 
   try {
-    onProgress?.('uploading');
-    const { data, error } = await supabase.functions.invoke('wordpress-proxy', {
+    // Step 2: Upload to Media Library
+    onProgress?.('uploading-media', 'Sending file to WordPress…');
+    const { data: mediaData, error: mediaError } = await supabase.functions.invoke('wordpress-proxy', {
       body: {
         url: credentials.url,
         username: credentials.username,
         password: credentials.password,
-        action: 'upload-and-update-dlp',
-        documentId: document.wpExisting.id,
+        action: 'upload-media-only',
         fileData,
         fileName: document.file.name,
         fileType: document.file.type,
+      }
+    });
+
+    if (mediaError || !mediaData?.success) {
+      return {
+        success: false,
+        error: mediaError?.message || mediaData?.error || 'Media upload failed',
+        errorStep: 'uploading-media',
+      };
+    }
+
+    onProgress?.('uploading-media', `Media ID: ${mediaData.mediaId}`);
+
+    // Step 3: Resolve terms + update document
+    onProgress?.('resolving-terms', 'Matching categories & tags…');
+    const { data: updateData, error: updateError } = await supabase.functions.invoke('wordpress-proxy', {
+      body: {
+        url: credentials.url,
+        username: credentials.username,
+        password: credentials.password,
+        action: 'update-dlp-only',
+        documentId: document.wpExisting.id,
+        mediaId: mediaData.mediaId,
         title: document.name,
         excerpt: document.excerpt,
         categories: document.categories,
@@ -409,22 +449,40 @@ export const uploadAndUpdateDlpDocument = async (
       }
     });
 
-    if (error) {
-      return { success: false, error: error.message || 'Upload failed' };
-    }
-
-    if (data?.success) {
-      onProgress?.('done');
+    if (updateError || !updateData?.success) {
       return {
-        success: true,
-        mediaId: data.mediaId,
-        sourceUrl: data.sourceUrl,
-        pdaUrl: data.pdaUrl,
-        relativePdaPath: data.relativePdaPath,
+        success: false,
+        mediaId: mediaData.mediaId,
+        sourceUrl: mediaData.sourceUrl,
+        error: updateError?.message || updateData?.error || 'Document update failed',
+        errorStep: 'updating-document',
       };
     }
 
-    return { success: false, error: data?.error || 'Unknown error' };
+    // Build detail strings for progress
+    const catDetail = updateData.categoryIds?.length
+      ? `Categories: [${updateData.categoryIds.join(', ')}]`
+      : 'Categories: none matched';
+    const tagDetail = updateData.tagIds?.length
+      ? `Tags: [${updateData.tagIds.join(', ')}]`
+      : 'Tags: none matched';
+    onProgress?.('resolving-terms', `${catDetail} · ${tagDetail}`);
+
+    onProgress?.('updating-document', `Post ${updateData.documentId} updated`);
+    onProgress?.('done');
+
+    return {
+      success: true,
+      mediaId: mediaData.mediaId,
+      sourceUrl: mediaData.sourceUrl,
+      pdaUrl: mediaData.pdaUrl,
+      relativePdaPath: mediaData.relativePdaPath,
+      categoryIds: updateData.categoryIds,
+      tagIds: updateData.tagIds,
+      resolvedCategories: updateData.resolvedCategories,
+      resolvedTags: updateData.resolvedTags,
+      documentId: updateData.documentId,
+    };
   } catch (err: any) {
     return { success: false, error: err.message || 'Upload failed' };
   }
