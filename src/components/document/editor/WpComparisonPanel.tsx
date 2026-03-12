@@ -23,8 +23,8 @@ interface WpComparisonPanelProps {
 const initialSteps: UploadStep[] = [
   { label: 'Converting file to base64', status: 'pending' },
   { label: 'Uploading to Media Library', status: 'pending' },
-  { label: 'Resolving categories & tags', status: 'pending' },
-  { label: 'Updating DLP document', status: 'pending' },
+  { label: 'Creating new DLP document', status: 'pending' },
+  { label: 'Trashing old DLP document', status: 'pending' },
   { label: 'Complete', status: 'pending' },
 ];
 
@@ -52,8 +52,8 @@ const WpComparisonPanel: React.FC<WpComparisonPanelProps> = ({ rows, document, o
     const stepMap: Record<UploadProgressStep, number> = {
       'converting': 0,
       'uploading-media': 1,
-      'resolving-terms': 2,
-      'updating-document': 3,
+      'creating-document': 2,
+      'trashing-old': 3,
       'done': 4,
     };
 
@@ -80,7 +80,8 @@ const WpComparisonPanel: React.FC<WpComparisonPanelProps> = ({ rows, document, o
           const tagStr = result.tagIds?.length ? `Tags: [${result.tagIds.join(', ')}]` : 'Tags: none';
           updateStep(2, { detail: `${catStr} · ${tagStr}` });
         }
-        updateStep(3, { detail: `Post ${result.documentId} updated` });
+        updateStep(2, { detail: `New post ${result.newDocumentId} created` });
+        updateStep(3, { detail: result.trashedOld ? `Post ${result.oldDocumentId} trashed` : `Could not trash post ${result.oldDocumentId}` });
         setUploadResult({
           mediaId: result.mediaId,
           sourceUrl: result.sourceUrl,
@@ -90,7 +91,7 @@ const WpComparisonPanel: React.FC<WpComparisonPanelProps> = ({ rows, document, o
           tagIds: result.tagIds,
           resolvedCategories: result.resolvedCategories,
           resolvedTags: result.resolvedTags,
-          documentId: result.documentId,
+          documentId: result.newDocumentId,
         });
         toast.success('File uploaded and document updated');
         if (result.relativePdaPath) onEdit('fileUrl', result.relativePdaPath);

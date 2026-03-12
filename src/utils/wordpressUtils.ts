@@ -360,7 +360,7 @@ export const compareDocumentFields = (
 
 // Upload file to WordPress Media Library and update the matched DLP document
 // Now uses two sequential edge function calls for granular progress
-export type UploadProgressStep = 'converting' | 'uploading-media' | 'resolving-terms' | 'updating-document' | 'done';
+export type UploadProgressStep = 'converting' | 'uploading-media' | 'creating-document' | 'trashing-old' | 'done';
 
 export interface UploadAndUpdateResult {
   success: boolean;
@@ -372,7 +372,9 @@ export interface UploadAndUpdateResult {
   tagIds?: number[];
   resolvedCategories?: Record<string, number | null>;
   resolvedTags?: Record<string, number | null>;
-  documentId?: number;
+  newDocumentId?: number;
+  oldDocumentId?: number;
+  trashedOld?: boolean;
   error?: string;
   errorStep?: UploadProgressStep;
 }
@@ -432,14 +434,14 @@ export const uploadAndUpdateDlpDocument = async (
 
     onProgress?.('uploading-media', `Media ID: ${mediaData.mediaId}`);
 
-    // Step 3: Resolve terms + update document
-    onProgress?.('resolving-terms', 'Matching categories & tags…');
-    const { data: updateData, error: updateError } = await supabase.functions.invoke('wordpress-proxy', {
+    // Step 3: Resolve terms + create new document + trash old
+    onProgress?.('creating-document', 'Creating new DLP document…');
+    const { data: replaceData, error: replaceError } = await supabase.functions.invoke('wordpress-proxy', {
       body: {
         url: credentials.url,
         username: credentials.username,
         password: credentials.password,
-        action: 'update-dlp-only',
+        action: 'create-and-replace-dlp',
         documentId: document.wpExisting.id,
         mediaId: mediaData.mediaId,
         title: document.name,
@@ -449,26 +451,28 @@ export const uploadAndUpdateDlpDocument = async (
       }
     });
 
-    if (updateError || !updateData?.success) {
+    if (replaceError || !replaceData?.success) {
       return {
         success: false,
         mediaId: mediaData.mediaId,
         sourceUrl: mediaData.sourceUrl,
-        error: updateError?.message || updateData?.error || 'Document update failed',
-        errorStep: 'updating-document',
+        error: replaceError?.message || replaceData?.error || 'Document create/replace failed',
+        errorStep: 'creating-document',
       };
     }
 
     // Build detail strings for progress
-    const catDetail = updateData.categoryIds?.length
-      ? `Categories: [${updateData.categoryIds.join(', ')}]`
+    const catDetail = replaceData.categoryIds?.length
+      ? `Categories: [${replaceData.categoryIds.join(', ')}]`
       : 'Categories: none matched';
-    const tagDetail = updateData.tagIds?.length
-      ? `Tags: [${updateData.tagIds.join(', ')}]`
+    const tagDetail = replaceData.tagIds?.length
+      ? `Tags: [${replaceData.tagIds.join(', ')}]`
       : 'Tags: none matched';
-    onProgress?.('resolving-terms', `${catDetail} · ${tagDetail}`);
+    onProgress?.('creating-document', `New post ${replaceData.newDocumentId} · ${catDetail} · ${tagDetail}`);
 
-    onProgress?.('updating-document', `Post ${updateData.documentId} updated`);
+    onProgress?.('trashing-old', replaceData.trashedOld
+      ? `Post ${replaceData.oldDocumentId} trashed`
+      : `Could not trash post ${replaceData.oldDocumentId}`);
     onProgress?.('done');
 
     return {
@@ -477,11 +481,13 @@ export const uploadAndUpdateDlpDocument = async (
       sourceUrl: mediaData.sourceUrl,
       pdaUrl: mediaData.pdaUrl,
       relativePdaPath: mediaData.relativePdaPath,
-      categoryIds: updateData.categoryIds,
-      tagIds: updateData.tagIds,
-      resolvedCategories: updateData.resolvedCategories,
-      resolvedTags: updateData.resolvedTags,
-      documentId: updateData.documentId,
+      categoryIds: replaceData.categoryIds,
+      tagIds: replaceData.tagIds,
+      resolvedCategories: replaceData.resolvedCategories,
+      resolvedTags: replaceData.resolvedTags,
+      newDocumentId: replaceData.newDocumentId,
+      oldDocumentId: replaceData.oldDocumentId,
+      trashedOld: replaceData.trashedOld,
     };
   } catch (err: any) {
     return { success: false, error: err.message || 'Upload failed' };

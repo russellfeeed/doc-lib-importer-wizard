@@ -624,12 +624,13 @@ serve(async (req) => {
       }
     }
 
-    // Handle update-dlp-only action (Step 2: resolve terms + update document)
-    if (action === 'update-dlp-only') {
+    // Handle create-and-replace-dlp action (Step 2: resolve terms, create new doc, trash old)
+    // Also accept legacy 'update-dlp-only' name for backward compatibility
+    if (action === 'create-and-replace-dlp' || action === 'update-dlp-only') {
       const { documentId, mediaId, title, excerpt, categories, tags } = body;
       if (!url || !username || !password || !documentId) {
         return new Response(
-          JSON.stringify({ error: 'Missing required fields for update-dlp-only' }),
+          JSON.stringify({ error: 'Missing required fields for create-and-replace-dlp' }),
           { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -662,62 +663,88 @@ serve(async (req) => {
                 if (match) {
                   ids.push(match.id);
                   resolved[name] = match.id;
-                  console.log(`[update-dlp-only] Resolved "${name}" → ID ${match.id} (${taxonomy})`);
+                  console.log(`[create-and-replace-dlp] Resolved "${name}" → ID ${match.id} (${taxonomy})`);
                 } else {
                   resolved[name] = null;
-                  console.log(`[update-dlp-only] No match for "${name}" in ${taxonomy}. Search returned: ${JSON.stringify(results.map((r: any) => r.name))}`);
+                  console.log(`[create-and-replace-dlp] No match for "${name}" in ${taxonomy}. Search returned: ${JSON.stringify(results.map((r: any) => r.name))}`);
                 }
               }
             } catch (e) {
-              console.error(`[update-dlp-only] Failed to resolve term "${name}" in ${taxonomy}:`, e);
+              console.error(`[create-and-replace-dlp] Failed to resolve term "${name}" in ${taxonomy}:`, e);
               resolved[name] = null;
             }
           }
           return { ids, resolved };
         };
 
-        console.log(`[update-dlp-only] Resolving categories: "${categories}", tags: "${tags}"`);
+        console.log(`[create-and-replace-dlp] Resolving categories: "${categories}", tags: "${tags}"`);
         const catResult = await resolveTermIds(categories || '', 'doc_categories');
         const tagResult = await resolveTermIds(tags || '', 'doc_tags');
-        console.log(`[update-dlp-only] Resolved categories: [${catResult.ids}], tags: [${tagResult.ids}]`);
+        console.log(`[create-and-replace-dlp] Resolved categories: [${catResult.ids}], tags: [${tagResult.ids}]`);
 
-        // Build update body
-        const updateBody: Record<string, any> = {
+        // Build create body for new document
+        const createBody: Record<string, any> = {
           title: title || '',
           excerpt: excerpt || '',
+          status: 'publish',
         };
-        if (catResult.ids.length > 0) updateBody.doc_categories = catResult.ids;
-        if (tagResult.ids.length > 0) updateBody.doc_tags = tagResult.ids;
+        if (catResult.ids.length > 0) createBody.doc_categories = catResult.ids;
+        if (tagResult.ids.length > 0) createBody.doc_tags = tagResult.ids;
         if (mediaId) {
-          updateBody.meta = {
+          createBody.meta = {
             _dlp_attached_file_id: mediaId,
             _dlp_document_link_type: 'file',
           };
         }
 
-        console.log(`[update-dlp-only] Updating DLP document ${documentId}...`);
-        const updateResponse = await wpFetch(
-          `${baseUrl3}/wp-json/wp/v2/dlp_document/${documentId}`,
+        // Create new DLP document
+        console.log(`[create-and-replace-dlp] Creating new DLP document...`);
+        const createResponse = await wpFetch(
+          `${baseUrl3}/wp-json/wp/v2/dlp_document`,
           username,
           cleanPassword,
-          { method: 'POST', body: JSON.stringify(updateBody) }
+          { method: 'POST', body: JSON.stringify(createBody) }
         );
 
-        if (!updateResponse.ok) {
-          const updateErr = await updateResponse.text();
-          console.error('[update-dlp-only] Update failed:', updateResponse.status, updateErr);
+        if (!createResponse.ok) {
+          const createErr = await createResponse.text();
+          console.error('[create-and-replace-dlp] Create failed:', createResponse.status, createErr);
           return new Response(
-            JSON.stringify({ error: 'Failed to update DLP document', details: updateErr }),
-            { status: updateResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            JSON.stringify({ error: 'Failed to create new DLP document', details: createErr }),
+            { status: createResponse.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
           );
         }
 
-        const updateResult = await updateResponse.json();
-        console.log(`[update-dlp-only] Document ${documentId} updated successfully`);
+        const createResult = await createResponse.json();
+        const newDocumentId = createResult.id;
+        console.log(`[create-and-replace-dlp] New document created: ID ${newDocumentId}`);
+
+        // Trash the old document
+        let trashedOld = false;
+        try {
+          console.log(`[create-and-replace-dlp] Trashing old document ${documentId}...`);
+          const trashResponse = await wpFetch(
+            `${baseUrl3}/wp-json/wp/v2/dlp_document/${documentId}`,
+            username,
+            cleanPassword,
+            { method: 'POST', body: JSON.stringify({ status: 'trash' }) }
+          );
+          if (trashResponse.ok) {
+            trashedOld = true;
+            console.log(`[create-and-replace-dlp] Old document ${documentId} trashed successfully`);
+          } else {
+            const trashErr = await trashResponse.text();
+            console.error(`[create-and-replace-dlp] Failed to trash old document ${documentId}:`, trashResponse.status, trashErr);
+          }
+        } catch (trashError) {
+          console.error(`[create-and-replace-dlp] Error trashing old document ${documentId}:`, trashError);
+        }
 
         return new Response(JSON.stringify({
           success: true,
-          documentId: updateResult.id,
+          newDocumentId,
+          oldDocumentId: documentId,
+          trashedOld,
           categoryIds: catResult.ids,
           tagIds: tagResult.ids,
           resolvedCategories: catResult.resolved,
@@ -726,9 +753,9 @@ serve(async (req) => {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
       } catch (error) {
-        console.error('[update-dlp-only] error:', error);
+        console.error('[create-and-replace-dlp] error:', error);
         return new Response(
-          JSON.stringify({ error: 'Document update failed', details: error.message }),
+          JSON.stringify({ error: 'Create and replace failed', details: error.message }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
