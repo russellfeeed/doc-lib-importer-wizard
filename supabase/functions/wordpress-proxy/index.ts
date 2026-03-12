@@ -789,6 +789,7 @@ serve(async (req) => {
           newDocumentId,
           oldDocumentId: documentId,
           trashedOld,
+          metaUpdateSuccess,
           categoryIds: catResult.ids,
           tagIds: tagResult.ids,
           resolvedCategories: catResult.resolved,
