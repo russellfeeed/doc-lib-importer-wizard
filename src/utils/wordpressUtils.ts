@@ -360,7 +360,7 @@ export const compareDocumentFields = (
 
 // Upload file to WordPress Media Library and update the matched DLP document
 // Now uses two sequential edge function calls for granular progress
-export type UploadProgressStep = 'converting' | 'uploading-media' | 'resolving-terms' | 'updating-document' | 'done';
+export type UploadProgressStep = 'converting' | 'uploading-media' | 'creating-document' | 'trashing-old' | 'done';
 
 export interface UploadAndUpdateResult {
   success: boolean;
