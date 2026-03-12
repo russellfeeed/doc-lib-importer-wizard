@@ -656,7 +656,7 @@ serve(async (req) => {
                 let match = results.find((r: any) => r.name.toLowerCase() === searchName.toLowerCase());
                 // Slug match fallback
                 if (!match) {
-                  const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+                  const slug = searchName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
                   match = results.find((r: any) => r.slug === slug);
                 }
                 if (match) {
