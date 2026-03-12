@@ -645,13 +645,15 @@ serve(async (req) => {
           const ids: number[] = [];
           for (const name of termNames) {
             try {
+              // For hierarchical categories like "Standards > System", use the leaf term for search
+              const searchName = name.includes(' > ') ? name.split(' > ').pop()!.trim() : name;
               // Try search first
-              const searchUrl = `${baseUrl3}/wp-json/wp/v2/${taxonomy}?search=${encodeURIComponent(name)}&_fields=id,name,slug`;
+              const searchUrl = `${baseUrl3}/wp-json/wp/v2/${taxonomy}?search=${encodeURIComponent(searchName)}&_fields=id,name,slug`;
               const resp = await wpFetch(searchUrl, username, cleanPassword);
               if (resp.ok) {
                 const results = await resp.json();
-                // Exact name match
-                let match = results.find((r: any) => r.name.toLowerCase() === name.toLowerCase());
+                // Exact name match (using leaf term)
+                let match = results.find((r: any) => r.name.toLowerCase() === searchName.toLowerCase());
                 // Slug match fallback
                 if (!match) {
                   const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
