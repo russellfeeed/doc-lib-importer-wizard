@@ -1,48 +1,46 @@
 
 
-## Upload to Media Library & Update Document Library
+## Replace DLP Document Update with Create-New + Trash-Old
 
-### What it does
-Adds a button (visible when a WordPress duplicate match exists) that:
-1. Uploads the local file to the WordPress Media Library
-2. Takes the returned media URL and derives the correct File URL / Direct URL
-3. Updates the matched DLP document (by ID) with the new file URL plus current local metadata (title, excerpt, categories, tags)
+### Problem
+The WordPress REST API accepts the POST to update a `dlp_document`, but Barn2 Document Library Pro doesn't actually persist the changes (meta fields like `_dlp_attached_file_id` are likely not exposed for update via REST). The update silently succeeds at the HTTP level but has no real effect.
 
-### Technical approach
+### Approach
+Instead of updating the existing document in place, the flow becomes:
+1. **Upload media** (unchanged — `upload-media-only` works)
+2. **Create a new `dlp_document`** via `POST /wp-json/wp/v2/dlp_document` with all metadata: title, excerpt, categories, tags, status, and meta fields for the file attachment
+3. **Trash the old document** via `POST /wp-json/wp/v2/dlp_document/{oldId}` with `{ status: 'trash' }` (or `DELETE` endpoint)
+4. Return both the new document ID and confirmation the old one was trashed
 
-**1. New `upload-and-update-dlp` action in `supabase/functions/wordpress-proxy/index.ts`**
+### Steps 3 & 4 label changes in the progress modal
+```text
+ 1. Converting file to base64          ✅
+ 2. Uploading to Media Library          ✅ Media ID: 35331
+ 3. Creating new DLP document           ✅ New post 35400 created
+ 4. Trashing old DLP document           ✅ Post 35179 trashed
+ 5. Complete                            ✅
+```
 
-Since `wordpress-proxy` already has the cookie-based auth fallback (`wpFetch`), and the `wordpress-upload` function does not, the new action lives here. It needs a `wpFetchFormData` variant of `wpFetch` that sends `multipart/form-data` instead of JSON (for the media upload step). Steps inside the handler:
+### Files to change
 
-- Receive: `{ documentId, fileData (base64), fileName, fileType, title, excerpt, categories, tags }`
-- **Step A**: Upload file to `/wp-json/wp/v2/media` using FormData (with cookie-auth fallback)
-- **Step B**: Get `source_url` from the response — derive the `_pda` protected path variant
-- **Step C**: Resolve category/tag names to term IDs via `/wp-json/wp/v2/doc_categories?search=X` and `/wp-json/wp/v2/doc_tags?search=X`
-- **Step D**: PUT to `/wp-json/wp/v2/dlp_document/{documentId}` with `{ title, excerpt, doc_categories: [ids], doc_tags: [ids], _file_url: derivedUrl }` — the exact meta key for the file URL will need to match what Barn2 DLP expects (likely `_dlp_document_file_url` or similar custom field)
+**1. `supabase/functions/wordpress-proxy/index.ts`**
+- Rename `update-dlp-only` action to `create-and-replace-dlp` (keep old name as alias for safety)
+- Change the update logic:
+  - Instead of `POST /wp-json/wp/v2/dlp_document/{documentId}` (update), do `POST /wp-json/wp/v2/dlp_document` (create new) with body: `{ title, excerpt, status: 'publish', doc_categories: [...ids], doc_tags: [...ids], meta: { _dlp_attached_file_id: mediaId, _dlp_document_link_type: 'file' } }`
+  - After successful creation, trash the old document: `DELETE /wp-json/wp/v2/dlp_document/{oldDocumentId}` (or POST with `status: 'trash'`)
+- Return `{ newDocumentId, oldDocumentId, trashedOld: true/false, categoryIds, tagIds, ... }`
+- Redeploy edge function
 
-**2. New client utility in `src/utils/wordpressUtils.ts`**
+**2. `src/utils/wordpressUtils.ts`**
+- Update `uploadAndUpdateDlpDocument`:
+  - Change the second call from `action: 'update-dlp-only'` to `action: 'create-and-replace-dlp'`
+  - Update progress step labels: `'resolving-terms'` → `'creating-document'`, `'updating-document'` → `'trashing-old'`
+  - Update the return type to include `newDocumentId` and `oldDocumentId`
 
-- `uploadAndUpdateDlpDocument(document: DocumentFile)`: reads the File object as base64, calls the edge function, returns success/error status
-- Handles the base64 conversion client-side before sending
+**3. `src/components/document/editor/WpComparisonPanel.tsx`**
+- Update `initialSteps` labels: "Updating DLP document" → "Creating new DLP document" + adjust step 4 to "Trashing old document"
+- Update step map and result handling for the new response shape
 
-**3. Button in `src/components/document/editor/WpComparisonPanel.tsx`**
-
-- Add an "Upload & Update in WordPress" button at the bottom of the comparison panel
-- Shows a loading spinner during the operation
-- On success: toast notification with the new URL; updates `fileUrl` and `directUrl` on the document via `onEdit`
-- On error: toast with error message
-
-**4. Prop threading**
-
-- `WpComparisonPanel` needs the `document` object and `onEdit` callback (currently only receives `rows`)
-- `DocumentMetadata` already has both — pass them down
-
-### Files to modify
-- `supabase/functions/wordpress-proxy/index.ts` — add `wpFetchFormData` helper + `upload-and-update-dlp` action (~80 lines)
-- `src/utils/wordpressUtils.ts` — add `uploadAndUpdateDlpDocument` function
-- `src/components/document/editor/WpComparisonPanel.tsx` — add button + state, accept new props
-- `src/components/document/editor/DocumentMetadata.tsx` — pass document + onEdit to WpComparisonPanel
-
-### Key detail: File URL transformation
-The media upload returns a URL like `https://domain/wp-content/uploads/2026/03/file.pdf`. For standards, this needs to become the `_pda` protected variant: `/wp-content/uploads/_pda/2026/03/file.pdf` (relative for File URL) and full absolute for Direct URL. The edge function will derive this from the `source_url` returned by WordPress.
+**4. `src/components/document/editor/WpUploadProgressModal.tsx`**
+- Update result display to show new document ID and old document trashed status
 
