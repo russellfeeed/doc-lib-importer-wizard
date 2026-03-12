@@ -91,6 +91,9 @@ const WpUploadProgressModal: React.FC<WpUploadProgressModalProps> = ({
             {result.mediaId && (
               <p><span className="text-muted-foreground">Media ID:</span> <strong>{result.mediaId}</strong></p>
             )}
+            {result.documentId && (
+              <p><span className="text-muted-foreground">New Document ID:</span> <strong>{result.documentId}</strong></p>
+            )}
             {result.sourceUrl && (
               <p className="flex items-center gap-1">
                 <span className="text-muted-foreground">Source URL:</span>

@@ -80,7 +80,8 @@ const WpComparisonPanel: React.FC<WpComparisonPanelProps> = ({ rows, document, o
           const tagStr = result.tagIds?.length ? `Tags: [${result.tagIds.join(', ')}]` : 'Tags: none';
           updateStep(2, { detail: `${catStr} · ${tagStr}` });
         }
-        updateStep(3, { detail: `Post ${result.documentId} updated` });
+        updateStep(2, { detail: `New post ${result.newDocumentId} created` });
+        updateStep(3, { detail: result.trashedOld ? `Post ${result.oldDocumentId} trashed` : `Could not trash post ${result.oldDocumentId}` });
         setUploadResult({
           mediaId: result.mediaId,
           sourceUrl: result.sourceUrl,
@@ -90,7 +91,7 @@ const WpComparisonPanel: React.FC<WpComparisonPanelProps> = ({ rows, document, o
           tagIds: result.tagIds,
           resolvedCategories: result.resolvedCategories,
           resolvedTags: result.resolvedTags,
-          documentId: result.documentId,
+          documentId: result.newDocumentId,
         });
         toast.success('File uploaded and document updated');
         if (result.relativePdaPath) onEdit('fileUrl', result.relativePdaPath);
