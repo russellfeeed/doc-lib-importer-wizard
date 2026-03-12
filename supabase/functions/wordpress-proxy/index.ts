@@ -771,7 +771,7 @@ serve(async (req) => {
             `${baseUrl3}/wp-json/wp/v2/dlp_document/${documentId}`,
             username,
             cleanPassword,
-            { method: 'POST', body: JSON.stringify({ status: 'trash' }) }
+            { method: 'DELETE' }
           );
           if (trashResponse.ok) {
             trashedOld = true;
