@@ -52,8 +52,8 @@ const WpComparisonPanel: React.FC<WpComparisonPanelProps> = ({ rows, document, o
     const stepMap: Record<UploadProgressStep, number> = {
       'converting': 0,
       'uploading-media': 1,
-      'resolving-terms': 2,
-      'updating-document': 3,
+      'creating-document': 2,
+      'trashing-old': 3,
       'done': 4,
     };
 
