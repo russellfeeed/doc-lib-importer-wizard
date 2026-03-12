@@ -372,7 +372,9 @@ export interface UploadAndUpdateResult {
   tagIds?: number[];
   resolvedCategories?: Record<string, number | null>;
   resolvedTags?: Record<string, number | null>;
-  documentId?: number;
+  newDocumentId?: number;
+  oldDocumentId?: number;
+  trashedOld?: boolean;
   error?: string;
   errorStep?: UploadProgressStep;
 }
