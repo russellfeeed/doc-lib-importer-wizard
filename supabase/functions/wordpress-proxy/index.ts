@@ -718,8 +718,52 @@ serve(async (req) => {
         const createResult = await createResponse.json();
         const newDocumentId = createResult.id;
         console.log(`[create-and-replace-dlp] New document created: ID ${newDocumentId}`);
+        console.log(`[create-and-replace-dlp] Create response meta:`, JSON.stringify(createResult.meta || {}));
 
-        // Trash the old document
+        // Step: Try to set file meta via separate POST update
+        let metaUpdateSuccess = false;
+        if (mediaId) {
+          try {
+            console.log(`[create-and-replace-dlp] Attempting separate meta update for document ${newDocumentId}...`);
+            
+            // Attempt 1: meta object
+            const metaBody1 = { meta: { _dlp_attached_file_id: mediaId, _dlp_document_link_type: 'file' } };
+            const metaRes1 = await wpFetch(
+              `${baseUrl3}/wp-json/wp/v2/dlp_document/${newDocumentId}`,
+              username, cleanPassword,
+              { method: 'POST', body: JSON.stringify(metaBody1) }
+            );
+            const metaResult1 = metaRes1.ok ? await metaRes1.json() : null;
+            console.log(`[create-and-replace-dlp] Meta update attempt 1 (meta object): ${metaRes1.status}`, JSON.stringify(metaResult1?.meta || {}));
+
+            if (metaResult1?.meta?._dlp_attached_file_id == mediaId) {
+              metaUpdateSuccess = true;
+              console.log(`[create-and-replace-dlp] Meta update SUCCESS via meta object`);
+            } else {
+              // Attempt 2: top-level fields (some plugins register meta as top-level REST fields)
+              console.log(`[create-and-replace-dlp] Meta object didn't stick, trying top-level fields...`);
+              const metaBody2 = { _dlp_attached_file_id: mediaId, _dlp_document_link_type: 'file' };
+              const metaRes2 = await wpFetch(
+                `${baseUrl3}/wp-json/wp/v2/dlp_document/${newDocumentId}`,
+                username, cleanPassword,
+                { method: 'POST', body: JSON.stringify(metaBody2) }
+              );
+              const metaResult2 = metaRes2.ok ? await metaRes2.json() : null;
+              console.log(`[create-and-replace-dlp] Meta update attempt 2 (top-level): ${metaRes2.status}`, JSON.stringify(metaResult2?.meta || {}));
+              
+              if (metaResult2?.meta?._dlp_attached_file_id == mediaId) {
+                metaUpdateSuccess = true;
+                console.log(`[create-and-replace-dlp] Meta update SUCCESS via top-level fields`);
+              } else {
+                console.error(`[create-and-replace-dlp] WARNING: Could not set _dlp_attached_file_id=${mediaId} on document ${newDocumentId}. Meta fields may not be registered with show_in_rest.`);
+              }
+            }
+          } catch (metaErr) {
+            console.error(`[create-and-replace-dlp] Meta update error:`, metaErr);
+          }
+        }
+
+        // Trash the old document (use DELETE method since status:'trash' is not in allowed enum)
         let trashedOld = false;
         try {
           console.log(`[create-and-replace-dlp] Trashing old document ${documentId}...`);
@@ -727,7 +771,7 @@ serve(async (req) => {
             `${baseUrl3}/wp-json/wp/v2/dlp_document/${documentId}`,
             username,
             cleanPassword,
-            { method: 'POST', body: JSON.stringify({ status: 'trash' }) }
+            { method: 'DELETE' }
           );
           if (trashResponse.ok) {
             trashedOld = true;
@@ -745,6 +789,7 @@ serve(async (req) => {
           newDocumentId,
           oldDocumentId: documentId,
           trashedOld,
+          metaUpdateSuccess,
           categoryIds: catResult.ids,
           tagIds: tagResult.ids,
           resolvedCategories: catResult.resolved,

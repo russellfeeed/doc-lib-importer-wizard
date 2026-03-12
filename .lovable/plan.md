@@ -1,34 +1,48 @@
 
 
-## Fix: File URL Not Set on New DLP Document
+## Upload to Media Library & Update Document Library
 
-### Problem
-The new `dlp_document` is created with `meta: { _dlp_attached_file_id: mediaId, _dlp_document_link_type: 'file' }`, but Barn2 DLP likely doesn't expose these meta fields for creation via the REST API either (same issue as with updates). The `meta` key in the POST body is silently ignored, so the new document has no file attached.
+### What it does
+Adds a button (visible when a WordPress duplicate match exists) that:
+1. Uploads the local file to the WordPress Media Library
+2. Takes the returned media URL and derives the correct File URL / Direct URL
+3. Updates the matched DLP document (by ID) with the new file URL plus current local metadata (title, excerpt, categories, tags)
 
-### Fix
-After creating the new document, make a separate direct **POST to the WordPress post meta endpoint** to set the required meta fields. WordPress core always supports `/wp-json/wp/v2/dlp_document/{id}` for updating standard fields, but for custom meta that isn't registered with `show_in_rest`, we need to use the lower-level approach.
+### Technical approach
 
-**Better approach**: Since Barn2 stores the file relationship as post meta (`_dlp_attached_file_id`), and the REST API may not expose it, we should try setting it via a direct meta update. Two options:
+**1. New `upload-and-update-dlp` action in `supabase/functions/wordpress-proxy/index.ts`**
 
-1. **Try updating meta via REST API post update** — POST to `/wp-json/wp/v2/dlp_document/{newId}` with just `{ meta: { _dlp_attached_file_id: mediaId } }` as a separate call after creation
-2. **If that doesn't work**: Use the WordPress plugin endpoint (the existing `lovable-document-processor` plugin) to set the meta, or add a small custom endpoint
+Since `wordpress-proxy` already has the cookie-based auth fallback (`wpFetch`), and the `wordpress-upload` function does not, the new action lives here. It needs a `wpFetchFormData` variant of `wpFetch` that sends `multipart/form-data` instead of JSON (for the media upload step). Steps inside the handler:
 
-Since the meta fields may not be registered with `show_in_rest` by Barn2, the most reliable approach is:
+- Receive: `{ documentId, fileData (base64), fileName, fileType, title, excerpt, categories, tags }`
+- **Step A**: Upload file to `/wp-json/wp/v2/media` using FormData (with cookie-auth fallback)
+- **Step B**: Get `source_url` from the response — derive the `_pda` protected path variant
+- **Step C**: Resolve category/tag names to term IDs via `/wp-json/wp/v2/doc_categories?search=X` and `/wp-json/wp/v2/doc_tags?search=X`
+- **Step D**: PUT to `/wp-json/wp/v2/dlp_document/{documentId}` with `{ title, excerpt, doc_categories: [ids], doc_tags: [ids], _file_url: derivedUrl }` — the exact meta key for the file URL will need to match what Barn2 DLP expects (likely `_dlp_document_file_url` or similar custom field)
 
-**Add a fallback using the WordPress Application Passwords + direct meta update**: After creating the document, call the WP REST API to update it with the meta. If that still doesn't stick, log it clearly so we know the meta key isn't exposed.
+**2. New client utility in `src/utils/wordpressUtils.ts`**
 
-Additionally, we should **log the full create response** to see what WordPress actually accepted, which will help debug.
+- `uploadAndUpdateDlpDocument(document: DocumentFile)`: reads the File object as base64, calls the edge function, returns success/error status
+- Handles the base64 conversion client-side before sending
+
+**3. Button in `src/components/document/editor/WpComparisonPanel.tsx`**
+
+- Add an "Upload & Update in WordPress" button at the bottom of the comparison panel
+- Shows a loading spinner during the operation
+- On success: toast notification with the new URL; updates `fileUrl` and `directUrl` on the document via `onEdit`
+- On error: toast with error message
+
+**4. Prop threading**
+
+- `WpComparisonPanel` needs the `document` object and `onEdit` callback (currently only receives `rows`)
+- `DocumentMetadata` already has both — pass them down
 
 ### Files to modify
+- `supabase/functions/wordpress-proxy/index.ts` — add `wpFetchFormData` helper + `upload-and-update-dlp` action (~80 lines)
+- `src/utils/wordpressUtils.ts` — add `uploadAndUpdateDlpDocument` function
+- `src/components/document/editor/WpComparisonPanel.tsx` — add button + state, accept new props
+- `src/components/document/editor/DocumentMetadata.tsx` — pass document + onEdit to WpComparisonPanel
 
-**`supabase/functions/wordpress-proxy/index.ts`** (~15 lines around line 700-720):
-
-1. After creating the document, log the full response body to see if `meta` was accepted
-2. Make a **separate PUT/POST call** to `/wp-json/wp/v2/dlp_document/{newDocumentId}` with `{ meta: { _dlp_attached_file_id: mediaId, _dlp_document_link_type: 'file' } }` as a dedicated meta-update step
-3. If that also fails, try the WordPress custom fields endpoint: `POST /wp-json/wp/v2/dlp_document/{newDocumentId}` with `{ _dlp_attached_file_id: mediaId }` as a top-level field (some plugins register meta as top-level REST fields)
-4. Log success/failure of the meta update step
-5. Redeploy edge function
-
-### Key detail
-The `meta` object in the create body is likely being silently dropped because `_dlp_attached_file_id` isn't registered via `register_post_meta()` with `show_in_rest: true`. The separate update call gives us a chance to try different field formats and log exactly what WordPress accepts or rejects.
+### Key detail: File URL transformation
+The media upload returns a URL like `https://domain/wp-content/uploads/2026/03/file.pdf`. For standards, this needs to become the `_pda` protected variant: `/wp-content/uploads/_pda/2026/03/file.pdf` (relative for File URL) and full absolute for Direct URL. The edge function will derive this from the `source_url` returned by WordPress.
 
