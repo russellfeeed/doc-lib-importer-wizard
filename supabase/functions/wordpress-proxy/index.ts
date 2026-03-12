@@ -568,13 +568,6 @@ serve(async (req) => {
 
       try {
         console.log(`[upload-media-only] Uploading file "${fileName}"...`);
-        const session = await getWpSessionAuth(baseUrl3, username, cleanPassword);
-        if (!session) {
-          return new Response(
-            JSON.stringify({ error: 'Failed to authenticate with WordPress for file upload' }),
-            { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-          );
-        }
 
         const binaryStr = atob(fileData);
         const bytes = new Uint8Array(binaryStr.length);
@@ -585,11 +578,11 @@ serve(async (req) => {
         const formData = new FormData();
         formData.append('file', new Blob([bytes], { type: fileType || 'application/pdf' }), fileName);
 
+        const authString = btoa(`${username}:${cleanPassword}`);
         const mediaResponse = await fetch(`${baseUrl3}/wp-json/wp/v2/media`, {
           method: 'POST',
           headers: {
-            'Cookie': session.cookies,
-            'X-WP-Nonce': session.nonce,
+            'Authorization': `Basic ${authString}`,
             'User-Agent': 'Supabase-Edge-Function',
           },
           body: formData,
