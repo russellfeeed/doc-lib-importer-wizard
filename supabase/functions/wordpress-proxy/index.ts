@@ -689,9 +689,11 @@ serve(async (req) => {
           return { ids, resolved };
         };
 
-        console.log(`[create-and-replace-dlp] Resolving categories: "${categories}", tags: "${tags}"`);
+        const dateTag = new Date().toISOString().split('T')[0];
+        const tagsWithDate = tags ? `${tags}, ${dateTag}` : dateTag;
+        console.log(`[create-and-replace-dlp] Resolving categories: "${categories}", tags: "${tagsWithDate}"`);
         const catResult = await resolveTermIds(categories || '', 'doc_categories');
-        const tagResult = await resolveTermIds(tags || '', 'doc_tags');
+        const tagResult = await resolveTermIds(tagsWithDate, 'doc_tags', true);
         console.log(`[create-and-replace-dlp] Resolved categories: [${catResult.ids}], tags: [${tagResult.ids}]`);
 
         // Build create body for new document
