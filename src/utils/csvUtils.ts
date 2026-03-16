@@ -249,7 +249,9 @@ export const generateCSV = async (
       }
       
       row['Categories'] = forceQuoteCsvValue(docFile.categories);
-      row['Tags'] = forceQuoteCsvValue(docFile.tags);
+      const dateTag = new Date().toISOString().split('T')[0];
+      const tagsWithDate = docFile.tags ? `${docFile.tags}, ${dateTag}` : dateTag;
+      row['Tags'] = forceQuoteCsvValue(tagsWithDate);
       row['Document Authors'] = forceQuoteCsvValue(docFile.authors);
       row['File URL'] = forceQuoteCsvValue(docFile.fileUrl || fileUrlPath);
       row['Direct URL'] = forceQuoteCsvValue(docFile.directUrl || directUrlPath);

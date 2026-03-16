@@ -868,7 +868,7 @@ serve(async (req) => {
         const urlObj2 = new URL(pdaUrl);
         const relativePdaPath = pdaUrl.replace(`${urlObj2.protocol}//${urlObj2.host}`, '');
 
-        const resolveTermIds = async (names: string, taxonomy: string): Promise<number[]> => {
+        const resolveTermIds2 = async (names: string, taxonomy: string, createIfMissing: boolean = false): Promise<number[]> => {
           if (!names || !names.trim()) return [];
           const termNames = names.split(',').map(n => n.trim()).filter(Boolean);
           const ids: number[] = [];
@@ -884,7 +884,20 @@ serve(async (req) => {
                   const slug = searchName.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
                   match = results.find((r: any) => r.slug === slug);
                 }
-                if (match) ids.push(match.id);
+                if (match) {
+                  ids.push(match.id);
+                } else if (createIfMissing) {
+                  console.log(`[upload-and-update-dlp] Creating missing term "${searchName}" in ${taxonomy}`);
+                  const createResp = await wpFetch(`${baseUrl3}/wp-json/wp/v2/${taxonomy}`, username, cleanPassword, {
+                    method: 'POST',
+                    body: JSON.stringify({ name: searchName }),
+                  });
+                  if (createResp.ok) {
+                    const created = await createResp.json();
+                    ids.push(created.id);
+                    console.log(`[upload-and-update-dlp] Created "${searchName}" → ID ${created.id}`);
+                  }
+                }
               }
             } catch (e) {
               console.error(`Failed to resolve term "${name}" in ${taxonomy}:`, e);
@@ -893,8 +906,10 @@ serve(async (req) => {
           return ids;
         };
 
-        const categoryIds = await resolveTermIds(categories || '', 'doc_categories');
-        const tagIds = await resolveTermIds(tags || '', 'doc_tags');
+        const dateTag2 = new Date().toISOString().split('T')[0];
+        const tagsWithDate2 = tags ? `${tags}, ${dateTag2}` : dateTag2;
+        const categoryIds = await resolveTermIds2(categories || '', 'doc_categories');
+        const tagIds = await resolveTermIds2(tagsWithDate2, 'doc_tags', true);
 
         const updateBody: Record<string, any> = {
           title: title || '',
