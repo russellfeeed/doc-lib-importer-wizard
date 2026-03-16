@@ -206,7 +206,7 @@ export const generateCSV = async (
         'Audience': forceQuoteCsvValue(letter.audience),
         'Content': forceQuoteCsvValue(preparedDetails),
         'Document Authors': forceQuoteCsvValue(letter.author),
-        'Tags': forceQuoteCsvValue(letter.tags),
+        'Tags': forceQuoteCsvValue((() => { const dateTag = new Date().toISOString().split('T')[0]; return letter.tags ? `${letter.tags}, ${dateTag}` : dateTag; })()),
         'Categories': forceQuoteCsvValue(letter.categories || ''),
         'Excerpt': forceQuoteCsvValue(letter.excerpt || ''),
         'File URL': forceQuoteCsvValue(`https://dev.members.nsi.org.uk/wp-content/uploads/${getCurrentUploadPath()}/${letter.file?.name || letter.name}`),
