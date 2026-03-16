@@ -206,7 +206,7 @@ export const generateCSV = async (
         'Audience': forceQuoteCsvValue(letter.audience),
         'Content': forceQuoteCsvValue(preparedDetails),
         'Document Authors': forceQuoteCsvValue(letter.author),
-        'Tags': forceQuoteCsvValue(letter.tags),
+        'Tags': forceQuoteCsvValue((() => { const dateTag = new Date().toISOString().split('T')[0]; return letter.tags ? `${letter.tags}, ${dateTag}` : dateTag; })()),
         'Categories': forceQuoteCsvValue(letter.categories || ''),
         'Excerpt': forceQuoteCsvValue(letter.excerpt || ''),
         'File URL': forceQuoteCsvValue(`https://dev.members.nsi.org.uk/wp-content/uploads/${getCurrentUploadPath()}/${letter.file?.name || letter.name}`),
@@ -249,7 +249,9 @@ export const generateCSV = async (
       }
       
       row['Categories'] = forceQuoteCsvValue(docFile.categories);
-      row['Tags'] = forceQuoteCsvValue(docFile.tags);
+      const dateTag = new Date().toISOString().split('T')[0];
+      const tagsWithDate = docFile.tags ? `${docFile.tags}, ${dateTag}` : dateTag;
+      row['Tags'] = forceQuoteCsvValue(tagsWithDate);
       row['Document Authors'] = forceQuoteCsvValue(docFile.authors);
       row['File URL'] = forceQuoteCsvValue(docFile.fileUrl || fileUrlPath);
       row['Direct URL'] = forceQuoteCsvValue(docFile.directUrl || directUrlPath);

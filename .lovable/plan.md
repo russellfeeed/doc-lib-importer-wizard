@@ -1,41 +1,48 @@
 
 
-## Add Date-Based Batch Tag
+## Upload to Media Library & Update Document Library
 
-Add a tag with today's date (e.g., `2026-03-12`) to every document created, both via the REST API and CSV export, to enable batch identification in WordPress.
+### What it does
+Adds a button (visible when a WordPress duplicate match exists) that:
+1. Uploads the local file to the WordPress Media Library
+2. Takes the returned media URL and derives the correct File URL / Direct URL
+3. Updates the matched DLP document (by ID) with the new file URL plus current local metadata (title, excerpt, categories, tags)
 
-### Changes
+### Technical approach
 
-**1. `supabase/functions/wordpress-proxy/index.ts`** — Two locations:
+**1. New `upload-and-update-dlp` action in `supabase/functions/wordpress-proxy/index.ts`**
 
-- **`create-and-replace-dlp` action (~line 680)**: Before resolving tags, append today's date tag to the tags string:
-  ```typescript
-  const dateTag = new Date().toISOString().split('T')[0]; // "2026-03-12"
-  const tagsWithDate = tags ? `${tags}, ${dateTag}` : dateTag;
-  ```
-  Then use `tagsWithDate` instead of `tags` in the `resolveTermIds` call. Since the tag likely won't exist yet, `resolveTermIds` won't find it — so we also need to **create the tag** if it doesn't exist (POST to `/wp-json/wp/v2/doc_tags` with `{ name: dateTag }`).
+Since `wordpress-proxy` already has the cookie-based auth fallback (`wpFetch`), and the `wordpress-upload` function does not, the new action lives here. It needs a `wpFetchFormData` variant of `wpFetch` that sends `multipart/form-data` instead of JSON (for the media upload step). Steps inside the handler:
 
-- **`upload-and-update-dlp` action (~line 882)**: Same change — prepend the date tag to the tags string before resolving.
+- Receive: `{ documentId, fileData (base64), fileName, fileType, title, excerpt, categories, tags }`
+- **Step A**: Upload file to `/wp-json/wp/v2/media` using FormData (with cookie-auth fallback)
+- **Step B**: Get `source_url` from the response — derive the `_pda` protected path variant
+- **Step C**: Resolve category/tag names to term IDs via `/wp-json/wp/v2/doc_categories?search=X` and `/wp-json/wp/v2/doc_tags?search=X`
+- **Step D**: PUT to `/wp-json/wp/v2/dlp_document/{documentId}` with `{ title, excerpt, doc_categories: [ids], doc_tags: [ids], _file_url: derivedUrl }` — the exact meta key for the file URL will need to match what Barn2 DLP expects (likely `_dlp_document_file_url` or similar custom field)
 
-- **Update `resolveTermIds`**: Add a `createIfMissing` flag (default `false`). When `true` and a term isn't found, POST to create it in the taxonomy. Use this flag for `doc_tags` resolution so the date tag is auto-created.
+**2. New client utility in `src/utils/wordpressUtils.ts`**
 
-**2. `src/utils/csvUtils.ts`** — Two locations:
+- `uploadAndUpdateDlpDocument(document: DocumentFile)`: reads the File object as base64, calls the edge function, returns success/error status
+- Handles the base64 conversion client-side before sending
 
-- **Circular letters (~line 209)**: Append the date tag to the tags value:
-  ```typescript
-  const dateTag = new Date().toISOString().split('T')[0];
-  const tagsWithDate = letter.tags ? `${letter.tags}, ${dateTag}` : dateTag;
-  ```
-  Use `tagsWithDate` in `forceQuoteCsvValue`.
+**3. Button in `src/components/document/editor/WpComparisonPanel.tsx`**
 
-- **Regular documents (~line 252)**: Same — append date tag to `docFile.tags` before writing.
+- Add an "Upload & Update in WordPress" button at the bottom of the comparison panel
+- Shows a loading spinner during the operation
+- On success: toast notification with the new URL; updates `fileUrl` and `directUrl` on the document via `onEdit`
+- On error: toast with error message
 
-### Summary of touch points
-| Location | File | What changes |
-|----------|------|-------------|
-| CSV circular letters | `csvUtils.ts:209` | Append date tag |
-| CSV regular docs | `csvUtils.ts:252` | Append date tag |
-| REST create-and-replace | `wordpress-proxy:680` | Append date tag + auto-create in WP |
-| REST upload-and-update | `wordpress-proxy:882` | Append date tag + auto-create in WP |
-| `resolveTermIds` | `wordpress-proxy` | Add `createIfMissing` param |
+**4. Prop threading**
+
+- `WpComparisonPanel` needs the `document` object and `onEdit` callback (currently only receives `rows`)
+- `DocumentMetadata` already has both — pass them down
+
+### Files to modify
+- `supabase/functions/wordpress-proxy/index.ts` — add `wpFetchFormData` helper + `upload-and-update-dlp` action (~80 lines)
+- `src/utils/wordpressUtils.ts` — add `uploadAndUpdateDlpDocument` function
+- `src/components/document/editor/WpComparisonPanel.tsx` — add button + state, accept new props
+- `src/components/document/editor/DocumentMetadata.tsx` — pass document + onEdit to WpComparisonPanel
+
+### Key detail: File URL transformation
+The media upload returns a URL like `https://domain/wp-content/uploads/2026/03/file.pdf`. For standards, this needs to become the `_pda` protected variant: `/wp-content/uploads/_pda/2026/03/file.pdf` (relative for File URL) and full absolute for Direct URL. The edge function will derive this from the `source_url` returned by WordPress.
 
