@@ -68,6 +68,7 @@ export function useStandardsDocumentEditor({
     handleGenerateAllExcerpts,
     handleGenerateAllCategories,
     handleGenerateAllTags,
+    handleGenerateAllData,
     handleToggleAllPublished,
     handleDeleteDocument,
   };
