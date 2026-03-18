@@ -159,7 +159,7 @@ const DocumentsTableView: React.FC<DocumentsTableViewProps> = ({
     
     setBulkOperationType('categories');
     try {
-      await onGenerateAllCategories();
+      await onGenerateAllCategories(selectedDocuments);
     } finally {
       setBulkOperationType(null);
     }
