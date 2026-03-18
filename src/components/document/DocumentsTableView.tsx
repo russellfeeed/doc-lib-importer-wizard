@@ -41,6 +41,7 @@ const DocumentsTableView: React.FC<DocumentsTableViewProps> = ({
   onGenerateAllCategories,
   onGenerateAllSchemes,
   onGenerateAllTags,
+  onGenerateAllData,
   onToggleView,
   onSave,
   onBack,
