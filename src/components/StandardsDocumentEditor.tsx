@@ -35,6 +35,7 @@ const StandardsDocumentEditor: React.FC<StandardsDocumentEditorProps> = ({
     handleGenerateAllExcerpts,
     handleGenerateAllCategories,
     handleGenerateAllTags,
+    handleGenerateAllData,
     handleToggleAllPublished,
     handleDeleteDocument,
   } = useStandardsDocumentEditor({
