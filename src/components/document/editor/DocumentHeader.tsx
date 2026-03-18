@@ -67,7 +67,7 @@ const DocumentHeader: React.FC<DocumentHeaderProps> = ({
           <Button 
             variant="outline" 
             size="sm" 
-            onClick={onGenerateAllSchemes}
+            onClick={() => onGenerateAllSchemes()}
             disabled={isGeneratingAI}
           >
             <Building className="mr-2 h-4 w-4" />
