@@ -339,7 +339,7 @@ export function useAiGeneration({
     toast.success("Finished determining document categories");
   };
 
-  const handleGenerateAllTags = async () => {
+  const handleGenerateAllTags = async (selectedIndices?: Set<number>) => {
     setIsGeneratingAI(true);
     
     const hasFilesToProcess = editedDocuments.some(doc => 
