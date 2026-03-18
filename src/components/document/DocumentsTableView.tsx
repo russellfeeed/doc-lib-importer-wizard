@@ -25,6 +25,7 @@ interface DocumentsTableViewProps {
   onGenerateAllCategories?: (selectedIndices?: Set<number>) => void;
   onGenerateAllSchemes?: (selectedIndices?: Set<number>) => void;
   onGenerateAllTags: (selectedIndices?: Set<number>) => void;
+  onGenerateAllData?: (selectedIndices?: Set<number>) => void;
   onToggleView: () => void;
   onSave: () => void;
   onBack: () => void;
