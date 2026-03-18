@@ -8,10 +8,10 @@ interface DocumentHeaderProps {
   currentDocIndex: number;
   totalDocuments: number;
   isGeneratingAI: boolean;
-  onGenerateAllExcerpts: () => void;
-  onGenerateAllCategories?: () => void;
-  onGenerateAllTags?: () => void;
-  onGenerateAllSchemes?: () => void;
+  onGenerateAllExcerpts: (selectedIndices?: Set<number>) => void;
+  onGenerateAllCategories?: (selectedIndices?: Set<number>) => void;
+  onGenerateAllTags?: (selectedIndices?: Set<number>) => void;
+  onGenerateAllSchemes?: (selectedIndices?: Set<number>) => void;
   onToggleView: () => void;
 }
 
