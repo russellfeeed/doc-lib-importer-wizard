@@ -136,7 +136,7 @@ const DocumentsTableView: React.FC<DocumentsTableViewProps> = ({
     
     setBulkOperationType('schemes');
     try {
-      await onGenerateAllSchemes();
+      await onGenerateAllSchemes(selectedDocuments);
     } finally {
       setBulkOperationType(null);
     }
