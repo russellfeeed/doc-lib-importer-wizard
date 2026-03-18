@@ -170,7 +170,7 @@ const DocumentsTableView: React.FC<DocumentsTableViewProps> = ({
     
     setBulkOperationType('tags');
     try {
-      await onGenerateAllTags();
+      await onGenerateAllTags(selectedDocuments);
     } finally {
       setBulkOperationType(null);
     }
