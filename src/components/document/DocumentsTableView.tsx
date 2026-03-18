@@ -178,6 +178,17 @@ const DocumentsTableView: React.FC<DocumentsTableViewProps> = ({
     }
   };
   
+  const handleBulkGenerateAllData = async () => {
+    if (!onGenerateAllData || selectedDocuments.size === 0) return;
+    
+    setBulkOperationType('all');
+    try {
+      await onGenerateAllData(selectedDocuments);
+    } finally {
+      setBulkOperationType(null);
+    }
+  };
+  
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
