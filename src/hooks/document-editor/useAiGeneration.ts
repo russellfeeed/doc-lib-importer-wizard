@@ -271,7 +271,7 @@ export function useAiGeneration({
     toast.success("Finished generating AI excerpts");
   };
 
-  const handleGenerateAllCategories = async () => {
+  const handleGenerateAllCategories = async (selectedIndices?: Set<number>) => {
     setIsGeneratingAI(true);
     
     const hasFilesToProcess = editedDocuments.some(doc => 
