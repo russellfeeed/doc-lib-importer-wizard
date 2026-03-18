@@ -165,13 +165,14 @@ export function useSimpleAiGeneration({
     }
   }, [editedDocuments, currentDocIndex, setEditedDocuments, setIsGeneratingAI]);
 
-  const handleGenerateAllExcerpts = useCallback(async () => {
+  const handleGenerateAllExcerpts = useCallback(async (selectedIndices?: Set<number>) => {
     setIsGeneratingAI(true);
     try {
       const updatedDocs = [...editedDocuments];
       
       for (let i = 0; i < updatedDocs.length; i++) {
         try {
+          if (selectedIndices && !selectedIndices.has(i)) continue;
           if (!updatedDocs[i].content || updatedDocs[i].content.trim().length === 0) {
             continue;
           }
@@ -192,13 +193,14 @@ export function useSimpleAiGeneration({
     }
   }, [editedDocuments, setEditedDocuments, setIsGeneratingAI]);
 
-  const handleGenerateAllCategories = useCallback(async () => {
+  const handleGenerateAllCategories = useCallback(async (selectedIndices?: Set<number>) => {
     setIsGeneratingAI(true);
     try {
       const updatedDocs = [...editedDocuments];
       
       for (let i = 0; i < updatedDocs.length; i++) {
         try {
+          if (selectedIndices && !selectedIndices.has(i)) continue;
           if (!updatedDocs[i].content || updatedDocs[i].content.trim().length === 0) {
             continue;
           }
@@ -219,13 +221,14 @@ export function useSimpleAiGeneration({
     }
   }, [editedDocuments, setEditedDocuments, setIsGeneratingAI]);
 
-  const handleGenerateAllTags = useCallback(async () => {
+  const handleGenerateAllTags = useCallback(async (selectedIndices?: Set<number>) => {
     setIsGeneratingAI(true);
     try {
       const updatedDocs = [...editedDocuments];
       
       for (let i = 0; i < updatedDocs.length; i++) {
         try {
+          if (selectedIndices && !selectedIndices.has(i)) continue;
           if (!updatedDocs[i].content || updatedDocs[i].content.trim().length === 0) {
             continue;
           }
@@ -246,7 +249,7 @@ export function useSimpleAiGeneration({
     }
   }, [editedDocuments, setEditedDocuments, setIsGeneratingAI]);
 
-  const handleGenerateAllSchemes = useCallback(async () => {
+  const handleGenerateAllSchemes = useCallback(async (selectedIndices?: Set<number>) => {
     // Check if WordPress settings are configured
     if (!hasWordPressSettings()) {
       toast.error(promptForWordPressSettings());
@@ -259,6 +262,7 @@ export function useSimpleAiGeneration({
       
       for (let i = 0; i < updatedDocs.length; i++) {
         try {
+          if (selectedIndices && !selectedIndices.has(i)) continue;
           if (!updatedDocs[i].content || updatedDocs[i].content.trim().length === 0) {
             continue;
           }

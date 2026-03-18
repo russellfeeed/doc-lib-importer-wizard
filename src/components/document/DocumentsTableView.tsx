@@ -21,10 +21,10 @@ interface DocumentsTableViewProps {
   isGeneratingAI: boolean;
   isStandards?: boolean;
   onEditDocument: (index: number, field: keyof DocumentFile, value: string | boolean | Record<string, string>) => void;
-  onGenerateAllExcerpts: () => void;
-  onGenerateAllCategories?: () => void;
-  onGenerateAllSchemes?: () => void;
-  onGenerateAllTags: () => void;
+  onGenerateAllExcerpts: (selectedIndices?: Set<number>) => void;
+  onGenerateAllCategories?: (selectedIndices?: Set<number>) => void;
+  onGenerateAllSchemes?: (selectedIndices?: Set<number>) => void;
+  onGenerateAllTags: (selectedIndices?: Set<number>) => void;
   onToggleView: () => void;
   onSave: () => void;
   onBack: () => void;
@@ -136,7 +136,7 @@ const DocumentsTableView: React.FC<DocumentsTableViewProps> = ({
     
     setBulkOperationType('schemes');
     try {
-      await onGenerateAllSchemes();
+      await onGenerateAllSchemes(selectedDocuments);
     } finally {
       setBulkOperationType(null);
     }
@@ -148,7 +148,7 @@ const DocumentsTableView: React.FC<DocumentsTableViewProps> = ({
     
     setBulkOperationType('excerpts');
     try {
-      await onGenerateAllExcerpts();
+      await onGenerateAllExcerpts(selectedDocuments);
     } finally {
       setBulkOperationType(null);
     }
@@ -159,7 +159,7 @@ const DocumentsTableView: React.FC<DocumentsTableViewProps> = ({
     
     setBulkOperationType('categories');
     try {
-      await onGenerateAllCategories();
+      await onGenerateAllCategories(selectedDocuments);
     } finally {
       setBulkOperationType(null);
     }
@@ -170,7 +170,7 @@ const DocumentsTableView: React.FC<DocumentsTableViewProps> = ({
     
     setBulkOperationType('tags');
     try {
-      await onGenerateAllTags();
+      await onGenerateAllTags(selectedDocuments);
     } finally {
       setBulkOperationType(null);
     }

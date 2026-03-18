@@ -8,10 +8,10 @@ interface DocumentHeaderProps {
   currentDocIndex: number;
   totalDocuments: number;
   isGeneratingAI: boolean;
-  onGenerateAllExcerpts: () => void;
-  onGenerateAllCategories?: () => void;
-  onGenerateAllTags?: () => void;
-  onGenerateAllSchemes?: () => void;
+  onGenerateAllExcerpts: (selectedIndices?: Set<number>) => void;
+  onGenerateAllCategories?: (selectedIndices?: Set<number>) => void;
+  onGenerateAllTags?: (selectedIndices?: Set<number>) => void;
+  onGenerateAllSchemes?: (selectedIndices?: Set<number>) => void;
   onToggleView: () => void;
 }
 
@@ -35,7 +35,7 @@ const DocumentHeader: React.FC<DocumentHeaderProps> = ({
         <Button 
           variant="outline" 
           size="sm" 
-          onClick={onGenerateAllExcerpts}
+          onClick={() => onGenerateAllExcerpts()}
           disabled={isGeneratingAI}
         >
           <Zap className="mr-2 h-4 w-4" />
@@ -45,7 +45,7 @@ const DocumentHeader: React.FC<DocumentHeaderProps> = ({
           <Button 
             variant="outline" 
             size="sm" 
-            onClick={onGenerateAllCategories}
+            onClick={() => onGenerateAllCategories()}
             disabled={isGeneratingAI}
           >
             <Tag className="mr-2 h-4 w-4" />
@@ -56,7 +56,7 @@ const DocumentHeader: React.FC<DocumentHeaderProps> = ({
           <Button 
             variant="outline" 
             size="sm" 
-            onClick={onGenerateAllTags}
+            onClick={() => onGenerateAllTags()}
             disabled={isGeneratingAI}
           >
             <Tag className="mr-2 h-4 w-4" />
@@ -67,7 +67,7 @@ const DocumentHeader: React.FC<DocumentHeaderProps> = ({
           <Button 
             variant="outline" 
             size="sm" 
-            onClick={onGenerateAllSchemes}
+            onClick={() => onGenerateAllSchemes()}
             disabled={isGeneratingAI}
           >
             <Building className="mr-2 h-4 w-4" />

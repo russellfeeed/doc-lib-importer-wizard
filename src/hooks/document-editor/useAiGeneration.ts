@@ -205,7 +205,7 @@ export function useAiGeneration({
     }
   };
 
-  const handleGenerateAllExcerpts = async () => {
+  const handleGenerateAllExcerpts = async (selectedIndices?: Set<number>) => {
     setIsGeneratingAI(true);
     
     const hasFilesToProcess = editedDocuments.some(doc => 
@@ -225,6 +225,7 @@ export function useAiGeneration({
     for (let i = 0; i < docsInProgress.length; i++) {
       const doc = docsInProgress[i];
       
+      if (selectedIndices && !selectedIndices.has(i)) continue;
       if (!doc.file || (doc.excerpt && doc.excerpt.trim() !== '')) continue;
       
       try {
@@ -270,7 +271,7 @@ export function useAiGeneration({
     toast.success("Finished generating AI excerpts");
   };
 
-  const handleGenerateAllCategories = async () => {
+  const handleGenerateAllCategories = async (selectedIndices?: Set<number>) => {
     setIsGeneratingAI(true);
     
     const hasFilesToProcess = editedDocuments.some(doc => 
@@ -290,6 +291,7 @@ export function useAiGeneration({
     for (let i = 0; i < docsInProgress.length; i++) {
       const doc = docsInProgress[i];
       
+      if (selectedIndices && !selectedIndices.has(i)) continue;
       if (!doc.file || (doc.categories && doc.categories.trim() !== '')) continue;
       
       try {
@@ -337,7 +339,7 @@ export function useAiGeneration({
     toast.success("Finished determining document categories");
   };
 
-  const handleGenerateAllTags = async () => {
+  const handleGenerateAllTags = async (selectedIndices?: Set<number>) => {
     setIsGeneratingAI(true);
     
     const hasFilesToProcess = editedDocuments.some(doc => 
@@ -357,6 +359,7 @@ export function useAiGeneration({
     for (let i = 0; i < docsInProgress.length; i++) {
       const doc = docsInProgress[i];
       
+      if (selectedIndices && !selectedIndices.has(i)) continue;
       if (!doc.file || (doc.tags && doc.tags.trim() !== '')) continue;
       
       try {
