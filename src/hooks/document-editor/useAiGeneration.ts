@@ -291,6 +291,7 @@ export function useAiGeneration({
     for (let i = 0; i < docsInProgress.length; i++) {
       const doc = docsInProgress[i];
       
+      if (selectedIndices && !selectedIndices.has(i)) continue;
       if (!doc.file || (doc.categories && doc.categories.trim() !== '')) continue;
       
       try {
