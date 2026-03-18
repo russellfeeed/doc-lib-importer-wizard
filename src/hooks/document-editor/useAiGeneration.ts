@@ -205,7 +205,7 @@ export function useAiGeneration({
     }
   };
 
-  const handleGenerateAllExcerpts = async () => {
+  const handleGenerateAllExcerpts = async (selectedIndices?: Set<number>) => {
     setIsGeneratingAI(true);
     
     const hasFilesToProcess = editedDocuments.some(doc => 
