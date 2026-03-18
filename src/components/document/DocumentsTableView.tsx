@@ -48,7 +48,7 @@ const DocumentsTableView: React.FC<DocumentsTableViewProps> = ({
   onToggleAllPublished
 }) => {
   const [selectedDocuments, setSelectedDocuments] = React.useState<Set<number>>(new Set());
-  const [bulkOperationType, setBulkOperationType] = React.useState<'schemes' | 'tags' | 'excerpts' | 'categories' | null>(null);
+  const [bulkOperationType, setBulkOperationType] = React.useState<'schemes' | 'tags' | 'excerpts' | 'categories' | 'all' | null>(null);
   // Function to determine if a document needs attention
   const needsAttention = (doc: DocumentFile): { needs: boolean; reasons: string[] } => {
     const reasons: string[] = [];

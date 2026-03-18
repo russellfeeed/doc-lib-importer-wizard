@@ -89,6 +89,7 @@ const StandardsDocumentEditor: React.FC<StandardsDocumentEditorProps> = ({
           onEditDocument={handleTableChange}
           onGenerateAllExcerpts={handleGenerateAllExcerpts}
           onGenerateAllTags={handleGenerateAllTags}
+          onGenerateAllData={handleGenerateAllData}
           onToggleView={toggleEditAll}
           onSave={handleSaveAll}
           onBack={onBack}
