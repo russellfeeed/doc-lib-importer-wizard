@@ -148,7 +148,7 @@ const DocumentsTableView: React.FC<DocumentsTableViewProps> = ({
     
     setBulkOperationType('excerpts');
     try {
-      await onGenerateAllExcerpts();
+      await onGenerateAllExcerpts(selectedDocuments);
     } finally {
       setBulkOperationType(null);
     }
