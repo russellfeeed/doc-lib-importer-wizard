@@ -306,6 +306,25 @@ const DocumentsTableView: React.FC<DocumentsTableViewProps> = ({
                     </>
                   )}
                 </Button>
+                {onGenerateAllData && (
+                  <Button 
+                    size="sm"
+                    onClick={handleBulkGenerateAllData}
+                    disabled={isGeneratingAI || selectedDocuments.size === 0 || bulkOperationType === 'all'}
+                  >
+                    {(isGeneratingAI && bulkOperationType === 'all') ? (
+                      <>
+                        <div className="animate-spin h-4 w-4 border-2 border-primary-foreground border-t-transparent rounded-full mr-2" />
+                        Generating All Data...
+                      </>
+                    ) : (
+                      <>
+                        <Zap className="mr-2 h-4 w-4" />
+                        Generate All Data ({selectedDocuments.size})
+                      </>
+                    )}
+                  </Button>
+                )}
               </>
             )}
             <Button 
