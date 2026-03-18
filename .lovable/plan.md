@@ -1,48 +1,42 @@
 
 
-## Upload to Media Library & Update Document Library
+## Add Selection-Aware Bulk AI Generation
 
-### What it does
-Adds a button (visible when a WordPress duplicate match exists) that:
-1. Uploads the local file to the WordPress Media Library
-2. Takes the returned media URL and derives the correct File URL / Direct URL
-3. Updates the matched DLP document (by ID) with the new file URL plus current local metadata (title, excerpt, categories, tags)
+### Problem
+The table view already has checkboxes and selection state, but the bulk "Generate All" handlers in the AI generation hooks iterate over ALL documents regardless of selection. The selection state in `DocumentsTableView` is never passed down to the actual generation logic.
 
-### Technical approach
+### Approach
+Update all `handleGenerateAll*` functions across the three AI generation hooks to accept an optional `selectedIndices: Set<number>` parameter. When provided, only process documents at those indices. Update the props/types to thread this through from the table view.
 
-**1. New `upload-and-update-dlp` action in `supabase/functions/wordpress-proxy/index.ts`**
+### Files to change
 
-Since `wordpress-proxy` already has the cookie-based auth fallback (`wpFetch`), and the `wordpress-upload` function does not, the new action lives here. It needs a `wpFetchFormData` variant of `wpFetch` that sends `multipart/form-data` instead of JSON (for the media upload step). Steps inside the handler:
+**1. `src/hooks/document-editor/types.ts`**
+- Change signatures of `handleGenerateAllExcerpts`, `handleGenerateAllCategories`, `handleGenerateAllTags`, `handleGenerateAllSchemes` to accept `(selectedIndices?: Set<number>)`.
 
-- Receive: `{ documentId, fileData (base64), fileName, fileType, title, excerpt, categories, tags }`
-- **Step A**: Upload file to `/wp-json/wp/v2/media` using FormData (with cookie-auth fallback)
-- **Step B**: Get `source_url` from the response — derive the `_pda` protected path variant
-- **Step C**: Resolve category/tag names to term IDs via `/wp-json/wp/v2/doc_categories?search=X` and `/wp-json/wp/v2/doc_tags?search=X`
-- **Step D**: PUT to `/wp-json/wp/v2/dlp_document/{documentId}` with `{ title, excerpt, doc_categories: [ids], doc_tags: [ids], _file_url: derivedUrl }` — the exact meta key for the file URL will need to match what Barn2 DLP expects (likely `_dlp_document_file_url` or similar custom field)
+**2. `src/hooks/document-editor/useAiGeneration.ts`**
+- Update `handleGenerateAllExcerpts`, `handleGenerateAllCategories`, `handleGenerateAllTags` to accept `selectedIndices?: Set<number>`. In the loop, skip documents whose index is not in the set (when provided).
 
-**2. New client utility in `src/utils/wordpressUtils.ts`**
+**3. `src/hooks/useSimpleAiGeneration.ts`**
+- Same change for `handleGenerateAllExcerpts`, `handleGenerateAllCategories`, `handleGenerateAllTags`, `handleGenerateAllSchemes`.
 
-- `uploadAndUpdateDlpDocument(document: DocumentFile)`: reads the File object as base64, calls the edge function, returns success/error status
-- Handles the base64 conversion client-side before sending
+**4. `src/hooks/useStandardsAiGeneration.ts`**
+- Same change for `handleGenerateAllExcerpts`, `handleGenerateAllCategories`, `handleGenerateAllTags`.
 
-**3. Button in `src/components/document/editor/WpComparisonPanel.tsx`**
+**5. `src/components/document/DocumentsTableView.tsx`**
+- Update the props interface: `onGenerateAllExcerpts`, `onGenerateAllCategories`, `onGenerateAllTags`, `onGenerateAllSchemes` to accept `(selectedIndices?: Set<number>)`.
+- Update the bulk action handlers to pass `selectedDocuments` to the callbacks:
+  ```typescript
+  const handleBulkGenerateExcerpts = async () => {
+    await onGenerateAllExcerpts(selectedDocuments);
+  };
+  ```
 
-- Add an "Upload & Update in WordPress" button at the bottom of the comparison panel
-- Shows a loading spinner during the operation
-- On success: toast notification with the new URL; updates `fileUrl` and `directUrl` on the document via `onEdit`
-- On error: toast with error message
+**6. `src/components/document/editor/DocumentHeader.tsx`**
+- Update props to match new signatures (the header "Generate All" buttons from single-doc view call without indices, which means process all — unchanged behavior).
 
-**4. Prop threading**
+**7. Parent editor components** (`DocumentEditor.tsx`, `SimpleDocumentEditor.tsx`, `StandardsDocumentEditor.tsx`)
+- No changes needed — they already pass the hook functions through, and the new optional parameter is backwards compatible.
 
-- `WpComparisonPanel` needs the `document` object and `onEdit` callback (currently only receives `rows`)
-- `DocumentMetadata` already has both — pass them down
-
-### Files to modify
-- `supabase/functions/wordpress-proxy/index.ts` — add `wpFetchFormData` helper + `upload-and-update-dlp` action (~80 lines)
-- `src/utils/wordpressUtils.ts` — add `uploadAndUpdateDlpDocument` function
-- `src/components/document/editor/WpComparisonPanel.tsx` — add button + state, accept new props
-- `src/components/document/editor/DocumentMetadata.tsx` — pass document + onEdit to WpComparisonPanel
-
-### Key detail: File URL transformation
-The media upload returns a URL like `https://domain/wp-content/uploads/2026/03/file.pdf`. For standards, this needs to become the `_pda` protected variant: `/wp-content/uploads/_pda/2026/03/file.pdf` (relative for File URL) and full absolute for Direct URL. The edge function will derive this from the `source_url` returned by WordPress.
+### Key detail
+The `selectedIndices` parameter is optional. When called from the single-document header view (no selection UI), it passes nothing and all documents are processed (existing behavior preserved). When called from the table view, the selection set is passed.
 
