@@ -35,7 +35,7 @@ const DocumentHeader: React.FC<DocumentHeaderProps> = ({
         <Button 
           variant="outline" 
           size="sm" 
-          onClick={onGenerateAllExcerpts}
+          onClick={() => onGenerateAllExcerpts()}
           disabled={isGeneratingAI}
         >
           <Zap className="mr-2 h-4 w-4" />
