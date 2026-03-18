@@ -21,10 +21,10 @@ interface DocumentsTableViewProps {
   isGeneratingAI: boolean;
   isStandards?: boolean;
   onEditDocument: (index: number, field: keyof DocumentFile, value: string | boolean | Record<string, string>) => void;
-  onGenerateAllExcerpts: () => void;
-  onGenerateAllCategories?: () => void;
-  onGenerateAllSchemes?: () => void;
-  onGenerateAllTags: () => void;
+  onGenerateAllExcerpts: (selectedIndices?: Set<number>) => void;
+  onGenerateAllCategories?: (selectedIndices?: Set<number>) => void;
+  onGenerateAllSchemes?: (selectedIndices?: Set<number>) => void;
+  onGenerateAllTags: (selectedIndices?: Set<number>) => void;
   onToggleView: () => void;
   onSave: () => void;
   onBack: () => void;
