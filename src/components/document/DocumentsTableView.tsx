@@ -25,6 +25,7 @@ interface DocumentsTableViewProps {
   onGenerateAllCategories?: (selectedIndices?: Set<number>) => void;
   onGenerateAllSchemes?: (selectedIndices?: Set<number>) => void;
   onGenerateAllTags: (selectedIndices?: Set<number>) => void;
+  onGenerateAllData?: (selectedIndices?: Set<number>) => void;
   onToggleView: () => void;
   onSave: () => void;
   onBack: () => void;
@@ -40,13 +41,14 @@ const DocumentsTableView: React.FC<DocumentsTableViewProps> = ({
   onGenerateAllCategories,
   onGenerateAllSchemes,
   onGenerateAllTags,
+  onGenerateAllData,
   onToggleView,
   onSave,
   onBack,
   onToggleAllPublished
 }) => {
   const [selectedDocuments, setSelectedDocuments] = React.useState<Set<number>>(new Set());
-  const [bulkOperationType, setBulkOperationType] = React.useState<'schemes' | 'tags' | 'excerpts' | 'categories' | null>(null);
+  const [bulkOperationType, setBulkOperationType] = React.useState<'schemes' | 'tags' | 'excerpts' | 'categories' | 'all' | null>(null);
   // Function to determine if a document needs attention
   const needsAttention = (doc: DocumentFile): { needs: boolean; reasons: string[] } => {
     const reasons: string[] = [];
@@ -176,6 +178,17 @@ const DocumentsTableView: React.FC<DocumentsTableViewProps> = ({
     }
   };
   
+  const handleBulkGenerateAllData = async () => {
+    if (!onGenerateAllData || selectedDocuments.size === 0) return;
+    
+    setBulkOperationType('all');
+    try {
+      await onGenerateAllData(selectedDocuments);
+    } finally {
+      setBulkOperationType(null);
+    }
+  };
+  
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
@@ -293,6 +306,25 @@ const DocumentsTableView: React.FC<DocumentsTableViewProps> = ({
                     </>
                   )}
                 </Button>
+                {onGenerateAllData && (
+                  <Button 
+                    size="sm"
+                    onClick={handleBulkGenerateAllData}
+                    disabled={isGeneratingAI || selectedDocuments.size === 0 || bulkOperationType === 'all'}
+                  >
+                    {(isGeneratingAI && bulkOperationType === 'all') ? (
+                      <>
+                        <div className="animate-spin h-4 w-4 border-2 border-primary-foreground border-t-transparent rounded-full mr-2" />
+                        Generating All Data...
+                      </>
+                    ) : (
+                      <>
+                        <Zap className="mr-2 h-4 w-4" />
+                        Generate All Data ({selectedDocuments.size})
+                      </>
+                    )}
+                  </Button>
+                )}
               </>
             )}
             <Button 

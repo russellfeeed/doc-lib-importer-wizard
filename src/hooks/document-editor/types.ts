@@ -29,6 +29,7 @@ export interface UseDocumentEditorReturn extends DocumentEditorState {
   handleGenerateAllCategories: (selectedIndices?: Set<number>) => Promise<void>;
   handleGenerateAllTags: (selectedIndices?: Set<number>) => Promise<void>;
   handleGenerateAllSchemes?: (selectedIndices?: Set<number>) => Promise<void>;
+  handleGenerateAllData?: (selectedIndices?: Set<number>) => Promise<void>;
   handleToggleAllPublished: (published: boolean) => void;
   handleDeleteDocument: () => void;
 }

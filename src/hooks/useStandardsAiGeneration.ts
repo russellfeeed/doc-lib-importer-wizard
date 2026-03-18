@@ -272,7 +272,6 @@ export function useStandardsAiGeneration({
             continue;
           }
           
-          // Truncate large content automatically for batch processing
           let contentToProcess = updatedDocs[i].content;
           if (contentToProcess.length > 100000) {
             contentToProcess = contentToProcess.substring(0, 100000);
@@ -299,12 +298,93 @@ export function useStandardsAiGeneration({
     }
   }, [editedDocuments, setEditedDocuments, setIsGeneratingAI]);
 
+  const handleGenerateAllData = useCallback(async (selectedIndices?: Set<number>) => {
+    setIsGeneratingAI(true);
+    try {
+      const updatedDocs = [...editedDocuments];
+      
+      for (let i = 0; i < updatedDocs.length; i++) {
+        try {
+          if (selectedIndices && !selectedIndices.has(i)) continue;
+          if (!updatedDocs[i].content || updatedDocs[i].content.trim().length === 0) {
+            continue;
+          }
+          
+          let contentToProcess = updatedDocs[i].content;
+          if (contentToProcess.length > 100000) {
+            contentToProcess = contentToProcess.substring(0, 100000);
+            const lastPeriod = contentToProcess.lastIndexOf('.');
+            if (lastPeriod > 90000) {
+              contentToProcess = contentToProcess.substring(0, lastPeriod + 1);
+            }
+          }
+          
+          toast.info(`Processing document ${i + 1}/${selectedIndices ? selectedIndices.size : updatedDocs.length}: ${updatedDocs[i].name}`);
+          
+          // 1. Extract standard number and document title
+          try {
+            const { extractStandardsDataWithOpenAI } = await import('@/utils/openaiClient');
+            const standardsData = await extractStandardsDataWithOpenAI(contentToProcess, updatedDocs[i].name);
+            if (standardsData) {
+              updatedDocs[i] = { 
+                ...updatedDocs[i], 
+                standardNumber: standardsData.standardNumber || updatedDocs[i].standardNumber,
+                documentTitle: standardsData.documentTitle || updatedDocs[i].documentTitle,
+                name: standardsData.documentTitle || updatedDocs[i].name
+              };
+            }
+          } catch (error) {
+            console.error(`Error extracting standards data for document ${i}:`, error);
+          }
+          
+          // 2. Generate excerpt
+          try {
+            const excerpt = await generateDocumentSummary(contentToProcess, updatedDocs[i].name);
+            updatedDocs[i] = { ...updatedDocs[i], excerpt };
+          } catch (error) {
+            console.error(`Error generating excerpt for document ${i}:`, error);
+          }
+          
+          // 3. Generate category
+          try {
+            const category = await generateStandardsCategory(contentToProcess, updatedDocs[i].name);
+            updatedDocs[i] = { ...updatedDocs[i], categories: category };
+          } catch (error) {
+            console.error(`Error generating category for document ${i}:`, error);
+          }
+          
+          // 4. Generate tags
+          try {
+            const tags = await generateDocumentTags(contentToProcess, updatedDocs[i].name, updatedDocs[i].categories);
+            updatedDocs[i] = { ...updatedDocs[i], tags };
+          } catch (error) {
+            console.error(`Error generating tags for document ${i}:`, error);
+          }
+          
+          // Update state after each document so user sees progress
+          setEditedDocuments([...updatedDocs]);
+        } catch (error) {
+          console.error(`Error processing document ${i}:`, error);
+        }
+      }
+      
+      setEditedDocuments(updatedDocs);
+      toast.success('All data generated successfully');
+    } catch (error) {
+      console.error('Error generating all data:', error);
+      toast.error('Failed to generate all data');
+    } finally {
+      setIsGeneratingAI(false);
+    }
+  }, [editedDocuments, setEditedDocuments, setIsGeneratingAI]);
+
   return {
     handleGenerateExcerpt,
     handleGenerateCategory,
     handleGenerateTags,
     handleGenerateAllExcerpts,
     handleGenerateAllCategories,
-    handleGenerateAllTags
+    handleGenerateAllTags,
+    handleGenerateAllData
   };
 }

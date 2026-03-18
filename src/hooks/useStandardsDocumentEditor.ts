@@ -41,7 +41,8 @@ export function useStandardsDocumentEditor({
     handleGenerateTags,
     handleGenerateAllExcerpts,
     handleGenerateAllCategories,
-    handleGenerateAllTags
+    handleGenerateAllTags,
+    handleGenerateAllData
   } = useStandardsAiGeneration({
     editedDocuments,
     currentDocIndex,
@@ -67,6 +68,7 @@ export function useStandardsDocumentEditor({
     handleGenerateAllExcerpts,
     handleGenerateAllCategories,
     handleGenerateAllTags,
+    handleGenerateAllData,
     handleToggleAllPublished,
     handleDeleteDocument,
   };
