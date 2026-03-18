@@ -249,7 +249,7 @@ export function useSimpleAiGeneration({
     }
   }, [editedDocuments, setEditedDocuments, setIsGeneratingAI]);
 
-  const handleGenerateAllSchemes = useCallback(async () => {
+  const handleGenerateAllSchemes = useCallback(async (selectedIndices?: Set<number>) => {
     // Check if WordPress settings are configured
     if (!hasWordPressSettings()) {
       toast.error(promptForWordPressSettings());
@@ -262,6 +262,7 @@ export function useSimpleAiGeneration({
       
       for (let i = 0; i < updatedDocs.length; i++) {
         try {
+          if (selectedIndices && !selectedIndices.has(i)) continue;
           if (!updatedDocs[i].content || updatedDocs[i].content.trim().length === 0) {
             continue;
           }
