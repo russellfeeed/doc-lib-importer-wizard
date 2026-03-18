@@ -221,13 +221,14 @@ export function useSimpleAiGeneration({
     }
   }, [editedDocuments, setEditedDocuments, setIsGeneratingAI]);
 
-  const handleGenerateAllTags = useCallback(async () => {
+  const handleGenerateAllTags = useCallback(async (selectedIndices?: Set<number>) => {
     setIsGeneratingAI(true);
     try {
       const updatedDocs = [...editedDocuments];
       
       for (let i = 0; i < updatedDocs.length; i++) {
         try {
+          if (selectedIndices && !selectedIndices.has(i)) continue;
           if (!updatedDocs[i].content || updatedDocs[i].content.trim().length === 0) {
             continue;
           }
