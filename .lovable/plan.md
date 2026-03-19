@@ -1,37 +1,37 @@
 
 
-## Fix: Align CSV File URL with WordPress Upload Filename
+## Fix: Preserve Original Case in CSV File URLs
 
 ### Problem
-The CSV `File URL` for standards documents does not match the actual filename uploaded to WordPress Media Library. They are constructed differently:
+The CSV generates **lowercase** filenames in URLs (e.g., `bs-iso-310002018-risk-management-guidelines.pdf`), but WordPress preserves the **original case** when storing uploaded files (e.g., `BS-ISO-310002018-Risk-management-Guidelines.pdf`). On a case-sensitive Linux server, this causes 404 errors.
 
-- **CSV** uses the original filename (`docFile.file?.name`), replaces spaces with hyphens, no standard number prefix
-- **WordPress upload** prefixes with standard number (`BS EN 50131-1 - Title.pdf`), replaces em/en dashes, ensures extension — then WordPress itself sanitizes the filename further (lowercases, replaces spaces with hyphens)
-
-For example:
-- CSV generates: `/wp-content/uploads/_pda/2026/03/original-filename.pdf`
-- WordPress stores: `/wp-content/uploads/_pda/2026/03/bs-en-50131-1-some-title.pdf`
+### Root Cause
+In `src/utils/csvUtils.ts` line 242, the URL filename is forced to `.toLowerCase()`. The WordPress uploader (line 228 of the edge function) sends the filename with original case, and WordPress preserves it.
 
 ### Fix
 
-**`src/utils/csvUtils.ts`** — Align the URL filename construction with what WordPress actually does:
+**`src/utils/csvUtils.ts`** (~line 242) — Remove `.toLowerCase()` from the standards URL filename sanitization. Keep the other sanitization (spaces→hyphens, strip colons, collapse multiple hyphens) but preserve original case:
 
-1. Build the same `uploadName` as WordPressUploader (prefix with standard number, replace em/en dashes, ensure extension)
-2. Apply WordPress's sanitization (lowercase, replace spaces with hyphens, remove special characters like colons)
-3. Use this sanitized name in the `_pda` URL path
+```typescript
+// Before
+urlFileName = uploadName
+  .toLowerCase()
+  .replace(/\s+/g, '-')
+  .replace(/[:]/g, '')
+  .replace(/[^a-z0-9.\-]/g, '-')
+  .replace(/-+/g, '-');
 
-```text
-Current (line ~225):
-  fileName = docFile.file?.name || docFile.name
-  urlFileName = fileName.replace(/\s+/g, '-')
-
-Proposed:
-  1. Start with uploadName = standardNumber + " - " + docFile.name (matching WP uploader)
-  2. Replace em/en dashes with hyphens
-  3. Ensure .pdf extension
-  4. Sanitize for WordPress: lowercase, replace spaces with hyphens, strip invalid chars
-  5. Use sanitized name in URL path
+// After
+urlFileName = uploadName
+  .replace(/\s+/g, '-')
+  .replace(/[:]/g, '')
+  .replace(/[^a-zA-Z0-9.\-]/g, '-')
+  .replace(/-+/g, '-');
 ```
 
-This is a single change in one file (`csvUtils.ts`), affecting only the standards URL generation block (~lines 223-235).
+Note the character class also changes from `[^a-z0-9.\-]` to `[^a-zA-Z0-9.\-]` to preserve uppercase letters.
+
+**Also update `src/components/document/editor/DocumentContent.tsx`** — The `getFileUrlPlaceholder` and `getDirectUrlPlaceholder` functions apply the same lowercase sanitization to URL previews. Update these to preserve case as well.
+
+Single-file logic change in two files, no structural changes.
 
