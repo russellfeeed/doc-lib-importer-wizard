@@ -118,10 +118,6 @@ export const generateCSV = async (
       'Name',
     ];
     
-    // Add standards-specific headers if applicable
-    if (isStandards) {
-      headers.push('Standard Number', 'Document Title');
-    }
     
     headers.push(
       'Categories',
