@@ -238,11 +238,6 @@ export const generateCSV = async (
         'Name': forceQuoteCsvValue(docFile.name),
       };
       
-      // Add standards-specific fields
-      if (isStandards) {
-        row['Standard Number'] = forceQuoteCsvValue(docFile.standardNumber || '');
-        row['Document Title'] = forceQuoteCsvValue(docFile.documentTitle || '');
-      }
       
       row['Categories'] = forceQuoteCsvValue(docFile.categories);
       const dateTag = new Date().toISOString().split('T')[0];
