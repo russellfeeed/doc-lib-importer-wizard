@@ -240,10 +240,9 @@ export const generateCSV = async (
         
         // Apply WordPress-style sanitization: lowercase, spaces to hyphens, strip special chars
         urlFileName = uploadName
-          .toLowerCase()
           .replace(/\s+/g, '-')
           .replace(/[:]/g, '')
-          .replace(/[^a-z0-9.\-]/g, '-')
+          .replace(/[^a-zA-Z0-9.\-]/g, '-')
           .replace(/-+/g, '-');
       } else {
         urlFileName = docFile.file?.name || docFile.name;
