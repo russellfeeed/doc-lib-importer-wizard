@@ -224,9 +224,10 @@ serve(async (req) => {
         };
 
         // Ensure filename has proper extension
-        let filename = doc.name;
-        if (!doc.name.toLowerCase().endsWith(`.${fileExtension}`)) {
-          filename = `${doc.name}.${fileExtension}`;
+        // Replace em dashes and en dashes with simple hyphens
+        let filename = doc.name.replace(/[–—]/g, '-');
+        if (!filename.toLowerCase().endsWith(`.${fileExtension}`)) {
+          filename = `${filename}.${fileExtension}`;
         }
 
         const mimeType = getMimeType(doc.fileType, fileExtension);
