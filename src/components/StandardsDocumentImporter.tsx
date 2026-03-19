@@ -92,6 +92,7 @@ const StandardsDocumentImporter: React.FC = () => {
           documents={documents}
           onBack={handleBackToCSV}
           onComplete={handleReset}
+          isStandards={true}
         />
       )
     }

@@ -16,6 +16,7 @@ interface UploadRequest {
   wpUrl: string;
   wpUsername: string;
   wpPassword: string;
+  isStandards?: boolean;
 }
 
 interface UploadResult {
@@ -33,7 +34,7 @@ serve(async (req) => {
   }
 
   try {
-    const { documents, wpUrl, wpUsername, wpPassword }: UploadRequest = await req.json();
+    const { documents, wpUrl, wpUsername, wpPassword, isStandards }: UploadRequest = await req.json();
 
     console.log(`Starting upload of ${documents.length} documents to WordPress`);
     
@@ -44,6 +45,34 @@ serve(async (req) => {
 
     // Create basic auth header
     const authHeader = btoa(`${wpUsername}:${wpPassword}`);
+
+    // Resolve nsi-media-type term ID for standards uploads
+    let nsiMediaTypeTermId: number | null = null;
+    if (isStandards) {
+      try {
+        console.log('Resolving nsi-media-type term ID for "standard"...');
+        const termResponse = await fetch(`${wpUrl}/wp-json/wp/v2/nsi-media-type?search=standard`, {
+          method: 'GET',
+          headers: {
+            'Authorization': `Basic ${authHeader}`,
+          },
+        });
+        if (termResponse.ok) {
+          const terms = await termResponse.json();
+          const match = Array.isArray(terms) && terms.find((t: any) => t.slug === 'standard' || t.name?.toLowerCase() === 'standard');
+          if (match) {
+            nsiMediaTypeTermId = match.id;
+            console.log(`Resolved nsi-media-type term ID: ${nsiMediaTypeTermId}`);
+          } else {
+            console.warn('No "standard" term found in nsi-media-type taxonomy. Uploads will proceed without taxonomy assignment.');
+          }
+        } else {
+          console.warn(`Failed to fetch nsi-media-type terms: ${termResponse.status} ${termResponse.statusText}`);
+        }
+      } catch (err) {
+        console.warn(`Error resolving nsi-media-type term: ${err.message}`);
+      }
+    }
 
     // Function to check if file already exists in WordPress Media Library
     const checkFileExists = async (filename: string): Promise<{ exists: boolean; mediaId?: number; url?: string }> => {
@@ -271,6 +300,11 @@ serve(async (req) => {
         // Create form data for WordPress media upload
         const formData = new FormData();
         formData.append('file', fileBlob, filename);
+
+        // Assign nsi-media-type taxonomy term for standards uploads
+        if (nsiMediaTypeTermId) {
+          formData.append('nsi-media-type', nsiMediaTypeTermId.toString());
+        }
 
         // Upload to WordPress media library
         const uploadResponse = await fetch(`${wpUrl}/wp-json/wp/v2/media`, {

@@ -12,6 +12,7 @@ interface WordPressUploaderProps {
   documents: DocumentFile[] | CircularLetter[];
   onBack: () => void;
   onComplete: () => void;
+  isStandards?: boolean;
 }
 
 interface UploadResult {
@@ -41,7 +42,8 @@ const convertFileToBase64 = (file: File): Promise<string> => {
 const WordPressUploader: React.FC<WordPressUploaderProps> = ({ 
   documents, 
   onBack,
-  onComplete
+  onComplete,
+  isStandards = false
 }) => {
   const [selectedDocuments, setSelectedDocuments] = useState<Set<string>>(new Set());
   const [isUploading, setIsUploading] = useState(false);
@@ -155,6 +157,7 @@ const WordPressUploader: React.FC<WordPressUploaderProps> = ({
             wpUrl: wpSettings.siteUrl,
             wpUsername: wpSettings.username,
             wpPassword: wpSettings.password,
+            isStandards,
           }
         });
 
