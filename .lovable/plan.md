@@ -1,27 +1,26 @@
 
 
-## Assign `nsi-media-type` Taxonomy During Media Upload
+## Prefix Standards Media Filenames with Standard Number
 
-### Overview
-Yes — the WordPress REST API supports setting taxonomy terms on the media item during the upload POST. We'll resolve the term ID once per batch, then include it in each upload's FormData.
+### Change
 
-### Changes
+**`src/components/WordPressUploader.tsx`**, lines 137-147 — In the regular documents branch, when `isStandards` is true and the document has a `standardNumber`, prefix the `name` sent to the edge function:
 
-**1. `src/components/WordPressUploader.tsx`**
-- Accept optional `isStandards` prop
-- Pass `isStandards` in the request body to the edge function
+```typescript
+// Handle regular documents
+const docFile = doc as DocumentFile;
+const file = docFile.file;
+const fileData = file ? await convertFileToBase64(file) : null;
+const uploadName = isStandards && docFile.standardNumber
+  ? `${docFile.standardNumber} - ${docFile.name}`
+  : docFile.name;
+return {
+  id: doc.id,
+  name: uploadName,
+  fileData,
+  fileType: docFile.fileType,
+};
+```
 
-**2. `src/components/StandardsDocumentImporter.tsx`**
-- Pass `isStandards={true}` to `<WordPressUploader>`
-
-**3. `supabase/functions/wordpress-upload/index.ts`**
-- Accept `isStandards` from request body
-- Before the upload loop, if `isStandards` is true, resolve the `standard` term ID from `GET /wp-json/wp/v2/nsi-media-type?search=standard` (cache it for the batch)
-- In the FormData for each upload, append `nsi-media-type` with the resolved term ID: `formData.append('nsi-media-type', termId)`
-- If term resolution fails, log a warning but continue uploads without the taxonomy
-
-### Technical notes
-- The `nsi-media-type` taxonomy must be registered for the `attachment` post type in WordPress
-- Term resolution happens once per function invocation, not per file
-- Non-fatal: if taxonomy assignment fails, the file still uploads successfully
+Single change in one file. The edge function already uses `doc.name` for the upload filename, so this flows through automatically.
 
