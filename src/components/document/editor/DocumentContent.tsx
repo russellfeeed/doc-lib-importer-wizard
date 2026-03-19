@@ -31,7 +31,7 @@ const DocumentContent: React.FC<DocumentContentProps> = ({
 }) => {
   const getFileUrlPlaceholder = () => {
     const fileName = `${document.name}${document.name.includes('.') ? '' : '.pdf'}`;
-    const urlFileName = isStandards ? fileName.replace(/\s+/g, '-') : fileName;
+    const urlFileName = isStandards ? fileName.replace(/[–—]/g, '-').replace(/\s+/g, '-') : fileName.replace(/[–—]/g, '-');
     
     if (isStandards) {
       return `/wp-content/uploads/_pda/${getCurrentUploadPath()}/${urlFileName}`;
@@ -41,7 +41,7 @@ const DocumentContent: React.FC<DocumentContentProps> = ({
 
   const getDirectUrlPlaceholder = () => {
     const fileName = `${document.name}${document.name.includes('.') ? '' : '.pdf'}`;
-    const urlFileName = isStandards ? fileName.replace(/\s+/g, '-') : fileName;
+    const urlFileName = isStandards ? fileName.replace(/[–—]/g, '-').replace(/\s+/g, '-') : fileName.replace(/[–—]/g, '-');
     
     if (isStandards) {
       return `https://dev.members.nsi.org.uk/wp-content/uploads/_pda/${getCurrentUploadPath()}/${urlFileName}`;
