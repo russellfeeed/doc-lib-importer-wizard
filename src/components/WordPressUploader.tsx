@@ -139,9 +139,19 @@ const WordPressUploader: React.FC<WordPressUploaderProps> = ({
               const docFile = doc as DocumentFile;
               const file = docFile.file;
               const fileData = file ? await convertFileToBase64(file) : null;
-              const uploadName = isStandards && docFile.standardNumber
+
+              // Get original file extension
+              const originalExt = file?.name?.split('.').pop()?.toLowerCase() || 'pdf';
+
+              let uploadName = isStandards && docFile.standardNumber
                 ? `${docFile.standardNumber} - ${docFile.name}`
                 : docFile.name;
+
+              // Ensure filename has proper extension
+              if (!uploadName.toLowerCase().endsWith(`.${originalExt}`)) {
+                uploadName = `${uploadName}.${originalExt}`;
+              }
+
               return {
                 id: doc.id,
                 name: uploadName,
