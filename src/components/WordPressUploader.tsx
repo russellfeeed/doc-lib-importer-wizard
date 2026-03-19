@@ -139,9 +139,12 @@ const WordPressUploader: React.FC<WordPressUploaderProps> = ({
               const docFile = doc as DocumentFile;
               const file = docFile.file;
               const fileData = file ? await convertFileToBase64(file) : null;
+              const uploadName = isStandards && docFile.standardNumber
+                ? `${docFile.standardNumber} - ${docFile.name}`
+                : docFile.name;
               return {
                 id: doc.id,
-                name: doc.name,
+                name: uploadName,
                 fileData,
                 fileType: docFile.fileType,
               };
