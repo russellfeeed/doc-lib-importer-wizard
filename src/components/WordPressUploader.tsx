@@ -42,7 +42,8 @@ const convertFileToBase64 = (file: File): Promise<string> => {
 const WordPressUploader: React.FC<WordPressUploaderProps> = ({ 
   documents, 
   onBack,
-  onComplete
+  onComplete,
+  isStandards = false
 }) => {
   const [selectedDocuments, setSelectedDocuments] = useState<Set<string>>(new Set());
   const [isUploading, setIsUploading] = useState(false);
