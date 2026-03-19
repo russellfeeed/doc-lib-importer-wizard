@@ -157,6 +157,7 @@ const WordPressUploader: React.FC<WordPressUploaderProps> = ({
             wpUrl: wpSettings.siteUrl,
             wpUsername: wpSettings.username,
             wpPassword: wpSettings.password,
+            isStandards,
           }
         });
 

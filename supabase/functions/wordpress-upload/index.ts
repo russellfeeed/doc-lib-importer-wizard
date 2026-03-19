@@ -301,6 +301,11 @@ serve(async (req) => {
         const formData = new FormData();
         formData.append('file', fileBlob, filename);
 
+        // Assign nsi-media-type taxonomy term for standards uploads
+        if (nsiMediaTypeTermId) {
+          formData.append('nsi-media-type', nsiMediaTypeTermId.toString());
+        }
+
         // Upload to WordPress media library
         const uploadResponse = await fetch(`${wpUrl}/wp-json/wp/v2/media`, {
           method: 'POST',
