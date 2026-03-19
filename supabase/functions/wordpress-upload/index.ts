@@ -16,6 +16,7 @@ interface UploadRequest {
   wpUrl: string;
   wpUsername: string;
   wpPassword: string;
+  isStandards?: boolean;
 }
 
 interface UploadResult {
