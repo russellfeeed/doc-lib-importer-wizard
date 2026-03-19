@@ -220,10 +220,34 @@ export const generateCSV = async (
         processedCount++;
       }
       
-      // Generate URLs with _pda path for standards documents
-      // Replace spaces with hyphens in filename for standards documents only
-      const fileName = docFile.file?.name || docFile.name;
-      const urlFileName = isStandards ? fileName.replace(/\s+/g, '-') : fileName;
+      // Generate URLs - for standards, match the WordPress upload filename exactly
+      let urlFileName: string;
+      
+      if (isStandards) {
+        // Build the same uploadName as WordPressUploader
+        const originalExt = docFile.file?.name?.split('.').pop()?.toLowerCase() || 'pdf';
+        let uploadName = docFile.standardNumber
+          ? `${docFile.standardNumber} - ${docFile.name}`
+          : docFile.name;
+        
+        // Replace em/en dashes with simple hyphens
+        uploadName = uploadName.replace(/[–—]/g, '-');
+        
+        // Ensure file extension
+        if (!uploadName.toLowerCase().endsWith(`.${originalExt}`)) {
+          uploadName = `${uploadName}.${originalExt}`;
+        }
+        
+        // Apply WordPress-style sanitization: lowercase, spaces to hyphens, strip special chars
+        urlFileName = uploadName
+          .toLowerCase()
+          .replace(/\s+/g, '-')
+          .replace(/[:]/g, '')
+          .replace(/[^a-z0-9.\-]/g, '-')
+          .replace(/-+/g, '-');
+      } else {
+        urlFileName = docFile.file?.name || docFile.name;
+      }
       
       // For standards: File URL is relative path, Direct URL is full URL
       const fileUrlPath = isStandards 
