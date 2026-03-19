@@ -12,6 +12,7 @@ interface WordPressUploaderProps {
   documents: DocumentFile[] | CircularLetter[];
   onBack: () => void;
   onComplete: () => void;
+  isStandards?: boolean;
 }
 
 interface UploadResult {
