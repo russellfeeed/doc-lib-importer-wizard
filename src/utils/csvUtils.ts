@@ -235,7 +235,11 @@ export const generateCSV = async (
         : `https://dev.members.nsi.org.uk/wp-content/uploads/${getCurrentUploadPath()}/${urlFileName}`;
       
       row = {
-        'Name': forceQuoteCsvValue(docFile.name),
+        'Name': forceQuoteCsvValue(
+          isStandards && docFile.standardNumber 
+            ? `${docFile.standardNumber} - ${docFile.name}` 
+            : docFile.name
+        ),
       };
       
       
