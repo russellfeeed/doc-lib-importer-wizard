@@ -1,43 +1,37 @@
 
 
-## Fix: Ensure PDF Extension on Standards Upload Filenames
+## Fix: Align CSV File URL with WordPress Upload Filename
 
 ### Problem
-When standards documents are uploaded to WordPress, `docFile.name` is the document title (not the original filename), so it often lacks a `.pdf` extension. Combined with the standard number prefix (`BS EN 50131-1:2006 - Some Title`), the edge function's extension detection can fail, causing WordPress to misidentify the file's MIME type (e.g., as HTML instead of PDF).
+The CSV `File URL` for standards documents does not match the actual filename uploaded to WordPress Media Library. They are constructed differently:
 
-### Root Cause
-- `docFile.name` comes from AI-extracted or user-edited document titles — no file extension
-- The edge function's `getFileExtension` checks the last `.` segment, finds no valid extension, and falls back to the `fileType` display string mapping — which works but is fragile
-- The original filename with its `.pdf` extension is available via `docFile.file?.name` but is not used
+- **CSV** uses the original filename (`docFile.file?.name`), replaces spaces with hyphens, no standard number prefix
+- **WordPress upload** prefixes with standard number (`BS EN 50131-1 - Title.pdf`), replaces em/en dashes, ensures extension — then WordPress itself sanitizes the filename further (lowercases, replaces spaces with hyphens)
+
+For example:
+- CSV generates: `/wp-content/uploads/_pda/2026/03/original-filename.pdf`
+- WordPress stores: `/wp-content/uploads/_pda/2026/03/bs-en-50131-1-some-title.pdf`
 
 ### Fix
 
-**`src/components/WordPressUploader.tsx`** — When constructing `uploadName` for standards documents, ensure it ends with the original file's extension:
+**`src/utils/csvUtils.ts`** — Align the URL filename construction with what WordPress actually does:
 
-```typescript
-const docFile = doc as DocumentFile;
-const file = docFile.file;
-const fileData = file ? await convertFileToBase64(file) : null;
+1. Build the same `uploadName` as WordPressUploader (prefix with standard number, replace em/en dashes, ensure extension)
+2. Apply WordPress's sanitization (lowercase, replace spaces with hyphens, remove special characters like colons)
+3. Use this sanitized name in the `_pda` URL path
 
-// Get original file extension
-const originalExt = file?.name?.split('.').pop()?.toLowerCase() || 'pdf';
+```text
+Current (line ~225):
+  fileName = docFile.file?.name || docFile.name
+  urlFileName = fileName.replace(/\s+/g, '-')
 
-let uploadName = isStandards && docFile.standardNumber
-  ? `${docFile.standardNumber} - ${docFile.name}`
-  : docFile.name;
-
-// Ensure filename has proper extension
-if (!uploadName.toLowerCase().endsWith(`.${originalExt}`)) {
-  uploadName = `${uploadName}.${originalExt}`;
-}
-
-return {
-  id: doc.id,
-  name: uploadName,
-  fileData,
-  fileType: docFile.fileType,
-};
+Proposed:
+  1. Start with uploadName = standardNumber + " - " + docFile.name (matching WP uploader)
+  2. Replace em/en dashes with hyphens
+  3. Ensure .pdf extension
+  4. Sanitize for WordPress: lowercase, replace spaces with hyphens, strip invalid chars
+  5. Use sanitized name in URL path
 ```
 
-This is a single change in one file. The edge function already has extension/MIME handling as a safety net, but this ensures the correct extension is present from the start.
+This is a single change in one file (`csvUtils.ts`), affecting only the standards URL generation block (~lines 223-235).
 
