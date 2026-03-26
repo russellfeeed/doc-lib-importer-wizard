@@ -1,20 +1,20 @@
 
 
-## Fix: Forward Slash in Filenames Stripped by WordPress
+## Plan: Add Explicit Forward Slash Handling to CSV Link Generation
 
-### Root Cause
+### Current State
+In `src/utils/csvUtils.ts` (line 234), the sanitization chain handles em/en dashes and `+` explicitly, but forward slashes are only caught by the catch-all `[^a-zA-Z0-9.\-]` regex on line 245 — which happens to replace them with `-`, producing the correct output.
 
-Standard numbers like `BS EN ISO/IEC 27002:2022` contain a forward slash (`/`). When this is used in the upload filename, WordPress's file handling interprets `/` as a directory separator and strips everything before it. Result: `IEC-270022022-...` instead of `BS-EN-ISO-IEC-270022022-...`.
+The WordPress uploader and edge function both have explicit `.replace(/\//g, '-')`. The CSV generation should match for consistency and clarity.
 
-### Changes (2 files)
+### Change (1 file)
 
-**1. `src/components/WordPressUploader.tsx` (line ~151)**
-Add `.replace(/\//g, '-')` to the sanitization chain so `ISO/IEC` becomes `ISO-IEC`.
+**`src/utils/csvUtils.ts` (line 234)**
+Add `.replace(/\//g, '-')` to the explicit sanitization chain:
+```
+uploadName = uploadName.replace(/[–—]/g, '-').replace(/\+/g, '').replace(/\//g, '-');
+```
 
-**2. `supabase/functions/wordpress-upload/index.ts` (line ~228)**
-Same - add `.replace(/\//g, '-')` to the filename sanitization so the edge function also strips slashes.
-
-### Result
-`BS EN ISO/IEC 27002:2022 - Information security controls.pdf`
-becomes `BS-EN-ISO-IEC-270022022-Information-security-controls.pdf`
+### Impact
+No functional change — the output is already correct. This just makes the slash handling explicit and consistent with the other two files.
 
