@@ -252,7 +252,7 @@ export const checkExistingDlpDocumentWithLogs = async (
   log('Checking WordPress credentials...', 'info');
   const credentials = getWordPressCredentials();
   if (!credentials) {
-    log('WordPress credentials not configured — cannot check duplicates.', 'error');
+    log('WordPress credentials not configured - cannot check duplicates.', 'error');
     return null;
   }
   log(`Connected to: ${credentials.url}`, 'success');
