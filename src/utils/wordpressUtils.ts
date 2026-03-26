@@ -252,14 +252,14 @@ export const checkExistingDlpDocumentWithLogs = async (
   log('Checking WordPress credentials...', 'info');
   const credentials = getWordPressCredentials();
   if (!credentials) {
-    log('WordPress credentials not configured — cannot check duplicates.', 'error');
+    log('WordPress credentials not configured - cannot check duplicates.', 'error');
     return null;
   }
   log(`Connected to: ${credentials.url}`, 'success');
   log(`API user: ${credentials.username}`, 'info');
 
   if (!standardNumber) {
-    log('No standard number provided — nothing to search for.', 'warning');
+    log('No standard number provided - nothing to search for.', 'warning');
     return null;
   }
   log(`Standard number: ${standardNumber}`, 'info');
