@@ -19,7 +19,7 @@ const WordPressStatus: React.FC = () => {
     <div className="flex items-center gap-2 text-sm rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-amber-800">
       <AlertTriangle className="h-4 w-4 shrink-0" />
       <span>
-        WordPress not configured — duplicate check will be skipped.{' '}
+        WordPress not configured - duplicate check will be skipped.{' '}
         <Link to="/settings" className="underline font-medium hover:text-amber-900">
           Configure in Settings
         </Link>

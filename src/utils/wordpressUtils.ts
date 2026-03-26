@@ -259,7 +259,7 @@ export const checkExistingDlpDocumentWithLogs = async (
   log(`API user: ${credentials.username}`, 'info');
 
   if (!standardNumber) {
-    log('No standard number provided — nothing to search for.', 'warning');
+    log('No standard number provided - nothing to search for.', 'warning');
     return null;
   }
   log(`Standard number: ${standardNumber}`, 'info');

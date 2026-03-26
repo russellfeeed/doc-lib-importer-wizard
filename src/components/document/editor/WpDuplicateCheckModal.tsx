@@ -77,7 +77,7 @@ const WpDuplicateCheckModal: React.FC<WpDuplicateCheckModalProps> = ({
         if (detail) {
           addLog(`Detail fetched - Categories: "${detail.categories}", Tags: "${detail.tags}"`, 'success');
         } else {
-          addLog('Could not fetch full detail — comparison will be limited', 'warning');
+          addLog('Could not fetch full detail - comparison will be limited', 'warning');
         }
         
         if (onMatchFound) {
