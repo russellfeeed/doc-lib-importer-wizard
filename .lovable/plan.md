@@ -1,22 +1,20 @@
 
 
-## Plan: Strip `+` from Standards URLs in CSV Export
+## Fix: Forward Slash in Filenames Stripped by WordPress
 
-### Problem
-Standard numbers like `BS EN ISO 9001:2015+A1:2024` produce URLs with a hyphen where the `+` was (e.g., `...-90012015-A12024-...`). The expected output strips the `+` entirely: `...-90012015A12024-...`.
+### Root Cause
 
-### Changes (3 files, add `.replace(/\+/g, '')` before the general sanitization)
+Standard numbers like `BS EN ISO/IEC 27002:2022` contain a forward slash (`/`). When this is used in the upload filename, WordPress's file handling interprets `/` as a directory separator and strips everything before it. Result: `IEC-270022022-...` instead of `BS-EN-ISO-IEC-270022022-...`.
 
-**1. `src/utils/csvUtils.ts` (line ~242)**
-Add `.replace(/\+/g, '')` to the sanitization chain before the catch-all character replacement.
+### Changes (2 files)
 
-**2. `src/components/WordPressUploader.tsx` (line ~151)**
-Same — add `.replace(/\+/g, '')` after the em/en dash replacement so uploaded filenames also strip `+`.
+**1. `src/components/WordPressUploader.tsx` (line ~151)**
+Add `.replace(/\//g, '-')` to the sanitization chain so `ISO/IEC` becomes `ISO-IEC`.
 
-**3. `src/components/document/editor/DocumentContent.tsx` (lines 34, 44)**
-Same — add `.replace(/\+/g, '')` to both `getFileUrlPlaceholder` and `getDirectUrlPlaceholder` sanitization chains.
+**2. `supabase/functions/wordpress-upload/index.ts` (line ~228)**
+Same - add `.replace(/\//g, '-')` to the filename sanitization so the edge function also strips slashes.
 
-### Example Result
-`BS EN ISO 9001:2015+A1:2024 - Quality management systems - Requirements.pdf`
-→ `BS-EN-ISO-90012015A12024-Quality-management-systems-Requirements.pdf`
+### Result
+`BS EN ISO/IEC 27002:2022 - Information security controls.pdf`
+becomes `BS-EN-ISO-IEC-270022022-Information-security-controls.pdf`
 
