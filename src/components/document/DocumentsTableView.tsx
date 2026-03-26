@@ -190,8 +190,9 @@ const DocumentsTableView: React.FC<DocumentsTableViewProps> = ({
   };
   
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="space-y-4 w-full">
+      {/* Row 1: Title + badges (left), Publish All + Edit Individual (right) */}
+      <div className="flex flex-wrap justify-between items-center gap-3">
         <div className="flex items-center gap-3">
           <h3 className="text-lg font-semibold">All Documents</h3>
           {documentsNeedingAttention > 0 && (
@@ -206,7 +207,7 @@ const DocumentsTableView: React.FC<DocumentsTableViewProps> = ({
             </Badge>
           )}
         </div>
-        <div className="flex items-center space-x-4">
+        <div className="flex items-center gap-3">
           <div className="flex items-center space-x-2">
             <Label htmlFor="publish-all" className="text-sm font-medium">
               {allPublished ? 'Unpublish All' : 'Publish All'}
@@ -217,126 +218,131 @@ const DocumentsTableView: React.FC<DocumentsTableViewProps> = ({
               onCheckedChange={(checked) => onToggleAllPublished(checked)}
             />
           </div>
-          <div className="flex space-x-2">
-            {documentsNeedingAttention > 0 && (
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={onToggleView}
+          >
+            <Edit className="mr-2 h-4 w-4" />
+            Edit Individual
+          </Button>
+        </div>
+      </div>
+
+      {/* Row 2: Toolbar for bulk actions */}
+      <div className="flex flex-wrap items-center gap-2 p-3 bg-muted/50 rounded-md">
+        {documentsNeedingAttention > 0 && (
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={handleSelectDocumentsNeedingAttention}
+          >
+            <AlertTriangle className="mr-2 h-4 w-4" />
+            Select Needing Attention ({documentsNeedingAttention})
+          </Button>
+        )}
+        {someSelected && (
+          <>
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={handleBulkGenerateExcerpts}
+              disabled={isGeneratingAI || selectedDocuments.size === 0 || bulkOperationType === 'excerpts'}
+            >
+              {(isGeneratingAI && bulkOperationType === 'excerpts') ? (
+                <>
+                  <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full mr-2" />
+                  Generating Excerpts...
+                </>
+              ) : (
+                <>
+                  <Zap className="mr-2 h-4 w-4" />
+                  Excerpts ({selectedDocuments.size})
+                </>
+              )}
+            </Button>
+            {onGenerateAllCategories && (
               <Button 
                 variant="outline" 
                 size="sm"
-                onClick={handleSelectDocumentsNeedingAttention}
+                onClick={handleBulkGenerateCategories}
+                disabled={isGeneratingAI || selectedDocuments.size === 0 || bulkOperationType === 'categories'}
               >
-                <AlertTriangle className="mr-2 h-4 w-4" />
-                Select Needing Attention ({documentsNeedingAttention})
+                {(isGeneratingAI && bulkOperationType === 'categories') ? (
+                  <>
+                    <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full mr-2" />
+                    Detecting Categories...
+                  </>
+                ) : (
+                  <>
+                    <Zap className="mr-2 h-4 w-4" />
+                    Categories ({selectedDocuments.size})
+                  </>
+                )}
               </Button>
             )}
-            {someSelected && (
-              <>
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={handleBulkGenerateExcerpts}
-                  disabled={isGeneratingAI || selectedDocuments.size === 0 || bulkOperationType === 'excerpts'}
-                >
-                  {(isGeneratingAI && bulkOperationType === 'excerpts') ? (
-                    <>
-                      <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full mr-2" />
-                      Generating Excerpts...
-                    </>
-                  ) : (
-                    <>
-                      <Zap className="mr-2 h-4 w-4" />
-                      Generate Excerpts ({selectedDocuments.size})
-                    </>
-                  )}
-                </Button>
-                {onGenerateAllCategories && (
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={handleBulkGenerateCategories}
-                    disabled={isGeneratingAI || selectedDocuments.size === 0 || bulkOperationType === 'categories'}
-                  >
-                    {(isGeneratingAI && bulkOperationType === 'categories') ? (
-                      <>
-                        <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full mr-2" />
-                        Detecting Categories...
-                      </>
-                    ) : (
-                      <>
-                        <Zap className="mr-2 h-4 w-4" />
-                        Detect Categories ({selectedDocuments.size})
-                      </>
-                    )}
-                  </Button>
+            {onGenerateAllSchemes && (
+              <Button 
+                variant="outline" 
+                size="sm"
+                onClick={handleBulkGenerateSchemes}
+                disabled={isGeneratingAI || selectedDocuments.size === 0 || bulkOperationType === 'schemes'}
+              >
+                {(isGeneratingAI && bulkOperationType === 'schemes') ? (
+                  <>
+                    <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full mr-2" />
+                    Generating Schemes...
+                  </>
+                ) : (
+                  <>
+                    <Zap className="mr-2 h-4 w-4" />
+                    Schemes ({selectedDocuments.size})
+                  </>
                 )}
-                {onGenerateAllSchemes && (
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={handleBulkGenerateSchemes}
-                    disabled={isGeneratingAI || selectedDocuments.size === 0 || bulkOperationType === 'schemes'}
-                  >
-                    {(isGeneratingAI && bulkOperationType === 'schemes') ? (
-                      <>
-                        <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full mr-2" />
-                        Generating Schemes...
-                      </>
-                    ) : (
-                      <>
-                        <Zap className="mr-2 h-4 w-4" />
-                        Generate Schemes ({selectedDocuments.size})
-                      </>
-                    )}
-                  </Button>
-                )}
-                <Button 
-                  variant="outline" 
-                  size="sm"
-                  onClick={handleBulkGenerateTags}
-                  disabled={isGeneratingAI || selectedDocuments.size === 0 || bulkOperationType === 'tags'}
-                >
-                  {(isGeneratingAI && bulkOperationType === 'tags') ? (
-                    <>
-                      <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full mr-2" />
-                      Generating Tags...
-                    </>
-                  ) : (
-                    <>
-                      <Tags className="mr-2 h-4 w-4" />
-                      Generate Tags ({selectedDocuments.size})
-                    </>
-                  )}
-                </Button>
-                {onGenerateAllData && (
-                  <Button 
-                    size="sm"
-                    onClick={handleBulkGenerateAllData}
-                    disabled={isGeneratingAI || selectedDocuments.size === 0 || bulkOperationType === 'all'}
-                  >
-                    {(isGeneratingAI && bulkOperationType === 'all') ? (
-                      <>
-                        <div className="animate-spin h-4 w-4 border-2 border-primary-foreground border-t-transparent rounded-full mr-2" />
-                        Generating All Data...
-                      </>
-                    ) : (
-                      <>
-                        <Zap className="mr-2 h-4 w-4" />
-                        Generate All Data ({selectedDocuments.size})
-                      </>
-                    )}
-                  </Button>
-                )}
-              </>
+              </Button>
             )}
             <Button 
               variant="outline" 
-              size="sm" 
-              onClick={onToggleView}
+              size="sm"
+              onClick={handleBulkGenerateTags}
+              disabled={isGeneratingAI || selectedDocuments.size === 0 || bulkOperationType === 'tags'}
             >
-              <Edit className="mr-2 h-4 w-4" />
-              Edit Individual Documents
+              {(isGeneratingAI && bulkOperationType === 'tags') ? (
+                <>
+                  <div className="animate-spin h-4 w-4 border-2 border-blue-500 border-t-transparent rounded-full mr-2" />
+                  Generating Tags...
+                </>
+              ) : (
+                <>
+                  <Tags className="mr-2 h-4 w-4" />
+                  Tags ({selectedDocuments.size})
+                </>
+              )}
             </Button>
-          </div>
-        </div>
+            {onGenerateAllData && (
+              <Button 
+                size="sm"
+                onClick={handleBulkGenerateAllData}
+                disabled={isGeneratingAI || selectedDocuments.size === 0 || bulkOperationType === 'all'}
+              >
+                {(isGeneratingAI && bulkOperationType === 'all') ? (
+                  <>
+                    <div className="animate-spin h-4 w-4 border-2 border-primary-foreground border-t-transparent rounded-full mr-2" />
+                    Generating All...
+                  </>
+                ) : (
+                  <>
+                    <Zap className="mr-2 h-4 w-4" />
+                    Generate All ({selectedDocuments.size})
+                  </>
+                )}
+              </Button>
+            )}
+          </>
+        )}
+        {!someSelected && documentsNeedingAttention === 0 && (
+          <span className="text-sm text-muted-foreground">Select documents to enable bulk AI actions</span>
+        )}
       </div>
       
       <div className="border rounded-md overflow-x-auto">
