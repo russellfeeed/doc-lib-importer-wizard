@@ -231,7 +231,7 @@ export const generateCSV = async (
           : docFile.name;
         
         // Replace em/en dashes with simple hyphens and strip plus signs
-        uploadName = uploadName.replace(/[–—]/g, '-').replace(/\+/g, '');
+        uploadName = uploadName.replace(/[–—]/g, '-').replace(/\+/g, '').replace(/\//g, '-');
         
         // Ensure file extension
         if (!uploadName.toLowerCase().endsWith(`.${originalExt}`)) {
