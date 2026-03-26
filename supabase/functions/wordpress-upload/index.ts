@@ -225,7 +225,7 @@ serve(async (req) => {
 
         // Ensure filename has proper extension
         // Replace em dashes and en dashes with simple hyphens
-        let filename = doc.name.replace(/[–—]/g, '-');
+        let filename = doc.name.replace(/\//g, '-').replace(/[–—]/g, '-').replace(/\+/g, '');
         if (!filename.toLowerCase().endsWith(`.${fileExtension}`)) {
           filename = `${filename}.${fileExtension}`;
         }
