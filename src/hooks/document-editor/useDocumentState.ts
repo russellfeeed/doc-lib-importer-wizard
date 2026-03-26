@@ -15,7 +15,7 @@ export function useDocumentState({
 } {
   const [editedDocuments, setEditedDocuments] = useState<DocumentFile[]>(initialDocuments || []);
   const [currentDocIndex, setCurrentDocIndex] = useState(0);
-  const [isEditingAll, setIsEditingAll] = useState(false);
+  const [isEditingAll, setIsEditingAll] = useState(true);
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
   
   // Make sure we have a valid document at the current index
