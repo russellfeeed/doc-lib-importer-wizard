@@ -320,13 +320,20 @@ const escapeCsvValue = (value: string): string => {
 };
 
 /**
+ * Replaces non-ASCII hyphens (en dash, em dash, figure dash, etc.) with simple ASCII hyphen
+ */
+const cleanNonAsciiHyphens = (value: string): string => {
+  return value.replace(/[\u2010-\u2015\u2212]/g, '-');
+};
+
+/**
  * Always wraps value in double quotes for CSV (used for excerpt field)
  */
 const forceQuoteCsvValue = (value: string): string => {
   if (!value) return '""';
   
-  // Always wrap in quotes and escape internal quotes
-  return `"${value.replace(/"/g, '""')}"`;
+  // Clean non-ASCII hyphens and escape internal quotes
+  return `"${cleanNonAsciiHyphens(value).replace(/"/g, '""')}"`;
 };
 
 /**
