@@ -28,6 +28,7 @@ function App() {
           <Route path="/categories" element={<Categories />} />
           <Route path="/settings" element={<Settings />} />
           <Route path="/help" element={<Help />} />
+          <Route path="/wp-duplicate-audit" element={<WpDuplicateAudit />} />
           <Route path="*" element={<NotFound />} />
         </Routes>
         <Toaster position="top-right" />
