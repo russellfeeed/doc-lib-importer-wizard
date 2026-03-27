@@ -153,7 +153,7 @@ const decodeHtmlEntities = (str: string): string => {
 };
 
 // Normalize a standard number by stripping punctuation/whitespace for fuzzy comparison
-const normalizeStandardNumber = (str: string): string => {
+export const normalizeStandardNumber = (str: string): string => {
   return decodeHtmlEntities(str)
     .toLowerCase()
     .replace(/[\/\\:_\-.\s,'"]+/g, '')
@@ -173,7 +173,7 @@ export const clearDlpDocumentsCache = () => {
 };
 
 // Fetch all DLP document titles (with session cache)
-const fetchAllDlpDocuments = async (credentials: WordPressCredentials): Promise<any[]> => {
+export const fetchAllDlpDocuments = async (credentials: WordPressCredentials): Promise<any[]> => {
   const cacheKey = getDlpCacheKey(credentials);
   if (dlpDocumentsCache && dlpCacheCredentialsKey === cacheKey) {
     console.log(`Using cached DLP documents (${dlpDocumentsCache.length} items)`);
