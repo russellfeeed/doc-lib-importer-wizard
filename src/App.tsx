@@ -11,6 +11,7 @@ import CircularLetters from '@/pages/CircularLetters';
 import StandardsSubscription from '@/pages/StandardsSubscription';
 import Settings from '@/pages/Settings';
 import Help from '@/pages/Help';
+import WpDuplicateAudit from '@/pages/WpDuplicateAudit';
 import NotFound from '@/pages/NotFound';
 import { CategoryProvider } from '@/context/CategoryContext';
 

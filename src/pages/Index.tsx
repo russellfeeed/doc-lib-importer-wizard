@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { FileText, FileSignature, BarChart3, Settings, Shield, HelpCircle, AlertTriangle } from 'lucide-react';
+import { FileText, FileSignature, BarChart3, Settings, Shield, HelpCircle, AlertTriangle, Copy } from 'lucide-react';
 import { hasOpenAIKey } from '@/utils/openaiClient';
 import { hasWordPressSettings } from '@/utils/settingsUtils';
 

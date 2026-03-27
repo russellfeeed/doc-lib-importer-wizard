@@ -173,7 +173,7 @@ export const clearDlpDocumentsCache = () => {
 };
 
 // Fetch all DLP document titles (with session cache)
-const fetchAllDlpDocuments = async (credentials: WordPressCredentials): Promise<any[]> => {
+export const fetchAllDlpDocuments = async (credentials: WordPressCredentials): Promise<any[]> => {
   const cacheKey = getDlpCacheKey(credentials);
   if (dlpDocumentsCache && dlpCacheCredentialsKey === cacheKey) {
     console.log(`Using cached DLP documents (${dlpDocumentsCache.length} items)`);
