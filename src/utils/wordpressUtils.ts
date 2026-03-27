@@ -153,7 +153,7 @@ const decodeHtmlEntities = (str: string): string => {
 };
 
 // Normalize a standard number by stripping punctuation/whitespace for fuzzy comparison
-const normalizeStandardNumber = (str: string): string => {
+export const normalizeStandardNumber = (str: string): string => {
   return decodeHtmlEntities(str)
     .toLowerCase()
     .replace(/[\/\\:_\-.\s,'"]+/g, '')
