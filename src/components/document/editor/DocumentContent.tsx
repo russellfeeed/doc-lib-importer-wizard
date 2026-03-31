@@ -5,6 +5,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Zap } from 'lucide-react';
 import { DocumentFile } from '@/types/document';
+import { getWordPressSettings } from '@/utils/settingsUtils';
 
 // Generate current year/month for WordPress upload URLs
 const getCurrentUploadPath = (): string => {
@@ -12,6 +13,14 @@ const getCurrentUploadPath = (): string => {
   const year = now.getFullYear();
   const month = (now.getMonth() + 1).toString().padStart(2, '0');
   return `${year}/${month}`;
+};
+
+const getWpBaseUrl = (): string => {
+  const settings = getWordPressSettings();
+  if (settings?.siteUrl) {
+    return settings.siteUrl.replace(/\/+$/, '');
+  }
+  return 'https://dev.members.nsi.org.uk';
 };
 
 interface DocumentContentProps {
