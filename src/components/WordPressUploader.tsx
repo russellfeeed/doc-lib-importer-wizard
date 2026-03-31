@@ -148,7 +148,7 @@ const WordPressUploader: React.FC<WordPressUploaderProps> = ({
                 : docFile.name;
 
               // Replace em dashes and en dashes with simple hyphens
-              uploadName = uploadName.replace(/\//g, '-').replace(/[–—]/g, '-').replace(/\+/g, '');
+              uploadName = uploadName.replace(/\//g, '-').replace(/[\u2010-\u2015\u2212\u002D\u00AD–—]/g, '-').replace(/\+/g, '');
 
               // Ensure filename has proper extension
               if (!uploadName.toLowerCase().endsWith(`.${originalExt}`)) {
