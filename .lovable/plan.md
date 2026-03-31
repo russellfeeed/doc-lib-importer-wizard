@@ -1,41 +1,37 @@
 
 
-## Plan: Add WordPress Duplicate Checker to Home Page
+## Plan: Limit File Upload to 20 Files at a Time
 
 ### What It Does
-A new card on the home page (`/`) that fetches all documents from the WordPress Document Library via the existing REST API, then compares them against each other to find duplicates (documents with matching or very similar standard numbers).
+Enforces a maximum of 20 files per batch across all upload hooks. When a user selects or drops more than 20 files (accounting for files already loaded), excess files are rejected with a toast notification.
 
-### Changes
+### Changes (4 files)
 
-**1. New page: `src/pages/WpDuplicateAudit.tsx`**
-- Full-page view with a "Start Scan" button
-- Uses `fetchAllDlpDocuments` (via existing `wordpress-proxy` edge function and `fetch-all-dlp-titles` action) to pull all DLP documents
-- Runs each document's title through `normalizeStandardNumber` and groups by normalized standard number
-- Displays results in a table showing duplicate groups: standard number, document titles, IDs, statuses, and WordPress links
-- Shows a real-time log panel (reusing the log pattern from `WpDuplicateCheckModal`) during the fetch/scan process
-- Checks WordPress credentials first; shows a warning/link to Settings if missing
+Each file upload hook has a `handleFileSelection` function that processes a `FileList`. Add a check at the top of each:
 
-**2. Update `src/pages/Index.tsx`**
-- Add a new card linking to `/wp-duplicate-audit` with a suitable icon (e.g., `Search` or `Copy` from lucide) and description like "Scan WordPress Document Library for duplicate entries"
+**1. `src/hooks/useStandardsFileUpload.ts`** (~line 27)
+**2. `src/hooks/useFileUpload.ts`** (~line 27)
+**3. `src/hooks/useSimpleFileUpload.ts`** (equivalent location)
+**4. `src/hooks/useCircularLetterUpload.ts`** (equivalent location)
 
-**3. Update `src/App.tsx`**
-- Add route for `/wp-duplicate-audit` pointing to the new page
+In each `handleFileSelection`, before creating `newFiles`, add:
 
-**4. Export `fetchAllDlpDocuments` and `normalizeStandardNumber` from `src/utils/wordpressUtils.ts`**
-- Currently `fetchAllDlpDocuments` is module-private; export it so the new page can use it
-- `normalizeStandardNumber` is also private; export it
-
-### Duplicate Detection Logic
-```text
-1. Fetch all DLP documents (uses existing cached fetch)
-2. For each document, extract & normalize the standard number from title
-3. Group documents by normalized standard number
-4. Any group with 2+ documents = duplicates
-5. Display grouped results with links to WordPress admin
+```typescript
+const MAX_FILES = 20;
+const remainingSlots = MAX_FILES - files.length;
+if (remainingSlots <= 0) {
+  toast.error(`Maximum of ${MAX_FILES} files allowed. Remove some files first.`);
+  return;
+}
+let filesToProcess = Array.from(selectedFiles);
+if (filesToProcess.length > remainingSlots) {
+  toast.warning(`Only ${remainingSlots} more file(s) allowed. ${filesToProcess.length - remainingSlots} file(s) were skipped.`);
+  filesToProcess = filesToProcess.slice(0, remainingSlots);
+}
 ```
 
-### Technical Detail
-- Reuses existing `getWordPressCredentials()`, `fetchAllDlpDocuments()`, `normalizeStandardNumber()` — no new API calls needed
-- The session cache means repeated scans are instant
-- The standard number is extracted from the title prefix (everything before the first ` - ` delimiter), matching the existing convention
+Then use `filesToProcess` instead of `Array.from(selectedFiles)` when creating `newFiles`.
+
+### Result
+Users can never have more than 20 files loaded at once. If they try to add more, they get a clear message about how many were accepted/skipped.
 
