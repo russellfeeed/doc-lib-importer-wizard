@@ -2,6 +2,16 @@
 import { DocumentFile, CSVData } from '@/types/document';
 import { CircularLetter } from '@/types/circular-letter';
 import { hasOpenAIKey, summarizeWithOpenAI } from './openaiClient';
+import { getWordPressSettings } from './settingsUtils';
+
+// Get the WordPress site base URL, falling back to a default
+const getWpBaseUrl = (): string => {
+  const settings = getWordPressSettings();
+  if (settings?.siteUrl) {
+    return settings.siteUrl.replace(/\/+$/, '');
+  }
+  return 'https://dev.members.nsi.org.uk';
+};
 
 // Generate current year/month for WordPress upload URLs
 const getCurrentUploadPath = (): string => {
