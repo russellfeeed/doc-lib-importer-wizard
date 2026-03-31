@@ -259,13 +259,14 @@ export const generateCSV = async (
       }
       
       // For standards: File URL is relative path, Direct URL is full URL
+      const baseUrl = getWpBaseUrl();
       const fileUrlPath = isStandards 
         ? `/wp-content/uploads/_pda/${getCurrentUploadPath()}/${urlFileName}`
-        : `https://dev.members.nsi.org.uk/wp-content/uploads/${getCurrentUploadPath()}/${urlFileName}`;
+        : `${baseUrl}/wp-content/uploads/${getCurrentUploadPath()}/${urlFileName}`;
       
       const directUrlPath = isStandards 
-        ? `https://dev.members.nsi.org.uk/wp-content/uploads/_pda/${getCurrentUploadPath()}/${urlFileName}`
-        : `https://dev.members.nsi.org.uk/wp-content/uploads/${getCurrentUploadPath()}/${urlFileName}`;
+        ? `${baseUrl}/wp-content/uploads/_pda/${getCurrentUploadPath()}/${urlFileName}`
+        : `${baseUrl}/wp-content/uploads/${getCurrentUploadPath()}/${urlFileName}`;
       
       row = {
         'Name': forceQuoteCsvValue(
