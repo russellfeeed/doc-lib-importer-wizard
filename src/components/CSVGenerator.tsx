@@ -246,7 +246,7 @@ const CSVGenerator: React.FC<CSVGeneratorProps> = ({
         {!isCircularLetter && (
           <div className="mt-4 space-y-2">
             <a 
-              href="https://dev.members.nsi.org.uk/wp-admin/admin.php?page=dlp_import_csv" 
+              href={`${(getWordPressSettings()?.siteUrl || 'https://dev.members.nsi.org.uk').replace(/\/+$/, '')}/wp-admin/admin.php?page=dlp_import_csv`} 
               target="_blank"
               rel="noopener noreferrer"
               className="text-blue-600 hover:text-blue-800 underline flex items-center"

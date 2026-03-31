@@ -53,9 +53,9 @@ const DocumentContent: React.FC<DocumentContentProps> = ({
     const urlFileName = fileName.replace(/[–—]/g, '-').replace(/\+/g, '').replace(/\s+/g, '-').replace(/[:]/g, '').replace(/[^a-zA-Z0-9.\-]/g, '-').replace(/-+/g, '-');
     
     if (isStandards) {
-      return `https://dev.members.nsi.org.uk/wp-content/uploads/_pda/${getCurrentUploadPath()}/${urlFileName}`;
+      return `${getWpBaseUrl()}/wp-content/uploads/_pda/${getCurrentUploadPath()}/${urlFileName}`;
     }
-    return `https://dev.members.nsi.org.uk/wp-content/uploads/${getCurrentUploadPath()}/${urlFileName}`;
+    return `${getWpBaseUrl()}/wp-content/uploads/${getCurrentUploadPath()}/${urlFileName}`;
   };
 
   return (

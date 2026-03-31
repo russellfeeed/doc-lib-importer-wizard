@@ -227,7 +227,7 @@ const Help: React.FC = () => {
             </p>
             <p className="text-sm text-blue-600">
               <a 
-                href="https://dev.members.nsi.org.uk/wp-admin/admin.php?page=dlp_import_csv" 
+                href={`${((() => { try { const s = JSON.parse(localStorage.getItem('wp_site_url') || '""'); return typeof s === 'string' && s ? s.replace(/\/+$/, '') : 'https://dev.members.nsi.org.uk'; } catch { return 'https://dev.members.nsi.org.uk'; } })())}/wp-admin/admin.php?page=dlp_import_csv`} 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="underline hover:text-blue-800"
