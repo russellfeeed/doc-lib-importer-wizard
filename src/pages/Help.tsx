@@ -3,6 +3,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, FileText, FileSignature, Shield, Upload, Download, AlertCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { getWordPressSettings } from '@/utils/settingsUtils';
 
 const Help: React.FC = () => {
   return (
