@@ -6,6 +6,7 @@ import { ChevronLeft, Download, Copy, Check, ArrowRight, RefreshCw, Upload } fro
 import { DocumentFile } from '@/types/document';
 import { CircularLetter } from '@/types/circular-letter';
 import { generateCSV, copyToClipboard } from '@/utils/csvUtils';
+import { getWordPressSettings } from '@/utils/settingsUtils';
 import { toast } from 'sonner';
 
 interface CSVGeneratorProps {
