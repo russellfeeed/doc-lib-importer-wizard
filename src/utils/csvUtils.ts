@@ -215,8 +215,8 @@ export const generateCSV = async (
         'Tags': forceQuoteCsvValue((() => { const dateTag = new Date().toISOString().split('T')[0]; return letter.tags ? `${letter.tags}, ${dateTag}` : dateTag; })()),
         'Categories': forceQuoteCsvValue(letter.categories || ''),
         'Excerpt': forceQuoteCsvValue(letter.excerpt || ''),
-        'File URL': forceQuoteCsvValue(`https://dev.members.nsi.org.uk/wp-content/uploads/${getCurrentUploadPath()}/${letter.file?.name || letter.name}`),
-        'Direct URL': forceQuoteCsvValue(`https://dev.members.nsi.org.uk/wp-content/uploads/${getCurrentUploadPath()}/${letter.file?.name || letter.name}`),
+        'File URL': forceQuoteCsvValue(`${getWpBaseUrl()}/wp-content/uploads/${getCurrentUploadPath()}/${letter.file?.name || letter.name}`),
+        'Direct URL': forceQuoteCsvValue(`${getWpBaseUrl()}/wp-content/uploads/${getCurrentUploadPath()}/${letter.file?.name || letter.name}`),
         'Featured Image URL': forceQuoteCsvValue(letter.thumbnail || ''),
         'File Size': forceQuoteCsvValue(letter.fileSize),
       };
