@@ -17,12 +17,26 @@ export function useSimpleFileUpload({ onFilesUploaded }: UseSimpleFileUploadProp
   const [aiEnabled, setAiEnabled] = useState(true); // AI enabled by default for simple version
   const [forcedCategory, setForcedCategory] = useState<string>('none'); // For forcing a specific category
 
+  const MAX_FILES = 20;
+
   const handleFileSelection = useCallback(async (selectedFiles: FileList | null) => {
     if (!selectedFiles || selectedFiles.length === 0) return;
     
+    // Check file limit
+    const remainingSlots = MAX_FILES - files.length;
+    if (remainingSlots <= 0) {
+      toast.error(`Maximum of ${MAX_FILES} files allowed. Remove some files first.`);
+      return;
+    }
+    let filesToProcess = Array.from(selectedFiles);
+    if (filesToProcess.length > remainingSlots) {
+      toast.warning(`Only ${remainingSlots} more file(s) allowed. ${filesToProcess.length - remainingSlots} file(s) were skipped.`);
+      filesToProcess = filesToProcess.slice(0, remainingSlots);
+    }
+    
     setIsLoading(true);
     
-    const newFiles: DocumentFile[] = Array.from(selectedFiles).map(file => ({
+    const newFiles: DocumentFile[] = filesToProcess.map(file => ({
       id: generateUniqueId(),
       file,
       name: file.name.replace(/\.[^/.]+$/, ""), // Remove file extension
@@ -213,7 +227,7 @@ export function useSimpleFileUpload({ onFilesUploaded }: UseSimpleFileUploadProp
     } else {
       toast.success(`${newFiles.length} files uploaded successfully`);
     }
-  }, [forcedCategory]);
+  }, [forcedCategory, files.length]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
