@@ -3,6 +3,7 @@ import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, FileText, FileSignature, Shield, Upload, Download, AlertCircle } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { getWordPressSettings } from '@/utils/settingsUtils';
 
 const Help: React.FC = () => {
   return (
@@ -173,8 +174,8 @@ const Help: React.FC = () => {
               Navigate to Categories in the main menu and locate the WordPress Category Import section.
             </p>
             <ul className="list-disc list-inside text-sm text-gray-600 space-y-1">
-              <li><strong>WordPress URL:</strong> https://dev.members.nsi.org.uk/ (default)</li>
-              <li><strong>Username & Password:</strong> Create these credentials in WordPress at <a href="https://dev.members.nsi.org.uk/wp-admin/users.php" target="_blank" rel="noopener noreferrer" className="text-blue-600 underline hover:text-blue-800">User Management</a></li>
+              <li><strong>WordPress URL:</strong> Set in Settings (e.g. https://members.nsi.org.uk/)</li>
+              <li><strong>Username & Password:</strong> Create these credentials in WordPress under Users → Add New</li>
               <li>Ensure the user has appropriate permissions to access the Document Library categories</li>
             </ul>
           </div>
@@ -227,7 +228,7 @@ const Help: React.FC = () => {
             </p>
             <p className="text-sm text-blue-600">
               <a 
-                href="https://dev.members.nsi.org.uk/wp-admin/admin.php?page=dlp_import_csv" 
+                href={`${(getWordPressSettings()?.siteUrl || 'https://dev.members.nsi.org.uk').replace(/\/+$/, '')}/wp-admin/admin.php?page=dlp_import_csv`} 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="underline hover:text-blue-800"

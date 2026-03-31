@@ -5,6 +5,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Zap } from 'lucide-react';
 import { DocumentFile } from '@/types/document';
+import { getWordPressSettings } from '@/utils/settingsUtils';
 
 // Generate current year/month for WordPress upload URLs
 const getCurrentUploadPath = (): string => {
@@ -12,6 +13,14 @@ const getCurrentUploadPath = (): string => {
   const year = now.getFullYear();
   const month = (now.getMonth() + 1).toString().padStart(2, '0');
   return `${year}/${month}`;
+};
+
+const getWpBaseUrl = (): string => {
+  const settings = getWordPressSettings();
+  if (settings?.siteUrl) {
+    return settings.siteUrl.replace(/\/+$/, '');
+  }
+  return 'https://dev.members.nsi.org.uk';
 };
 
 interface DocumentContentProps {
@@ -36,7 +45,7 @@ const DocumentContent: React.FC<DocumentContentProps> = ({
     if (isStandards) {
       return `/wp-content/uploads/_pda/${getCurrentUploadPath()}/${urlFileName}`;
     }
-    return `https://dev.members.nsi.org.uk/wp-content/uploads/${getCurrentUploadPath()}/${urlFileName}`;
+    return `${getWpBaseUrl()}/wp-content/uploads/${getCurrentUploadPath()}/${urlFileName}`;
   };
 
   const getDirectUrlPlaceholder = () => {
@@ -44,9 +53,9 @@ const DocumentContent: React.FC<DocumentContentProps> = ({
     const urlFileName = fileName.replace(/[–—]/g, '-').replace(/\+/g, '').replace(/\s+/g, '-').replace(/[:]/g, '').replace(/[^a-zA-Z0-9.\-]/g, '-').replace(/-+/g, '-');
     
     if (isStandards) {
-      return `https://dev.members.nsi.org.uk/wp-content/uploads/_pda/${getCurrentUploadPath()}/${urlFileName}`;
+      return `${getWpBaseUrl()}/wp-content/uploads/_pda/${getCurrentUploadPath()}/${urlFileName}`;
     }
-    return `https://dev.members.nsi.org.uk/wp-content/uploads/${getCurrentUploadPath()}/${urlFileName}`;
+    return `${getWpBaseUrl()}/wp-content/uploads/${getCurrentUploadPath()}/${urlFileName}`;
   };
 
   return (
