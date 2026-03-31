@@ -45,7 +45,7 @@ const DocumentContent: React.FC<DocumentContentProps> = ({
     if (isStandards) {
       return `/wp-content/uploads/_pda/${getCurrentUploadPath()}/${urlFileName}`;
     }
-    return `https://dev.members.nsi.org.uk/wp-content/uploads/${getCurrentUploadPath()}/${urlFileName}`;
+    return `${getWpBaseUrl()}/wp-content/uploads/${getCurrentUploadPath()}/${urlFileName}`;
   };
 
   const getDirectUrlPlaceholder = () => {
