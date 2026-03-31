@@ -176,7 +176,7 @@ export function useStandardsFileUpload({ onFilesUploaded }: UseStandardsFileUplo
     
     setIsLoading(false);
     toast.success(`${newFiles.length} standards files added successfully`);
-  }, [aiEnabled]);
+  }, [aiEnabled, files.length]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();

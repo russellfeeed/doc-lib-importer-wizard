@@ -150,7 +150,7 @@ export function useFileUpload({ onFilesUploaded }: UseFileUploadProps) {
     
     setIsLoading(false);
     toast.success(`${newFiles.length} files added successfully`);
-  }, [aiEnabled]);
+  }, [aiEnabled, files.length]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();

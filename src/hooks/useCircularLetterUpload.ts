@@ -235,7 +235,7 @@ export function useCircularLetterUpload({ onLettersUploaded }: UseCircularLetter
     
     setIsLoading(false);
     toast.success(`${newLetters.length} circular letters added successfully`);
-  }, [aiEnabled, hierarchy.categories]);
+  }, [aiEnabled, hierarchy.categories, letters.length]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();

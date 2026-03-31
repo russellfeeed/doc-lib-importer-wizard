@@ -227,7 +227,7 @@ export function useSimpleFileUpload({ onFilesUploaded }: UseSimpleFileUploadProp
     } else {
       toast.success(`${newFiles.length} files uploaded successfully`);
     }
-  }, [forcedCategory]);
+  }, [forcedCategory, files.length]);
 
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
