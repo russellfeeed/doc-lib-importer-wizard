@@ -19,8 +19,22 @@ export function useCircularLetterUpload({ onLettersUploaded }: UseCircularLetter
   const [aiEnabled, setAiEnabled] = useState(true);
   const { hierarchy } = useCategories();
 
+  const MAX_FILES = 20;
+
   const handleFileSelection = useCallback(async (selectedFiles: FileList | null) => {
     if (!selectedFiles || selectedFiles.length === 0) return;
+    
+    // Check file limit
+    const remainingSlots = MAX_FILES - letters.length;
+    if (remainingSlots <= 0) {
+      toast.error(`Maximum of ${MAX_FILES} files allowed. Remove some files first.`);
+      return;
+    }
+    let filesToProcess = Array.from(selectedFiles);
+    if (filesToProcess.length > remainingSlots) {
+      toast.warning(`Only ${remainingSlots} more file(s) allowed. ${filesToProcess.length - remainingSlots} file(s) were skipped.`);
+      filesToProcess = filesToProcess.slice(0, remainingSlots);
+    }
     
     // Force refresh the circular letter prompt config to ensure excerpt is included
     refreshCircularLetterPromptConfig();
@@ -33,7 +47,7 @@ export function useCircularLetterUpload({ onLettersUploaded }: UseCircularLetter
     
     setIsLoading(true);
     
-    const newLetters: CircularLetter[] = Array.from(selectedFiles)
+    const newLetters: CircularLetter[] = filesToProcess
       .filter(file => file.type === 'application/pdf') // Only accept PDFs for circular letters
       .map(file => ({
         id: generateUniqueId(),

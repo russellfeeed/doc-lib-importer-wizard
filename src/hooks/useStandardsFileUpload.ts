@@ -16,8 +16,22 @@ export function useStandardsFileUpload({ onFilesUploaded }: UseStandardsFileUplo
   const [isLoading, setIsLoading] = useState(false);
   const [aiEnabled, setAiEnabled] = useState(false);
 
+  const MAX_FILES = 20;
+
   const handleFileSelection = useCallback(async (selectedFiles: FileList | null) => {
     if (!selectedFiles || selectedFiles.length === 0) return;
+    
+    // Check file limit
+    const remainingSlots = MAX_FILES - files.length;
+    if (remainingSlots <= 0) {
+      toast.error(`Maximum of ${MAX_FILES} files allowed. Remove some files first.`);
+      return;
+    }
+    let filesToProcess = Array.from(selectedFiles);
+    if (filesToProcess.length > remainingSlots) {
+      toast.warning(`Only ${remainingSlots} more file(s) allowed. ${filesToProcess.length - remainingSlots} file(s) were skipped.`);
+      filesToProcess = filesToProcess.slice(0, remainingSlots);
+    }
     
     // Check if AI is enabled but no API key is set
     if (aiEnabled && !hasOpenAIKey()) {
@@ -27,7 +41,7 @@ export function useStandardsFileUpload({ onFilesUploaded }: UseStandardsFileUplo
     
     setIsLoading(true);
     
-    const newFiles: DocumentFile[] = Array.from(selectedFiles).map(file => ({
+    const newFiles: DocumentFile[] = filesToProcess.map(file => ({
       id: generateUniqueId(),
       file,
       name: file.name.replace(/\.[^/.]+$/, ""), // Remove file extension
