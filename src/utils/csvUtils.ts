@@ -346,11 +346,25 @@ const cleanText = (str: string): string => {
 };
 
 /**
- * Always wraps value in double quotes for CSV (used for excerpt field)
+ * Cleans and validates a value, logging a warning if sanitization was needed
  */
-const forceQuoteCsvValue = (value: string): string => {
+const cleanAndValidate = (value: string, fieldName: string, rowIndex: number): string => {
+  const cleaned = cleanText(value);
+  if (value && cleaned !== value) {
+    console.warn(`[CSV Clean] Row ${rowIndex + 1}, field "${fieldName}": characters were sanitized`);
+  }
+  return cleaned;
+};
+
+/**
+ * Always wraps value in double quotes for CSV, with optional validation logging
+ */
+const forceQuoteCsvValue = (value: string, fieldName?: string, rowIndex?: number): string => {
   if (!value) return '""';
-  return `"${cleanText(value).replace(/"/g, '""')}"`;
+  const cleaned = fieldName !== undefined && rowIndex !== undefined
+    ? cleanAndValidate(value, fieldName, rowIndex)
+    : cleanText(value);
+  return `"${cleaned.replace(/"/g, '""')}"`;
 };
 
 /**
