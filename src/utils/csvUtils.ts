@@ -272,22 +272,23 @@ export const generateCSV = async (
         'Name': forceQuoteCsvValue(
           isStandards && docFile.standardNumber 
             ? `${docFile.standardNumber} - ${docFile.name}` 
-            : docFile.name
+            : docFile.name,
+          'Name', i
         ),
       };
       
       
-      row['Categories'] = forceQuoteCsvValue(docFile.categories);
+      row['Categories'] = forceQuoteCsvValue(docFile.categories, 'Categories', i);
       const dateTag = new Date().toISOString().split('T')[0];
       const tagsWithDate = docFile.tags ? `${docFile.tags}, ${dateTag}` : dateTag;
-      row['Tags'] = forceQuoteCsvValue(tagsWithDate);
-      row['Document Authors'] = forceQuoteCsvValue(docFile.authors);
+      row['Tags'] = forceQuoteCsvValue(tagsWithDate, 'Tags', i);
+      row['Document Authors'] = forceQuoteCsvValue(docFile.authors, 'Document Authors', i);
       row['File URL'] = forceQuoteCsvValue(fileUrlPath);
       row['Direct URL'] = forceQuoteCsvValue(directUrlPath);
       row['Featured Image URL'] = forceQuoteCsvValue(docFile.imageUrl);
       row['File Size'] = forceQuoteCsvValue(docFile.fileSize);
-      row['Excerpt'] = forceQuoteCsvValue(docFile.excerpt);
-      row['Content'] = forceQuoteCsvValue(preparedContent);
+      row['Excerpt'] = forceQuoteCsvValue(docFile.excerpt, 'Excerpt', i);
+      row['Content'] = forceQuoteCsvValue(preparedContent, 'Content', i);
       row['Published'] = docFile.published ? 'TRUE' : 'FALSE';
       
       // Add custom fields if they exist
