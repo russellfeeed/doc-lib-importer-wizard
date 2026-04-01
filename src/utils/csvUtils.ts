@@ -321,13 +321,11 @@ export const generateCSV = async (
  */
 const escapeCsvValue = (value: string): string => {
   if (!value) return '';
-  
-  // If value contains comma, quote, or newline, wrap in quotes and escape quotes
-  if (value.includes(',') || value.includes('"') || value.includes('\n')) {
-    return `"${value.replace(/"/g, '""')}"`;
+  const cleaned = cleanText(value);
+  if (cleaned.includes(',') || cleaned.includes('"') || cleaned.includes('\n')) {
+    return `"${cleaned.replace(/"/g, '""')}"`;
   }
-  
-  return value;
+  return cleaned;
 };
 
 /**
