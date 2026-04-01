@@ -205,16 +205,16 @@ export const generateCSV = async (
       }
       
       row = {
-        'Name': forceQuoteCsvValue(letter.title),
-        'Reference Number': forceQuoteCsvValue(letter.referenceNumber),
-        'Correspondence Ref': forceQuoteCsvValue(letter.correspondenceRef),
-        'Document Date': forceQuoteCsvValue(letter.date),
-        'Audience': forceQuoteCsvValue(letter.audience),
-        'Content': forceQuoteCsvValue(preparedDetails),
-        'Document Authors': forceQuoteCsvValue(letter.author),
-        'Tags': forceQuoteCsvValue((() => { const dateTag = new Date().toISOString().split('T')[0]; return letter.tags ? `${letter.tags}, ${dateTag}` : dateTag; })()),
-        'Categories': forceQuoteCsvValue(letter.categories || ''),
-        'Excerpt': forceQuoteCsvValue(letter.excerpt || ''),
+        'Name': forceQuoteCsvValue(letter.title, 'Name', i),
+        'Reference Number': forceQuoteCsvValue(letter.referenceNumber, 'Reference Number', i),
+        'Correspondence Ref': forceQuoteCsvValue(letter.correspondenceRef, 'Correspondence Ref', i),
+        'Document Date': forceQuoteCsvValue(letter.date, 'Document Date', i),
+        'Audience': forceQuoteCsvValue(letter.audience, 'Audience', i),
+        'Content': forceQuoteCsvValue(preparedDetails, 'Content', i),
+        'Document Authors': forceQuoteCsvValue(letter.author, 'Document Authors', i),
+        'Tags': forceQuoteCsvValue((() => { const dateTag = new Date().toISOString().split('T')[0]; return letter.tags ? `${letter.tags}, ${dateTag}` : dateTag; })(), 'Tags', i),
+        'Categories': forceQuoteCsvValue(letter.categories || '', 'Categories', i),
+        'Excerpt': forceQuoteCsvValue(letter.excerpt || '', 'Excerpt', i),
         'File URL': forceQuoteCsvValue(`${getWpBaseUrl()}/wp-content/uploads/${getCurrentUploadPath()}/${letter.file?.name || letter.name}`),
         'Direct URL': forceQuoteCsvValue(`${getWpBaseUrl()}/wp-content/uploads/${getCurrentUploadPath()}/${letter.file?.name || letter.name}`),
         'Featured Image URL': forceQuoteCsvValue(letter.thumbnail || ''),
@@ -272,22 +272,23 @@ export const generateCSV = async (
         'Name': forceQuoteCsvValue(
           isStandards && docFile.standardNumber 
             ? `${docFile.standardNumber} - ${docFile.name}` 
-            : docFile.name
+            : docFile.name,
+          'Name', i
         ),
       };
       
       
-      row['Categories'] = forceQuoteCsvValue(docFile.categories);
+      row['Categories'] = forceQuoteCsvValue(docFile.categories, 'Categories', i);
       const dateTag = new Date().toISOString().split('T')[0];
       const tagsWithDate = docFile.tags ? `${docFile.tags}, ${dateTag}` : dateTag;
-      row['Tags'] = forceQuoteCsvValue(tagsWithDate);
-      row['Document Authors'] = forceQuoteCsvValue(docFile.authors);
+      row['Tags'] = forceQuoteCsvValue(tagsWithDate, 'Tags', i);
+      row['Document Authors'] = forceQuoteCsvValue(docFile.authors, 'Document Authors', i);
       row['File URL'] = forceQuoteCsvValue(fileUrlPath);
       row['Direct URL'] = forceQuoteCsvValue(directUrlPath);
       row['Featured Image URL'] = forceQuoteCsvValue(docFile.imageUrl);
       row['File Size'] = forceQuoteCsvValue(docFile.fileSize);
-      row['Excerpt'] = forceQuoteCsvValue(docFile.excerpt);
-      row['Content'] = forceQuoteCsvValue(preparedContent);
+      row['Excerpt'] = forceQuoteCsvValue(docFile.excerpt, 'Excerpt', i);
+      row['Content'] = forceQuoteCsvValue(preparedContent, 'Content', i);
       row['Published'] = docFile.published ? 'TRUE' : 'FALSE';
       
       // Add custom fields if they exist
@@ -339,15 +340,32 @@ const cleanText = (str: string): string => {
     .replace(/[\u2013\u2014\u2015]/g, '-')                 // en/em dashes → -
     .replace(/\u2026/g, '...')                              // ellipsis → ...
     .normalize("NFKD")
-    .replace(/[^\x00-\x7F]/g, "");
+    .replace(/[\uE000-\uF8FF]/g, "")                       // remove private-use unicode
+    .replace(/[\x00-\x1F\x7F]/g, "")                       // remove control characters
+    .replace(/[^\x00-\x7F]/g, "")                           // strip remaining non-ASCII
+    .trim();
 };
 
 /**
- * Always wraps value in double quotes for CSV (used for excerpt field)
+ * Cleans and validates a value, logging a warning if sanitization was needed
  */
-const forceQuoteCsvValue = (value: string): string => {
+const cleanAndValidate = (value: string, fieldName: string, rowIndex: number): string => {
+  const cleaned = cleanText(value);
+  if (value && cleaned !== value) {
+    console.warn(`[CSV Clean] Row ${rowIndex + 1}, field "${fieldName}": characters were sanitized`);
+  }
+  return cleaned;
+};
+
+/**
+ * Always wraps value in double quotes for CSV, with optional validation logging
+ */
+const forceQuoteCsvValue = (value: string, fieldName?: string, rowIndex?: number): string => {
   if (!value) return '""';
-  return `"${cleanText(value).replace(/"/g, '""')}"`;
+  const cleaned = fieldName !== undefined && rowIndex !== undefined
+    ? cleanAndValidate(value, fieldName, rowIndex)
+    : cleanText(value);
+  return `"${cleaned.replace(/"/g, '""')}"`;
 };
 
 /**
