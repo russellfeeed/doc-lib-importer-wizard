@@ -334,6 +334,10 @@ const escapeCsvValue = (value: string): string => {
 const cleanText = (str: string): string => {
   if (!str) return str;
   return str
+    .replace(/[\u2018\u2019\u201A\u2032\u0060]/g, "'")   // smart single quotes → '
+    .replace(/[\u201C\u201D\u201E\u2033]/g, '"')           // smart double quotes → "
+    .replace(/[\u2013\u2014\u2015]/g, '-')                 // en/em dashes → -
+    .replace(/\u2026/g, '...')                              // ellipsis → ...
     .normalize("NFKD")
     .replace(/[^\x00-\x7F]/g, "");
 };
