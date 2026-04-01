@@ -1,23 +1,47 @@
 
 
-## Fix: Sanitize Non-Breaking Hyphens in WordPress Media Uploads
+## Fix: Clean Non-ASCII Characters from CSV Export
 
 ### Problem
-`WordPressUploader.tsx` line 151 only replaces em dashes (`—`) and en dashes (`–`) in filenames sent to WordPress. It misses non-breaking hyphens (U+2011) and other Unicode hyphen variants. The CSV export already handles this correctly via `cleanNonAsciiHyphens()` in `csvUtils.ts`, but the uploader doesn't use the same logic.
+The CSV output contains stray Unicode characters (smart quotes, accented characters, special symbols, etc.) that cause issues on import. Currently only non-ASCII hyphens are cleaned — all other non-ASCII characters pass through untouched.
 
 ### Change (1 file)
 
-**`src/components/WordPressUploader.tsx`** — line 151
+**`src/utils/csvUtils.ts`**
 
-Replace the current regex:
+1. Add a `cleanText` helper function that normalizes Unicode (NFKD decomposition) and strips non-ASCII characters:
+
 ```typescript
-uploadName = uploadName.replace(/\//g, '-').replace(/[–—]/g, '-').replace(/\+/g, '');
+const cleanText = (str: string): string => {
+  if (!str) return str;
+  return str
+    .normalize("NFKD")
+    .replace(/[^\x00-\x7F]/g, "");
+};
 ```
 
-With the full Unicode hyphen range (matching what `csvUtils.ts` already uses):
+2. Apply `cleanText` inside `forceQuoteCsvValue` and `escapeCsvValue` before any other processing, so every field in the CSV is cleaned. This replaces the narrower `cleanNonAsciiHyphens` call since `cleanText` already removes all non-ASCII characters including those hyphens.
+
+3. Update `forceQuoteCsvValue`:
 ```typescript
-uploadName = uploadName.replace(/\//g, '-').replace(/[\u2010-\u2015\u2212\u002D\u00AD–—]/g, '-').replace(/\+/g, '');
+const forceQuoteCsvValue = (value: string): string => {
+  if (!value) return '""';
+  return `"${cleanText(value).replace(/"/g, '""')}"`;
+};
 ```
 
-This covers: hyphen (U+2010), non-breaking hyphen (U+2011), figure dash (U+2012), en dash (U+2013), em dash (U+2014), horizontal bar (U+2015), minus sign (U+2212), and soft hyphen (U+00AD) — all replaced with a standard ASCII hyphen.
+4. Update `escapeCsvValue`:
+```typescript
+const escapeCsvValue = (value: string): string => {
+  if (!value) return '';
+  const cleaned = cleanText(value);
+  if (cleaned.includes(',') || cleaned.includes('"') || cleaned.includes('\n')) {
+    return `"${cleaned.replace(/"/g, '""')}"`;
+  }
+  return cleaned;
+};
+```
+
+### Result
+All text fields in the CSV will be normalized to ASCII-only, eliminating smart quotes, accented remnants, non-breaking spaces, and any other Unicode artifacts before export.
 
