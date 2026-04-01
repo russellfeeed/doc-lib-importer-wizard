@@ -321,20 +321,21 @@ export const generateCSV = async (
  */
 const escapeCsvValue = (value: string): string => {
   if (!value) return '';
-  
-  // If value contains comma, quote, or newline, wrap in quotes and escape quotes
-  if (value.includes(',') || value.includes('"') || value.includes('\n')) {
-    return `"${value.replace(/"/g, '""')}"`;
+  const cleaned = cleanText(value);
+  if (cleaned.includes(',') || cleaned.includes('"') || cleaned.includes('\n')) {
+    return `"${cleaned.replace(/"/g, '""')}"`;
   }
-  
-  return value;
+  return cleaned;
 };
 
 /**
- * Replaces non-ASCII hyphens (en dash, em dash, figure dash, etc.) with simple ASCII hyphen
+ * Normalizes Unicode and strips non-ASCII characters for clean CSV output
  */
-const cleanNonAsciiHyphens = (value: string): string => {
-  return value.replace(/[\u2010-\u2015\u2212]/g, '-');
+const cleanText = (str: string): string => {
+  if (!str) return str;
+  return str
+    .normalize("NFKD")
+    .replace(/[^\x00-\x7F]/g, "");
 };
 
 /**
@@ -342,9 +343,7 @@ const cleanNonAsciiHyphens = (value: string): string => {
  */
 const forceQuoteCsvValue = (value: string): string => {
   if (!value) return '""';
-  
-  // Clean non-ASCII hyphens and escape internal quotes
-  return `"${cleanNonAsciiHyphens(value).replace(/"/g, '""')}"`;
+  return `"${cleanText(value).replace(/"/g, '""')}"`;
 };
 
 /**
