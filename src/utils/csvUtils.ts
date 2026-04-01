@@ -339,7 +339,10 @@ const cleanText = (str: string): string => {
     .replace(/[\u2013\u2014\u2015]/g, '-')                 // en/em dashes → -
     .replace(/\u2026/g, '...')                              // ellipsis → ...
     .normalize("NFKD")
-    .replace(/[^\x00-\x7F]/g, "");
+    .replace(/[\uE000-\uF8FF]/g, "")                       // remove private-use unicode
+    .replace(/[\x00-\x1F\x7F]/g, "")                       // remove control characters
+    .replace(/[^\x00-\x7F]/g, "")                           // strip remaining non-ASCII
+    .trim();
 };
 
 /**
