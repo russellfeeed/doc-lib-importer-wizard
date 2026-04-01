@@ -1,47 +1,26 @@
 
 
-## Fix: Clean Non-ASCII Characters from CSV Export
+## Fix: Replace Smart Quotes Before Stripping Non-ASCII
 
 ### Problem
-The CSV output contains stray Unicode characters (smart quotes, accented characters, special symbols, etc.) that cause issues on import. Currently only non-ASCII hyphens are cleaned — all other non-ASCII characters pass through untouched.
+The current `cleanText` function normalizes with NFKD then strips non-ASCII. However, curly quotes (`"` `"`) and smart apostrophes (`'` `'`) don't decompose under NFKD — they're simply deleted. This loses meaningful punctuation. The fix is to explicitly map smart punctuation to ASCII equivalents before the strip.
 
 ### Change (1 file)
 
-**`src/utils/csvUtils.ts`**
-
-1. Add a `cleanText` helper function that normalizes Unicode (NFKD decomposition) and strips non-ASCII characters:
+**`src/utils/csvUtils.ts`** — Update `cleanText` (lines 334-339)
 
 ```typescript
 const cleanText = (str: string): string => {
   if (!str) return str;
   return str
+    .replace(/[\u2018\u2019\u201A\u2032\u0060]/g, "'")   // smart single quotes → '
+    .replace(/[\u201C\u201D\u201E\u2033]/g, '"')           // smart double quotes → "
+    .replace(/[\u2013\u2014\u2015]/g, '-')                 // en/em dashes → -
+    .replace(/\u2026/g, '...')                              // ellipsis → ...
     .normalize("NFKD")
     .replace(/[^\x00-\x7F]/g, "");
 };
 ```
 
-2. Apply `cleanText` inside `forceQuoteCsvValue` and `escapeCsvValue` before any other processing, so every field in the CSV is cleaned. This replaces the narrower `cleanNonAsciiHyphens` call since `cleanText` already removes all non-ASCII characters including those hyphens.
-
-3. Update `forceQuoteCsvValue`:
-```typescript
-const forceQuoteCsvValue = (value: string): string => {
-  if (!value) return '""';
-  return `"${cleanText(value).replace(/"/g, '""')}"`;
-};
-```
-
-4. Update `escapeCsvValue`:
-```typescript
-const escapeCsvValue = (value: string): string => {
-  if (!value) return '';
-  const cleaned = cleanText(value);
-  if (cleaned.includes(',') || cleaned.includes('"') || cleaned.includes('\n')) {
-    return `"${cleaned.replace(/"/g, '""')}"`;
-  }
-  return cleaned;
-};
-```
-
-### Result
-All text fields in the CSV will be normalized to ASCII-only, eliminating smart quotes, accented remnants, non-breaking spaces, and any other Unicode artifacts before export.
+This ensures smart punctuation is preserved as ASCII equivalents instead of being silently deleted, making the CSV bulletproof for Barn2 import.
 
