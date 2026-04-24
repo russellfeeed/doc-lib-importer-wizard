@@ -585,9 +585,22 @@ serve(async (req) => {
           let mimeType = mid && mediaMap[mid] ? mediaMap[mid].mime_type : '';
           let resolvedFrom: string = mid && fileUrl ? 'attached_media' : '';
 
+          // Try top-level Barn2 DLP fields exposed by the plugin (download_url, file_url, document_url)
+          if (!fileUrl) {
+            const topKeys = ['download_url', 'file_url', 'document_url'];
+            for (const k of topKeys) {
+              const v = (doc as any)?.[k];
+              if (v && typeof v === 'string' && v.startsWith('http')) {
+                fileUrl = v;
+                resolvedFrom = `field:${k}`;
+                break;
+              }
+            }
+          }
+
           // Try common DLP "File URL" mode meta keys
           if (!fileUrl) {
-            const metaKeys = ['_dlp_document_url', '_dlp_url', '_dlp_file_url', '_dlp_document_link', '_dlp_external_url'];
+            const metaKeys = ['_dlp_document_url', '_dlp_url', '_dlp_file_url', '_dlp_document_link', '_dlp_external_url', 'download_url', 'file_url', 'document_url'];
             for (const k of metaKeys) {
               if (meta[k] && typeof meta[k] === 'string' && meta[k].startsWith('http')) {
                 fileUrl = meta[k];
