@@ -18,7 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ArrowLeft, Search, AlertTriangle, ExternalLink, Square, Download, Code2, Copy, X } from "lucide-react";
+import { ArrowLeft, Search, AlertTriangle, ExternalLink, Square, Download, Code2, Copy, X, RotateCcw } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { getWordPressCredentials } from "@/utils/wordpressUtils";
 import {
@@ -274,6 +274,39 @@ const DocumentUrlAudit: React.FC = () => {
     setIsRunning(false);
   };
 
+  const [retryingId, setRetryingId] = useState<number | null>(null);
+
+  const handleRetryRow = async (docId: number) => {
+    const row = issues.find((i) => i.doc.id === docId);
+    if (!row || !row.doc.fileUrl) return;
+    setRetryingId(docId);
+    try {
+      const result = await checkDocumentUrl(row.doc.fileUrl);
+      const cls = classifyIssue(result, !!row.doc.fileUrl);
+      if (cls.severity === "ok") {
+        setIssues((prev) => prev.filter((i) => i.doc.id !== docId));
+        setOkCount((c) => c + 1);
+        addLog(`✅ #${row.doc.id} ${row.doc.title} (retry succeeded)`, "success");
+      } else {
+        setIssues((prev) =>
+          prev.map((i) =>
+            i.doc.id === docId
+              ? { doc: i.doc, result, issue: cls.label, severity: cls.severity }
+              : i
+          )
+        );
+        const logType =
+          cls.severity === "warn" || cls.severity === "protected" ? "warning" : "error";
+        const icon = cls.severity === "protected" ? "🔒" : "❌";
+        addLog(`${icon} #${row.doc.id} ${row.doc.title} — ${cls.label} (retry)`, logType);
+      }
+    } catch (e: any) {
+      addLog(`Retry failed for #${docId}: ${e?.message || "unknown error"}`, "error");
+    } finally {
+      setRetryingId(null);
+    }
+  };
+
   const handleStop = () => {
     stopRef.current = true;
   };
@@ -469,22 +502,40 @@ const DocumentUrlAudit: React.FC = () => {
                         </div>
                       </TableCell>
                       <TableCell>
-                        <span
-                          className={`px-1.5 py-0.5 rounded text-xs ${
-                            row.severity === "error"
-                              ? "bg-destructive/15 text-destructive"
-                              : row.severity === "protected"
-                              ? "bg-amber-100 text-amber-700"
-                              : "bg-amber-100 text-amber-700"
-                          }`}
-                          title={
-                            row.severity === "protected"
-                              ? "PDA-protected file. WordPress login attempt failed — file may still be valid for logged-in users."
-                              : undefined
-                          }
-                        >
-                          {row.issue}
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className={`px-1.5 py-0.5 rounded text-xs ${
+                              row.severity === "error"
+                                ? "bg-destructive/15 text-destructive"
+                                : row.severity === "protected"
+                                ? "bg-amber-100 text-amber-700"
+                                : "bg-amber-100 text-amber-700"
+                            }`}
+                            title={
+                              row.severity === "protected"
+                                ? "PDA-protected file. WordPress login attempt failed — file may still be valid for logged-in users."
+                                : undefined
+                            }
+                          >
+                            {row.issue}
+                          </span>
+                          {row.issue === "Timeout" && (
+                            <Button
+                              type="button"
+                              size="sm"
+                              variant="outline"
+                              className="h-6 px-2 text-xs gap-1"
+                              disabled={retryingId === row.doc.id}
+                              onClick={() => handleRetryRow(row.doc.id)}
+                              title="Re-check this URL"
+                            >
+                              <RotateCcw
+                                className={`h-3 w-3 ${retryingId === row.doc.id ? "animate-spin" : ""}`}
+                              />
+                              {retryingId === row.doc.id ? "Retrying…" : "Retry"}
+                            </Button>
+                          )}
+                        </div>
                         {row.result.finalUrl && row.result.finalUrl !== row.doc.fileUrl && (
                           <div className="text-xs text-muted-foreground mt-1 truncate max-w-md" title={row.result.finalUrl}>
                             → {row.result.finalUrl}
