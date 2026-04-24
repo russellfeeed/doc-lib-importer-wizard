@@ -32,6 +32,8 @@ export interface UrlCheckResult {
   redirectedToHtm: boolean;
   error?: string;
   magic?: string;
+  loginBlocked?: boolean;
+  authMode?: "none" | "basic" | "cookie";
 }
 
 export const fetchDocCategories = async (): Promise<DocCategory[]> => {
@@ -102,10 +104,14 @@ export const checkDocumentUrl = async (checkUrl: string): Promise<UrlCheckResult
   return data as UrlCheckResult;
 };
 
-export const classifyIssue = (r: UrlCheckResult, hasUrl: boolean): { label: string; severity: "ok" | "warn" | "error" } => {
+export const classifyIssue = (
+  r: UrlCheckResult,
+  hasUrl: boolean
+): { label: string; severity: "ok" | "warn" | "error" | "protected" } => {
   if (!hasUrl) return { label: "No file URL", severity: "error" };
   if (r.error) return { label: r.error === "timeout" ? "Timeout" : `Network error: ${r.error}`, severity: "error" };
   if (r.ok) return { label: "OK", severity: "ok" };
+  if (r.loginBlocked) return { label: "Protected (WP login required)", severity: "protected" };
   if (r.redirectedToHtm) return { label: `Redirected to .htm (${r.finalUrl})`, severity: "error" };
   if (r.isHtml) return { label: "HTML page (not a PDF)", severity: "error" };
   if (r.status >= 400) return { label: `HTTP ${r.status}`, severity: "error" };
