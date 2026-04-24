@@ -1,56 +1,67 @@
+## Auth + Roles + Global WP Credentials
 
+### 1. Database migrations
 
-## Bulletproof CSV Sanitization
+**Roles & profiles** (security-definer, roles never on profiles):
+- `app_role` enum: `super_admin`, `admin`, `user`
+- `profiles` (id → auth.users, email, display_name, created_at) + RLS
+- `user_roles` (user_id, role, unique pair) + RLS
+- `has_role(_user_id, _role)` and `is_admin_or_super(_user_id)` security-definer functions
 
-### Problem
-The current `cleanText` strips non-ASCII after NFKD normalization but does **not** remove control characters (`\x00-\x1F`, `\x7F`) or private-use Unicode (`\uE000-\uF8FF`). These survive into the CSV and cause Barn2 import failures.
+**Invitations** (link-based, no email sending):
+- `invitations` (email, role, unique hex token, invited_by, accepted_at, expires_at default now()+14 days)
 
-### Change (1 file)
+**Signup trigger** `handle_new_user` on `auth.users` insert:
+- Always creates `profiles` row
+- If email = `russell@feeed.com` → grants `super_admin`
+- Else if valid unaccepted invitation exists → grants invited role + marks accepted
+- Else → raises exception "Sign-up requires a valid invitation"
 
-**`src/utils/csvUtils.ts`** — Update `cleanText` (lines 334-343)
+**RLS:**
+- `profiles`: SELECT self or admin/super; UPDATE self only
+- `user_roles`: SELECT self or admin/super; INSERT/UPDATE/DELETE only `super_admin`
+- `invitations`: full access for admin/super; public SELECT by token (so accept page works pre-auth)
 
-```typescript
-const cleanText = (str: string): string => {
-  if (!str) return str;
-  return str
-    .replace(/[\u2018\u2019\u201A\u2032\u0060]/g, "'")   // smart single quotes → '
-    .replace(/[\u201C\u201D\u201E\u2033]/g, '"')           // smart double quotes → "
-    .replace(/[\u2013\u2014\u2015]/g, '-')                 // en/em dashes → -
-    .replace(/\u2026/g, '...')                              // ellipsis → ...
-    .normalize("NFKD")
-    .replace(/[\uE000-\uF8FF]/g, "")                       // remove private-use unicode
-    .replace(/[\x00-\x1F\x7F]/g, "")                       // remove control characters
-    .replace(/[^\x00-\x7F]/g, "")                           // strip remaining non-ASCII
-    .trim();
-};
-```
+**WordPress settings → global singleton:**
+- Drop existing 4 per-user policies
+- Drop `user_id` column; add `singleton boolean` with unique index
+- New policies: SELECT for any authenticated user; INSERT/UPDATE only for admin/super
 
-Key additions vs current code:
-1. **Private-use Unicode removal** (`\uE000-\uF8FF`) — catches PDF artifacts like `\uf8e7`, `\uec90`
-2. **Control character removal** (`\x00-\x1F`, `\x7F`) — strips nulls, tabs, form feeds, etc.
-3. **`.trim()`** — removes leading/trailing whitespace artifacts
+### 2. Frontend
 
-Order matters: smart-quote replacements → NFKD normalize → private-use strip → control char strip → non-ASCII strip → trim.
+**New files:**
+- `src/contexts/AuthContext.tsx` — `user`, `session`, `roles`, `isAdmin`, `isSuperAdmin`, `loading`, `signIn`, `signOut`. `onAuthStateChange` set up BEFORE `getSession()`. Hydrates WP creds from DB into localStorage on sign-in.
+- `src/components/ProtectedRoute.tsx` — redirects to `/login`; supports `requireRole="admin" | "super_admin"`.
+- `src/pages/Login.tsx` — email + password (no signup form).
+- `src/pages/AcceptInvite.tsx` — `/accept-invite?token=...`. Validates token, password form, calls `supabase.auth.signUp` with email pre-filled read-only.
+- `src/pages/admin/Users.tsx` — admin/super only. Lists users + roles. Invite form (email + role; admins can only invite "user", super can also invite "admin"). On submit: insert invitation, display copyable link `/accept-invite?token=...`. Super-only promote/demote controls.
+- `src/components/AppHeader.tsx` — user email, sign-out, role-gated nav links.
 
-### Validation logging
+**Updates:**
+- `src/App.tsx`: wrap in `<AuthProvider>`. Public routes: `/login`, `/accept-invite`. All others via `<ProtectedRoute>`. `/settings`, `/categories`, `/admin/users` gated `requireRole="admin"`.
+- `src/pages/Settings.tsx`:
+  - Admins/super: full WP edit form. Saves upsert singleton row in `wordpress_settings`, mirrors to localStorage.
+  - Non-admins: read-only badge "WordPress: Connected to `<site_url>`" (option B) — no username/password shown.
 
-Add a validation wrapper used during CSV row generation to log rows that required cleaning:
+### 3. WP credential hydration
 
-```typescript
-const cleanAndValidate = (value: string, fieldName: string, rowIndex: number): string => {
-  const cleaned = cleanText(value);
-  if (value && cleaned !== value) {
-    console.warn(`[CSV Clean] Row ${rowIndex + 1}, field "${fieldName}": characters were sanitized`);
-  }
-  return cleaned;
-};
-```
+In `AuthContext`, on session change:
+- `select * from wordpress_settings limit 1` → mirror to localStorage (`wp_site_url`, `wp_username`, `wp_password`)
+- Existing 6 call sites keep reading from localStorage unchanged
+- One-time: if super signs in and DB row empty but localStorage has values, push localStorage → DB
 
-Update `forceQuoteCsvValue` to accept optional field/row context, and use `cleanAndValidate` in the main loop where rows are built (around lines 175-250) for the key fields: Name, Content, Excerpt, Categories, Tags.
+### 4. Security trade-off (acknowledged)
 
-### Result
-- All control characters, private-use Unicode, and non-ASCII artifacts removed
-- Smart punctuation preserved as ASCII equivalents
-- Console warnings flag any rows that needed cleaning
-- CSV is strict ASCII-safe UTF-8 with no BOM
+Any signed-in user can technically read WP password from DB (RLS allows authenticated SELECT) so general users can upload. Settings UI hides creds from non-admins. Fully secure alternative (route all WP calls through `wordpress-proxy` edge function with secret-based creds) deferred — much bigger refactor.
 
+### 5. Post-build
+
+Run `security--run_security_scan` and address findings.
+
+---
+
+### Outcomes
+- `russell@feeed.com` → auto super_admin on first sign-up
+- Admins → manage WP creds, categories, settings; invite users via copyable link
+- General users → ingest + upload documents; see read-only WP status in Settings
+- WP credentials → single global DB row, cached per-device on sign-in
