@@ -5,6 +5,24 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+// Module-level cache of wp-login.php session cookies, keyed by `${baseUrl}|${username}`.
+// Lets us re-use a single login across an entire audit run instead of POSTing wp-login.php
+// once per row (which would also trip Wordfence rate limiting).
+const wpCookieCache = new Map<string, { cookies: string; exp: number }>();
+const WP_COOKIE_TTL_MS = 25 * 60 * 1000; // 25 minutes
+
+async function getCachedWpCookies(baseUrl: string, username: string, password: string): Promise<string | null> {
+  const key = `${baseUrl}|${username}`;
+  const now = Date.now();
+  const cached = wpCookieCache.get(key);
+  if (cached && cached.exp > now) return cached.cookies;
+
+  const session = await getWpSessionAuth(baseUrl, username, password);
+  if (!session?.cookies) return null;
+  wpCookieCache.set(key, { cookies: session.cookies, exp: now + WP_COOKIE_TTL_MS });
+  return session.cookies;
+}
+
 // Helper: Authenticate via wp-login.php and return session cookies + nonce
 async function getWpSessionAuth(
   baseUrl: string,
