@@ -3,8 +3,10 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { toast } from 'sonner';
-import { ArrowLeft, Download, Upload, RotateCcw, Save, Eye, TestTube, Globe, Check, X, Loader2, FolderTree } from 'lucide-react';
+import { ArrowLeft, Download, Upload, RotateCcw, Save, Eye, TestTube, Globe, Check, X, Loader2, FolderTree, Lock, CheckCircle, AlertTriangle } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -61,6 +63,7 @@ const PROMPT_DESCRIPTIONS = {
 };
 
 const Settings: React.FC = () => {
+  const { isAdmin } = useAuth();
   const [configs, setConfigs] = useState<AllPromptConfigs>(getAllPromptConfigs());
   const [activeTab, setActiveTab] = useState<keyof AllPromptConfigs>('summarization');
   const [activeSettingsTab, setActiveSettingsTab] = useState<'ai' | 'wordpress'>('ai');
@@ -168,12 +171,35 @@ const Settings: React.FC = () => {
   };
 
   // WordPress functions
-  const onWpSubmit = (data: z.infer<typeof wordpressConfigSchema>) => {
+  const onWpSubmit = async (data: z.infer<typeof wordpressConfigSchema>) => {
     try {
+      // Persist globally — upsert the singleton row
+      const { data: existing } = await supabase
+        .from('wordpress_settings')
+        .select('id')
+        .limit(1)
+        .maybeSingle();
+      let dbError = null;
+      if (existing?.id) {
+        const { error } = await supabase
+          .from('wordpress_settings')
+          .update({ site_url: data.siteUrl, username: data.username, password: data.password })
+          .eq('id', existing.id);
+        dbError = error;
+      } else {
+        const { error } = await supabase
+          .from('wordpress_settings')
+          .insert({ site_url: data.siteUrl, username: data.username, password: data.password });
+        dbError = error;
+      }
+      if (dbError) {
+        toast.error('Failed to save: ' + dbError.message);
+        return;
+      }
       localStorage.setItem('wp_site_url', data.siteUrl);
       localStorage.setItem('wp_username', data.username);
       localStorage.setItem('wp_password', data.password);
-      toast.success('WordPress settings saved successfully');
+      toast.success('WordPress settings saved globally');
       setConnectionStatus('idle');
     } catch (error) {
       toast.error('Failed to save WordPress settings');
@@ -436,6 +462,35 @@ const Settings: React.FC = () => {
         </TabsList>
 
         <TabsContent value="wordpress" className="space-y-6">
+          {!isAdmin ? (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Lock className="h-5 w-5" />
+                  WordPress Connection
+                </CardTitle>
+                <CardDescription>
+                  WordPress credentials are managed by an administrator.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {localStorage.getItem('wp_site_url') ? (
+                  <div className="flex items-center gap-2 text-sm rounded-md border border-green-200 bg-green-50 px-3 py-2 text-green-800">
+                    <CheckCircle className="h-4 w-4 shrink-0" />
+                    <span>
+                      Connected to: <strong>{localStorage.getItem('wp_site_url')}</strong>
+                    </span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 text-sm rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-amber-800">
+                    <AlertTriangle className="h-4 w-4 shrink-0" />
+                    <span>WordPress is not configured yet. Ask an administrator to set it up.</span>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          ) : (
+          <>
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -443,7 +498,7 @@ const Settings: React.FC = () => {
                 WordPress Configuration
               </CardTitle>
               <CardDescription>
-                Configure WordPress connection to fetch nsi-scheme taxonomy terms for document classification
+                Configure the global WordPress connection. These credentials are shared with all users of this app.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -614,6 +669,8 @@ const Settings: React.FC = () => {
                 </div>
               </CardContent>
             </Card>
+          )}
+          </>
           )}
         </TabsContent>
 
