@@ -815,8 +815,10 @@ serve(async (req) => {
         const headers: Record<string, string> = {
           'User-Agent': 'Mozilla/5.0 (Lovable URL Audit)',
           'Accept': '*/*',
-          'Range': 'bytes=0-2047',
         };
+        // Range hints can confuse PDA's PHP file streamer (it sometimes returns
+        // an HTML error page for Range requests). Only set it for non-PDA URLs.
+        if (!isPdaUrl) headers['Range'] = 'bytes=0-2047';
         if (sessionCookie) {
           // Cookie auth wins for /_pda/ URLs; do NOT mix with Basic auth.
           headers['Cookie'] = sessionCookie;
@@ -844,16 +846,32 @@ serve(async (req) => {
         result.redirectedToHtm = /\.html?$/.test(lowerFinal);
         result.isHtml = result.contentType.includes('text/html');
 
-        // Read first chunk to check magic bytes
+        // Read first chunk to check magic bytes. We scan the first ~1KB instead
+        // of just position 0 so a UTF-8 BOM or stray whitespace before %PDF-
+        // (a common PHP-emits-PDF gotcha) doesn't trip us up.
         try {
           const buf = await resp.arrayBuffer();
-          const bytes = new Uint8Array(buf).slice(0, 8);
-          const magic = String.fromCharCode(...bytes);
-          result.magic = magic;
-          if (magic.startsWith('%PDF-')) {
+          const head = new Uint8Array(buf).slice(0, 1024);
+          // Decode as latin-1 so binary bytes don't blow up; we only need ASCII signatures.
+          const headStr = Array.from(head).map((b) => String.fromCharCode(b)).join('');
+          result.magic = headStr.slice(0, 16);
+          const pdfIdx = headStr.indexOf('%PDF-');
+          const htmlIdx = headStr.search(/<!DOCTYPE|<html|<HTML|<meta http-equiv=["']?refresh/i);
+          if (pdfIdx >= 0 && (htmlIdx < 0 || pdfIdx < htmlIdx)) {
             result.isPdf = true;
-          } else if (magic.includes('<!DOC') || magic.includes('<html') || magic.includes('<HTML')) {
+            result.isHtml = false;
+          } else if (htmlIdx >= 0) {
             result.isHtml = true;
+          }
+          if (isPdaUrl) {
+            const hex = Array.from(head.slice(0, 16))
+              .map((b) => b.toString(16).padStart(2, '0'))
+              .join(' ');
+            console.log(
+              `[check-document-url] /_pda/ probe status=${result.status} ct="${result.contentType}" ` +
+              `cl=${result.contentLength} pdf=${result.isPdf} html=${result.isHtml} ` +
+              `magic="${result.magic}" hex="${hex}" url=${checkUrl}`,
+            );
           }
         } catch (_e) {
           // ignore body read failures
