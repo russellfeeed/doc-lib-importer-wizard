@@ -208,11 +208,12 @@ const DocumentUrlAudit: React.FC = () => {
 
   const handleExportCsv = () => {
     const rows = [
-      ["Doc ID", "Title", "Issue", "HTTP Status", "Content-Type", "File URL", "Final URL", "WP Edit"],
+      ["Doc ID", "Title", "Issue", "Resolved From", "HTTP Status", "Content-Type", "File URL", "Final URL", "WP Edit"],
       ...issues.map((i) => [
         String(i.doc.id),
         i.doc.title.replace(/<[^>]+>/g, ""),
         i.issue,
+        i.doc.resolvedFrom || "",
         String(i.result.status),
         i.result.contentType,
         i.doc.fileUrl,
@@ -236,6 +237,25 @@ const DocumentUrlAudit: React.FC = () => {
     if (!credentials) return "#";
     const base = credentials.url.replace(/\/+$/, "");
     return `${base}/wp-admin/post.php?post=${id}&action=edit`;
+  };
+
+  const resolvedFromBadge = (rf?: string) => {
+    if (!rf) return <span className="text-xs text-muted-foreground italic">unresolved</span>;
+    const tone =
+      rf === "attached_media"
+        ? "bg-green-100 text-green-700"
+        : rf.startsWith("meta:")
+        ? "bg-blue-100 text-blue-700"
+        : rf === "content_scrape"
+        ? "bg-amber-100 text-amber-700"
+        : rf === "public_page_scrape"
+        ? "bg-orange-100 text-orange-700"
+        : "bg-muted text-muted-foreground";
+    return (
+      <span className={`px-1.5 py-0.5 rounded text-xs font-mono ${tone}`} title={rf}>
+        {rf}
+      </span>
+    );
   };
 
   return (
@@ -345,6 +365,7 @@ const DocumentUrlAudit: React.FC = () => {
                     <TableHead className="w-[80px]">Doc ID</TableHead>
                     <TableHead>Title</TableHead>
                     <TableHead>Issue</TableHead>
+                    <TableHead className="w-[160px]">Resolved From</TableHead>
                     <TableHead>File URL</TableHead>
                     <TableHead className="w-[60px]">Edit</TableHead>
                   </TableRow>
@@ -390,6 +411,7 @@ const DocumentUrlAudit: React.FC = () => {
                           </div>
                         )}
                       </TableCell>
+                      <TableCell>{resolvedFromBadge(row.doc.resolvedFrom)}</TableCell>
                       <TableCell>
                         {row.doc.fileUrl ? (
                           <a
