@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Loader2, LogIn } from 'lucide-react';
+import { Link } from 'react-router-dom';
 import { toast } from 'sonner';
 
 const Login: React.FC = () => {
@@ -74,6 +75,10 @@ const Login: React.FC = () => {
               Sign in
             </Button>
           </form>
+          <p className="text-xs text-muted-foreground mt-4 text-center">
+            First-time super-admin setup?{' '}
+            <Link to="/setup" className="underline hover:text-foreground">Create account</Link>
+          </p>
         </CardContent>
       </Card>
     </div>
