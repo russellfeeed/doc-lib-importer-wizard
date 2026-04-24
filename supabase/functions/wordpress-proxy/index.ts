@@ -733,6 +733,45 @@ serve(async (req) => {
       });
     }
 
+    // Handle fetch raw DLP document (full WP REST payload, including meta/content)
+    if (action === 'fetch-dlp-raw') {
+      const docId = body.documentId;
+      if (!url || !username || !password || !docId) {
+        return new Response(
+          JSON.stringify({ error: 'Missing required fields: url, username, password, documentId' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      const baseUrlRaw = url.replace(/\/$/, '');
+      try {
+        // context=edit returns ALL meta keys (registered or not) when authenticated
+        const rawUrl = `${baseUrlRaw}/wp-json/wp/v2/dlp_document/${docId}?context=edit`;
+        console.log(`[fetch-dlp-raw] ${rawUrl}`);
+        const rawResp = await wpFetch(rawUrl, username, cleanPassword);
+        const rawText = await rawResp.text();
+        if (!rawResp.ok) {
+          const fallbackUrl = `${baseUrlRaw}/wp-json/wp/v2/dlp_document/${docId}`;
+          console.log(`[fetch-dlp-raw] edit context failed (${rawResp.status}); trying ${fallbackUrl}`);
+          const fbResp = await wpFetch(fallbackUrl, username, cleanPassword);
+          const fbText = await fbResp.text();
+          if (!fbResp.ok) {
+            return new Response(JSON.stringify({ error: 'Failed to fetch raw DLP document', status: fbResp.status, details: fbText }), {
+              status: fbResp.status,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+          }
+          return new Response(fbText, { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+        }
+        return new Response(rawText, { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
+      } catch (error) {
+        console.error('[fetch-dlp-raw] error:', error);
+        return new Response(JSON.stringify({ error: 'Failed to fetch raw DLP document', details: (error as Error).message }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+    }
+
     // Handle fetch single DLP document detail with resolved terms
     if (action === 'fetch-dlp-detail') {
       const docId = body.documentId;
