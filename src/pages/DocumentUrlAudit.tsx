@@ -553,7 +553,29 @@ const DocumentUrlAudit: React.FC = () => {
                 )}
                 {inspectJson && (
                   <>
-                    <div className="flex justify-end">
+                    <div className="flex items-center gap-2">
+                      <div className="relative flex-1">
+                        <Search className="h-3.5 w-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                        <Input
+                          value={inspectSearch}
+                          onChange={(e) => setInspectSearch(e.target.value)}
+                          placeholder="Search JSON (e.g. _dlp_, .pdf, attached)…"
+                          className="pl-8 pr-8 h-9 font-mono text-xs"
+                        />
+                        {inspectSearch && (
+                          <button
+                            type="button"
+                            onClick={() => setInspectSearch("")}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                            title="Clear"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        )}
+                      </div>
+                      <span className="text-xs text-muted-foreground tabular-nums whitespace-nowrap min-w-[70px] text-right">
+                        {inspectSearch ? `${matchCount} match${matchCount === 1 ? "" : "es"}` : ""}
+                      </span>
                       <Button variant="outline" size="sm" onClick={handleCopyJson}>
                         <Copy className="h-3.5 w-3.5 mr-1.5" />
                         Copy JSON
@@ -561,7 +583,7 @@ const DocumentUrlAudit: React.FC = () => {
                     </div>
                     <div className="rounded border bg-muted/30 overflow-auto max-h-[60vh]">
                       <pre className="p-3 font-mono text-xs whitespace-pre-wrap break-all">
-{JSON.stringify(inspectJson, null, 2)}
+{highlighted}
                       </pre>
                     </div>
                   </>
