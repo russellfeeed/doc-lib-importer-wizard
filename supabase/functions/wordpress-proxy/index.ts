@@ -1188,7 +1188,8 @@ serve(async (req) => {
           }
         );
       }
-      wordpressUrl = `${baseUrl}/wp-json/wp/v2/${taxonomySlug}?per_page=${per_page}&_fields=id,name,slug,description`;
+      const taxFields = fields && fields.length > 0 ? fields : 'id,name,slug,parent,count,description';
+      wordpressUrl = `${baseUrl}/wp-json/wp/v2/${taxonomySlug}?per_page=${per_page}&_fields=${taxFields}`;
       method = 'GET';
       console.log(`Fetching taxonomy ${taxonomySlug} from: ${wordpressUrl}`);
     } else {
