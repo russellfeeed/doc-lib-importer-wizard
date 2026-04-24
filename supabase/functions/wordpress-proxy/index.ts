@@ -547,26 +547,72 @@ serve(async (req) => {
           }
         }
 
-        // Build response: try meta first, then scrape content for a download URL as fallback
-        const docs = allDocs.map((doc) => {
-          const mid = doc?.meta?._dlp_attached_file_id ? Number(doc.meta._dlp_attached_file_id) : 0;
+        // Helper: scrape a likely file URL from arbitrary HTML
+        const scrapeFileUrl = (html: string): string => {
+          if (!html) return '';
+          // Priority 1: direct .pdf (or other doc) link in /wp-content/uploads
+          const m1 = html.match(/href=["']([^"']*\/wp-content\/uploads\/[^"']+\.[a-z0-9]{2,5}[^"']*)["']/i);
+          if (m1) return m1[1].replace(/&amp;/g, '&');
+          // Priority 2: any pdf/doc/xls/etc link
+          const m2 = html.match(/href=["']([^"']+\.(?:pdf|docx?|xlsx?|pptx?|zip|csv)[^"']*)["']/i);
+          if (m2) return m2[1].replace(/&amp;/g, '&');
+          // Priority 3: DLP download action
+          const m3 = html.match(/href=["']([^"']*dlp-listing-action=download[^"']*)["']/i);
+          if (m3) return m3[1].replace(/&amp;/g, '&');
+          // Priority 4: any /wp-content/uploads link
+          const m4 = html.match(/href=["']([^"']*\/wp-content\/uploads\/[^"']+)["']/i);
+          if (m4) return m4[1].replace(/&amp;/g, '&');
+          return '';
+        };
+
+        // Build response: try meta first, then scrape content, then fetch the public page
+        const docs: any[] = [];
+        for (const doc of allDocs) {
+          const meta = doc?.meta || {};
+          const mid = meta._dlp_attached_file_id ? Number(meta._dlp_attached_file_id) : 0;
           let fileUrl = mid && mediaMap[mid] ? mediaMap[mid].source_url : '';
           let mimeType = mid && mediaMap[mid] ? mediaMap[mid].mime_type : '';
+          let resolvedFrom: string = mid && fileUrl ? 'attached_media' : '';
 
+          // Try common DLP "File URL" mode meta keys
           if (!fileUrl) {
-            // Fallback: scrape href from rendered content
-            const rendered = doc?.content?.rendered || '';
-            // Look for a link to a pdf/file or to ?dlp-listing-action=download
-            const m1 = rendered.match(/href="([^"]+\.pdf[^"]*)"/i);
-            const m2 = !m1 ? rendered.match(/href="([^"]*dlp-listing-action=download[^"]*)"/i) : null;
-            const m3 = !m1 && !m2 ? rendered.match(/href="([^"]*\/wp-content\/uploads\/[^"]+)"/i) : null;
-            fileUrl = (m1 && m1[1]) || (m2 && m2[1]) || (m3 && m3[1]) || '';
-            if (fileUrl) {
-              fileUrl = fileUrl.replace(/&amp;/g, '&');
+            const metaKeys = ['_dlp_document_url', '_dlp_url', '_dlp_file_url', '_dlp_document_link', '_dlp_external_url'];
+            for (const k of metaKeys) {
+              if (meta[k] && typeof meta[k] === 'string' && meta[k].startsWith('http')) {
+                fileUrl = meta[k];
+                resolvedFrom = `meta:${k}`;
+                break;
+              }
             }
           }
 
-          return {
+          // Scrape rendered post content
+          if (!fileUrl) {
+            const scraped = scrapeFileUrl(doc?.content?.rendered || '');
+            if (scraped) {
+              fileUrl = scraped;
+              resolvedFrom = 'content_scrape';
+            }
+          }
+
+          // Last resort: fetch the public document page and scrape it
+          if (!fileUrl && doc.link) {
+            try {
+              const pageResp = await wpFetch(doc.link, username, cleanPassword);
+              if (pageResp.ok) {
+                const html = await pageResp.text();
+                const scraped = scrapeFileUrl(html);
+                if (scraped) {
+                  fileUrl = scraped;
+                  resolvedFrom = 'public_page_scrape';
+                }
+              }
+            } catch (_e) {
+              // ignore
+            }
+          }
+
+          docs.push({
             id: doc.id,
             title: doc?.title?.rendered || '',
             link: doc.link || '',
@@ -574,8 +620,10 @@ serve(async (req) => {
             mediaId: mid,
             fileUrl,
             mimeType,
-          };
-        });
+            resolvedFrom,
+          });
+        }
+        console.log(`[fetch-dlp-by-category] resolved ${docs.filter(d=>d.fileUrl).length}/${docs.length} file URLs`);
 
         return new Response(JSON.stringify({ documents: docs, total: docs.length }), {
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
