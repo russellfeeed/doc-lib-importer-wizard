@@ -18,6 +18,7 @@ export interface DlpDocSummary {
   mediaId: number;
   fileUrl: string;
   mimeType: string;
+  resolvedFrom?: string;
 }
 
 export interface UrlCheckResult {
