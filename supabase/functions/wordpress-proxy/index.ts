@@ -249,7 +249,7 @@ serve(async (req) => {
         });
       } catch (error) {
         console.error('WordPress /users/me error:', error);
-        return new Response(JSON.stringify({ error: 'Failed to fetch /users/me', details: error.message }), {
+        return new Response(JSON.stringify({ error: 'Failed to fetch /users/me', details: (error as Error).message }), {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
@@ -310,7 +310,7 @@ serve(async (req) => {
         return new Response(JSON.stringify({ 
           success: false, 
           message: 'Connection failed - unable to reach WordPress site',
-          details: error.message 
+          details: (error as Error).message 
         }), {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -365,7 +365,7 @@ serve(async (req) => {
         return new Response(JSON.stringify({ 
           success: false, 
           message: 'Failed to check taxonomies',
-          details: error.message 
+          details: (error as Error).message 
         }), {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
@@ -406,8 +406,8 @@ serve(async (req) => {
             results[slug] = { success: false, status: catResponse.status };
           }
         } catch (e) {
-          console.log(`Taxonomy "${slug}" error: ${e.message}`);
-          results[slug] = { success: false, error: e.message };
+          console.log(`Taxonomy "${slug}" error: ${(e as Error).message}`);
+          results[slug] = { success: false, error: (e as Error).message };
         }
       }
 
@@ -471,7 +471,7 @@ serve(async (req) => {
         });
       } catch (error) {
         console.error('DLP document fetch error:', error);
-        return new Response(JSON.stringify({ error: 'Fetch failed', details: error.message }), {
+        return new Response(JSON.stringify({ error: 'Fetch failed', details: (error as Error).message }), {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
@@ -543,7 +543,7 @@ serve(async (req) => {
               console.warn(`[fetch-dlp-by-category] media chunk failed: ${mr.status}`);
             }
           } catch (e: any) {
-            console.warn(`[fetch-dlp-by-category] media chunk error: ${e.message}`);
+            console.warn(`[fetch-dlp-by-category] media chunk error: ${(e as Error).message}`);
           }
         }
 
@@ -582,7 +582,7 @@ serve(async (req) => {
         });
       } catch (error: any) {
         console.error('[fetch-dlp-by-category] error:', error);
-        return new Response(JSON.stringify({ error: 'Fetch failed', details: error.message }), {
+        return new Response(JSON.stringify({ error: 'Fetch failed', details: (error as Error).message }), {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
@@ -743,7 +743,7 @@ serve(async (req) => {
         });
       } catch (error) {
         console.error('DLP document detail error:', error);
-        return new Response(JSON.stringify({ error: 'Failed to fetch document detail', details: error.message }), {
+        return new Response(JSON.stringify({ error: 'Failed to fetch document detail', details: (error as Error).message }), {
           status: 500,
           headers: { ...corsHeaders, 'Content-Type': 'application/json' }
         });
@@ -814,7 +814,7 @@ serve(async (req) => {
       } catch (error) {
         console.error('[upload-media-only] error:', error);
         return new Response(
-          JSON.stringify({ error: 'Media upload failed', details: error.message }),
+          JSON.stringify({ error: 'Media upload failed', details: (error as Error).message }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -1010,7 +1010,7 @@ serve(async (req) => {
       } catch (error) {
         console.error('[create-and-replace-dlp] error:', error);
         return new Response(
-          JSON.stringify({ error: 'Create and replace failed', details: error.message }),
+          JSON.stringify({ error: 'Create and replace failed', details: (error as Error).message }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
@@ -1148,7 +1148,7 @@ serve(async (req) => {
       } catch (error) {
         console.error('Upload-and-update-dlp error:', error);
         return new Response(
-          JSON.stringify({ error: 'Upload and update failed', details: error.message }),
+          JSON.stringify({ error: 'Upload and update failed', details: (error as Error).message }),
           { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
