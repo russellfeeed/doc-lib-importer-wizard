@@ -18,7 +18,8 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ArrowLeft, Search, AlertTriangle, ExternalLink, Square, Download, Code2, Copy } from "lucide-react";
+import { ArrowLeft, Search, AlertTriangle, ExternalLink, Square, Download, Code2, Copy, X } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { getWordPressCredentials } from "@/utils/wordpressUtils";
 import {
   fetchDocCategories,
@@ -79,6 +80,7 @@ const DocumentUrlAudit: React.FC = () => {
   const [inspectLoading, setInspectLoading] = useState(false);
   const [inspectError, setInspectError] = useState<string>("");
   const [inspectJson, setInspectJson] = useState<any>(null);
+  const [inspectSearch, setInspectSearch] = useState("");
 
   const handleInspect = async (docId: number) => {
     setInspectOpen(true);
@@ -86,6 +88,7 @@ const DocumentUrlAudit: React.FC = () => {
     setInspectLoading(true);
     setInspectError("");
     setInspectJson(null);
+    setInspectSearch("");
     try {
       const data = await fetchDlpRaw(docId);
       setInspectJson(data);
