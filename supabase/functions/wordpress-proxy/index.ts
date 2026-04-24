@@ -11,16 +11,92 @@ const corsHeaders = {
 const wpCookieCache = new Map<string, { cookies: string; exp: number }>();
 const WP_COOKIE_TTL_MS = 25 * 60 * 1000; // 25 minutes
 
-async function getCachedWpCookies(baseUrl: string, username: string, password: string): Promise<string | null> {
+// Strict frontend-login helper. A 200 from wp-login.php means FAILURE (the form
+// was re-rendered with an error); success is a 302 redirect AND a
+// `wordpress_logged_in_<hash>` cookie. We only accept a session when that cookie
+// is present — `wordpress_test_cookie` alone does NOT count.
+async function loginToWp(
+  baseUrl: string,
+  username: string,
+  password: string,
+): Promise<{ cookies: string | null; error: string | null }> {
+  try {
+    const loginBody = new URLSearchParams({
+      log: username,
+      pwd: password,
+      'wp-submit': 'Log In',
+      redirect_to: `${baseUrl}/wp-admin/`,
+      testcookie: '1',
+    });
+
+    const resp = await fetch(`${baseUrl}/wp-login.php`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'User-Agent': 'Mozilla/5.0 (Lovable URL Audit)',
+        'Cookie': 'wordpress_test_cookie=WP+Cookie+check',
+      },
+      body: loginBody.toString(),
+      redirect: 'manual',
+    });
+
+    console.log(`[loginToWp] wp-login.php status=${resp.status} location=${resp.headers.get('location') || ''}`);
+
+    const setCookieHeaders: string[] =
+      typeof (resp.headers as any).getSetCookie === 'function'
+        ? (resp.headers as any).getSetCookie()
+        : (() => {
+            const arr: string[] = [];
+            resp.headers.forEach((v, k) => { if (k.toLowerCase() === 'set-cookie') arr.push(v); });
+            return arr;
+          })();
+
+    const cookiePairs = setCookieHeaders.map((c) => c.split(';')[0]);
+    const hasLoggedInCookie = cookiePairs.some((c) => /^wordpress_logged_in_/i.test(c));
+    const isRedirect = resp.status >= 300 && resp.status < 400;
+
+    if (!hasLoggedInCookie) {
+      let snippet = '';
+      try {
+        const html = await resp.text();
+        const m = html.match(/<div[^>]*id=["']login_error["'][^>]*>([\s\S]*?)<\/div>/i);
+        if (m) snippet = m[1].replace(/<[^>]+>/g, '').replace(/\s+/g, ' ').trim().slice(0, 200);
+      } catch (_e) { /* ignore */ }
+      const reason = snippet
+        ? `wp-login rejected: ${snippet}`
+        : `wp-login failed (status ${resp.status}, no wordpress_logged_in cookie — likely wrong password or Application Password used instead of account password)`;
+      console.log(`[loginToWp] FAILED — ${reason}`);
+      return { cookies: null, error: reason };
+    }
+
+    if (!isRedirect) {
+      console.log(`[loginToWp] WARN — got logged-in cookie but no redirect (status ${resp.status}); proceeding`);
+    }
+
+    const cookieString = cookiePairs.join('; ');
+    console.log(`[loginToWp] SUCCESS — ${cookiePairs.length} cookies, has wordpress_logged_in`);
+    return { cookies: cookieString, error: null };
+  } catch (e: any) {
+    const msg = e?.message || 'wp-login network error';
+    console.error('[loginToWp] exception:', msg);
+    return { cookies: null, error: msg };
+  }
+}
+
+async function getCachedWpCookies(
+  baseUrl: string,
+  username: string,
+  password: string,
+): Promise<{ cookies: string | null; error: string | null }> {
   const key = `${baseUrl}|${username}`;
   const now = Date.now();
   const cached = wpCookieCache.get(key);
-  if (cached && cached.exp > now) return cached.cookies;
+  if (cached && cached.exp > now) return { cookies: cached.cookies, error: null };
 
-  const session = await getWpSessionAuth(baseUrl, username, password);
-  if (!session?.cookies) return null;
-  wpCookieCache.set(key, { cookies: session.cookies, exp: now + WP_COOKIE_TTL_MS });
-  return session.cookies;
+  const { cookies, error } = await loginToWp(baseUrl, username, password);
+  if (!cookies) return { cookies: null, error: error || 'unknown wp-login failure' };
+  wpCookieCache.set(key, { cookies, exp: now + WP_COOKIE_TTL_MS });
+  return { cookies, error: null };
 }
 
 // Helper: Authenticate via wp-login.php and return session cookies + nonce
