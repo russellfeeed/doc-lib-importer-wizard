@@ -353,7 +353,7 @@ const DocumentUrlAudit: React.FC = () => {
                   {issues.map((row, idx) => (
                     <TableRow key={row.doc.id}>
                       <TableCell className="font-mono text-muted-foreground">{idx + 1}</TableCell>
-                      <TableCell className="font-mono">{row.doc.id}</TableCell>
+                      <TableCell className="font-mono"><a href={getWpEditUrl(row.doc.id)} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{row.doc.id}</a></TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <span
