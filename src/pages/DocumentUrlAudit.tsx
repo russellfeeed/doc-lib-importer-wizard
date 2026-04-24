@@ -109,6 +109,37 @@ const DocumentUrlAudit: React.FC = () => {
     }
   };
 
+  const inspectJsonText = useMemo(
+    () => (inspectJson ? JSON.stringify(inspectJson, null, 2) : ""),
+    [inspectJson]
+  );
+
+  const { highlighted, matchCount } = useMemo(() => {
+    if (!inspectJsonText) return { highlighted: null as React.ReactNode, matchCount: 0 };
+    const q = inspectSearch.trim();
+    if (!q) return { highlighted: inspectJsonText, matchCount: 0 };
+    const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const re = new RegExp(escaped, "gi");
+    const parts: React.ReactNode[] = [];
+    let last = 0;
+    let count = 0;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(inspectJsonText)) !== null) {
+      if (m.index > last) parts.push(inspectJsonText.slice(last, m.index));
+      parts.push(
+        <mark key={`m${count}`} className="bg-yellow-300 text-foreground rounded-sm px-0.5">
+          {m[0]}
+        </mark>
+      );
+      last = m.index + m[0].length;
+      count += 1;
+      if (m[0].length === 0) re.lastIndex += 1;
+    }
+    if (last < inspectJsonText.length) parts.push(inspectJsonText.slice(last));
+    return { highlighted: parts, matchCount: count };
+  }, [inspectJsonText, inspectSearch]);
+
+
   const addLog = (message: string, type: LogEntry["type"] = "info") =>
     setLogs((prev) => [...prev, { timestamp: new Date(), message, type }]);
 
