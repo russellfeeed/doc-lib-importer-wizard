@@ -797,9 +797,11 @@ serve(async (req) => {
       const isPdaUrl = /\/_pda\//.test(checkUrl);
       let sessionCookie: string | null = null;
       if (isPdaUrl && wpBaseUrl && username && cleanPassword) {
-        sessionCookie = await getCachedWpCookies(wpBaseUrl, username, cleanPassword);
+        const { cookies, error: loginErr } = await getCachedWpCookies(wpBaseUrl, username, cleanPassword);
+        sessionCookie = cookies;
         if (!sessionCookie) {
           result.loginBlocked = true;
+          if (loginErr) result.error = loginErr;
         }
       }
 
@@ -861,7 +863,7 @@ serve(async (req) => {
         if (!result.ok && result.isHtml && result.authMode !== 'cookie' && wpBaseUrl && username && cleanPassword) {
           // Force-refresh cookies (drop the cache entry).
           wpCookieCache.delete(`${wpBaseUrl}|${username}`);
-          const fresh = await getCachedWpCookies(wpBaseUrl, username, cleanPassword);
+          const { cookies: fresh, error: freshErr } = await getCachedWpCookies(wpBaseUrl, username, cleanPassword);
           if (fresh) {
             const retryController = new AbortController();
             const retryTimer = setTimeout(() => retryController.abort(), timeoutMs);
@@ -908,6 +910,7 @@ serve(async (req) => {
             }
           } else {
             result.loginBlocked = true;
+            if (freshErr) result.error = freshErr;
           }
         }
       } catch (e: any) {
