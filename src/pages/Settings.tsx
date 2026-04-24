@@ -462,6 +462,35 @@ const Settings: React.FC = () => {
         </TabsList>
 
         <TabsContent value="wordpress" className="space-y-6">
+          {!isAdmin ? (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Lock className="h-5 w-5" />
+                  WordPress Connection
+                </CardTitle>
+                <CardDescription>
+                  WordPress credentials are managed by an administrator.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                {localStorage.getItem('wp_site_url') ? (
+                  <div className="flex items-center gap-2 text-sm rounded-md border border-green-200 bg-green-50 px-3 py-2 text-green-800">
+                    <CheckCircle className="h-4 w-4 shrink-0" />
+                    <span>
+                      Connected to: <strong>{localStorage.getItem('wp_site_url')}</strong>
+                    </span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 text-sm rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-amber-800">
+                    <AlertTriangle className="h-4 w-4 shrink-0" />
+                    <span>WordPress is not configured yet. Ask an administrator to set it up.</span>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          ) : (
+          <>
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -469,7 +498,7 @@ const Settings: React.FC = () => {
                 WordPress Configuration
               </CardTitle>
               <CardDescription>
-                Configure WordPress connection to fetch nsi-scheme taxonomy terms for document classification
+                Configure the global WordPress connection. These credentials are shared with all users of this app.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -640,6 +669,8 @@ const Settings: React.FC = () => {
                 </div>
               </CardContent>
             </Card>
+          )}
+          </>
           )}
         </TabsContent>
 
