@@ -287,7 +287,7 @@ Respond with valid JSON only in this exact format:
     return new Response(
       JSON.stringify({ 
         success: false, 
-        error: error.message || 'Unknown error occurred' 
+        error: (error as Error).message || 'Unknown error occurred' 
       }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );

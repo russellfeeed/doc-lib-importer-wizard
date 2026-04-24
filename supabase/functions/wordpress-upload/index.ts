@@ -70,7 +70,7 @@ serve(async (req) => {
           console.warn(`Failed to fetch nsi-media-type terms: ${termResponse.status} ${termResponse.statusText}`);
         }
       } catch (err) {
-        console.warn(`Error resolving nsi-media-type term: ${err.message}`);
+        console.warn(`Error resolving nsi-media-type term: ${(err as Error).message}`);
       }
     }
 
@@ -137,7 +137,7 @@ serve(async (req) => {
         console.log(`No duplicate found for: ${filename}`);
         return { exists: false };
       } catch (error) {
-        console.log(`Error checking if file exists: ${error.message}`);
+        console.log(`Error checking if file exists: ${(error as Error).message}`);
         return { exists: false };
       }
     };
@@ -280,7 +280,7 @@ serve(async (req) => {
             // Clear references to help garbage collection
             doc.fileData = null;
           } catch (decodeError) {
-            throw new Error(`Failed to decode file data: ${decodeError.message}`);
+            throw new Error(`Failed to decode file data: ${(decodeError as Error).message}`);
           }
         } else if (doc.fileData instanceof File) {
           // Handle File object - use original MIME type if available, otherwise use our mapping
@@ -337,7 +337,7 @@ serve(async (req) => {
         uploadResults.push({
           id: doc.id,
           success: false,
-          error: error.message,
+          error: (error as Error).message,
         });
       }
     }
@@ -361,7 +361,7 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in wordpress-upload function:', error);
     return new Response(JSON.stringify({ 
-      error: error.message,
+      error: (error as Error).message,
       results: [],
       summary: { total: 0, successful: 0, failed: 0 }
     }), {

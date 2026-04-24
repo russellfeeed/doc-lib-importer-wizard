@@ -11,6 +11,7 @@ import StandardsSubscription from '@/pages/StandardsSubscription';
 import Settings from '@/pages/Settings';
 import Help from '@/pages/Help';
 import WpDuplicateAudit from '@/pages/WpDuplicateAudit';
+import DocumentUrlAudit from '@/pages/DocumentUrlAudit';
 import NotFound from '@/pages/NotFound';
 import Login from '@/pages/Login';
 import AcceptInvite from '@/pages/AcceptInvite';
@@ -48,6 +49,7 @@ function App() {
               <Route path="/standards" element={<ProtectedRoute><StandardsSubscription /></ProtectedRoute>} />
               <Route path="/help" element={<ProtectedRoute><Help /></ProtectedRoute>} />
               <Route path="/wp-duplicate-audit" element={<ProtectedRoute><WpDuplicateAudit /></ProtectedRoute>} />
+              <Route path="/document-url-audit" element={<ProtectedRoute><DocumentUrlAudit /></ProtectedRoute>} />
               <Route path="/categories" element={<ProtectedRoute requireRole="admin"><Categories /></ProtectedRoute>} />
               <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
               <Route path="/admin/users" element={<ProtectedRoute requireRole="admin"><AdminUsers /></ProtectedRoute>} />
