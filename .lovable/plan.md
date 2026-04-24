@@ -1,30 +1,56 @@
-# Fix bogus File URLs from page scrape (Font Awesome CSS, etc.)
+## The problem
 
-## The bug
+`/_pda/` URLs are served by the **Prevent Direct Access (PDA)** plugin, which gates files on a *frontend* WordPress login session — a `wordpress_logged_in_*` cookie — **not** on REST/Application Password Basic auth. That's why the audit (which already sends Basic auth) still gets blocked.
 
-In `supabase/functions/wordpress-proxy/index.ts`, the `fetch-dlp-by-category` action falls back to fetching the document's public WordPress page and scraping it for a download link via `scrapeFileUrl()`.
+## Realistic options
 
-That helper uses regexes that only look for `href="..."`, so they match **any** tag — including `<link rel="stylesheet" href="...">` in the page `<head>`. The page loads Font Awesome from `/wp-content/uploads/font-awesome/v6.7.2/css/svg-with-js.css`, which matches Priority 1 (`/wp-content/uploads/...\.[ext]`) and gets returned as the document's File URL.
+### Option A — Log in with wp-login.php and reuse the session cookie (recommended)
 
-It also matches anything ending in `.css`, `.js`, `.png`, `.svg`, `.woff`, etc. — none of which are documents.
+In the `check-document-url` action of `wordpress-proxy`, before probing a `/_pda/` URL:
 
-## Fix
+1. POST `log=<username>&pwd=<password>&wp-submit=Log+In&redirect_to=<site>/wp-admin/&testcookie=1` to `https://<site>/wp-login.php` with `redirect: 'manual'` and a cookie jar.
+2. Capture all `Set-Cookie` headers. The keepers are `wordpress_logged_in_<hash>` and `wordpress_sec_<hash>`.
+3. Cache the cookie string in module-level memory keyed by site URL with a ~30 min TTL so we don't re-login on every row of the audit.
+4. Re-issue the file `GET` with `Cookie: <captured cookies>` (and drop the Basic auth header for this call — it confuses some setups).
+5. If the response is still HTML / a login page, refresh the cookie once and retry.
 
-Tighten `scrapeFileUrl` so it only returns plausible document links:
+Notes / gotchas:
+- The WP user must be a real human-login user with at least Subscriber role. The "API File Uploader" account currently used for REST may not have a frontend login. We add a settings field for an optional separate "audit login" user, falling back to the existing `wp_username`/`wp_password` if not set.
+- `wp-login.php` may require the `wordpress_test_cookie` round-trip; we handle that by sending `Cookie: wordpress_test_cookie=WP+Cookie+check` on the POST.
+- Some sites have login CAPTCHAs / 2FA / Wordfence rate limits — if so, this will fail and we surface a clear "WP login blocked" error in the audit row.
 
-1. **Strip `<head>` before scraping.** Remove everything up to `</head>` so stylesheet/script/font links in the head can never match.
-2. **Only match anchor tags (`<a ... href="...">`)**, not `<link>` or `<script>`. Use a regex anchored on `<a` with `href` as an attribute.
-3. **Whitelist document extensions only.** Replace the catch-all "any file under /wp-content/uploads" priority with an explicit allow-list: `pdf, doc, docx, xls, xlsx, ppt, pptx, zip, csv, rtf, txt, odt`. Drop the generic Priority 4.
-4. **Reject obvious non-documents.** Even within anchors, skip URLs whose path ends in `.css`, `.js`, `.png`, `.jpg`, `.jpeg`, `.gif`, `.svg`, `.webp`, `.woff`, `.woff2`, `.ttf`, `.otf`, `.ico`, `.map`.
-5. Keep the DLP `dlp-listing-action=download` priority (those are real download links).
-6. Apply the same hardening when scraping `doc.content.rendered` (post body).
+### Option B — Ask PDA for a one-time download token via REST
 
-## What the user will see
+PDA Gold exposes per-file tokens (the `?ddownload=<id>&_token=...` style URLs). If the customer has PDA Gold and exposes this in the REST response, we can read it from `dlp_document` meta and use the tokenised URL directly. Looking at the captured `dlp_document` JSON the user showed us, this token does not appear — so this is only viable if they enable it server-side. Listed for completeness; not the recommended path.
 
-Re-running the audit will no longer report Font Awesome (or other theme assets) as the File URL. Documents whose page truly has no document link will correctly show "No file URL" instead of a false-positive CSS path.
+### Option C — Skip reachability check for /_pda/ URLs
+
+Detect `/_pda/` in the URL and short-circuit the check with a `protected` status (gray badge) instead of red. Always honest, never a false negative. Cheap fallback if Option A is rejected.
+
+## Recommended plan: A + C as a fallback
+
+1. **Edge function (`supabase/functions/wordpress-proxy/index.ts`)**
+   - Add a `wpLogin(siteUrl, user, pass)` helper that performs the wp-login.php round-trip and returns a cookie string. Cache results in a `Map<string, {cookie, exp}>`.
+   - In `check-document-url`, when the URL contains `/_pda/` (or after a first probe returns HTML / a 302 to `wp-login.php`):
+     - Call `wpLogin`, retry with `Cookie:` header, no Basic auth.
+   - On the retry, evaluate the same PDF-magic / content-type rules already in place.
+   - If login itself fails (non-2xx, no cookie set), return `{ ok: false, error: 'wp-login failed: <status>', status }` and let the UI mark the row as "Login blocked".
+
+2. **Audit UI (`src/pages/DocumentUrlAudit.tsx` + `src/utils/dlpAuditUtils.ts`)**
+   - Add a new issue class `protected` rendered as an amber badge "Protected (login required)" for rows where the edge function reports `loginBlocked: true`, so users can distinguish it from a true broken link.
+   - Tooltip on the badge: "PDA-protected file. WordPress login attempt failed — file may still be valid."
+
+3. **Optional settings field** *(can ship in a follow-up — not required for the fix)*
+   - Add `wp_audit_username` / `wp_audit_password` to the `wordpress_settings` row + Settings page UI for a dedicated frontend-login account. The edge function prefers these when present.
 
 ## Files to edit
 
-- `supabase/functions/wordpress-proxy/index.ts` — rewrite `scrapeFileUrl` inside the `fetch-dlp-by-category` handler (around lines 550–566) and re-deploy the function.
+- `supabase/functions/wordpress-proxy/index.ts` — add `wpLogin` helper + cookie cache + updated `check-document-url` flow.
+- `src/utils/dlpAuditUtils.ts` — add `loginBlocked` to `UrlCheckResult` and a new `protected` issue class.
+- `src/pages/DocumentUrlAudit.tsx` — render the new badge + filter option.
 
-No client-side changes needed.
+No DB migrations required for the core fix.
+
+## What the user will see
+
+After re-running the audit, `/_pda/` URLs that resolve to real PDFs once logged in will show green "OK" instead of red "HTML / login page". Files that genuinely 404 or are missing still show red. If the WP login itself can't be performed (CAPTCHA, 2FA, missing user), affected rows show an amber "Protected (login required)" badge instead of a misleading red one.

@@ -44,7 +44,7 @@ interface IssueRow {
   doc: DlpDocSummary;
   result: UrlCheckResult;
   issue: string;
-  severity: "ok" | "warn" | "error";
+  severity: "ok" | "warn" | "error" | "protected";
 }
 
 const typeColors: Record<string, string> = {
@@ -255,7 +255,10 @@ const DocumentUrlAudit: React.FC = () => {
           addLog(`✅ #${doc.id} ${doc.title}`, "detail");
         } else {
           localIssues.push({ doc, result, issue: cls.label, severity: cls.severity });
-          addLog(`❌ #${doc.id} ${doc.title} — ${cls.label}`, cls.severity === "warn" ? "warning" : "error");
+          const logType =
+            cls.severity === "warn" || cls.severity === "protected" ? "warning" : "error";
+          const icon = cls.severity === "protected" ? "🔒" : "❌";
+          addLog(`${icon} #${doc.id} ${doc.title} — ${cls.label}`, logType);
         }
       }
 
@@ -470,8 +473,15 @@ const DocumentUrlAudit: React.FC = () => {
                           className={`px-1.5 py-0.5 rounded text-xs ${
                             row.severity === "error"
                               ? "bg-destructive/15 text-destructive"
+                              : row.severity === "protected"
+                              ? "bg-amber-100 text-amber-700"
                               : "bg-amber-100 text-amber-700"
                           }`}
+                          title={
+                            row.severity === "protected"
+                              ? "PDA-protected file. WordPress login attempt failed — file may still be valid for logged-in users."
+                              : undefined
+                          }
                         >
                           {row.issue}
                         </span>

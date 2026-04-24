@@ -5,6 +5,24 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+// Module-level cache of wp-login.php session cookies, keyed by `${baseUrl}|${username}`.
+// Lets us re-use a single login across an entire audit run instead of POSTing wp-login.php
+// once per row (which would also trip Wordfence rate limiting).
+const wpCookieCache = new Map<string, { cookies: string; exp: number }>();
+const WP_COOKIE_TTL_MS = 25 * 60 * 1000; // 25 minutes
+
+async function getCachedWpCookies(baseUrl: string, username: string, password: string): Promise<string | null> {
+  const key = `${baseUrl}|${username}`;
+  const now = Date.now();
+  const cached = wpCookieCache.get(key);
+  if (cached && cached.exp > now) return cached.cookies;
+
+  const session = await getWpSessionAuth(baseUrl, username, password);
+  if (!session?.cookies) return null;
+  wpCookieCache.set(key, { cookies: session.cookies, exp: now + WP_COOKIE_TTL_MS });
+  return session.cookies;
+}
+
 // Helper: Authenticate via wp-login.php and return session cookies + nonce
 async function getWpSessionAuth(
   baseUrl: string,
@@ -687,7 +705,27 @@ serve(async (req) => {
         redirectedToHtm: false as boolean,
         error: '' as string,
         magic: '' as string,
+        loginBlocked: false as boolean,
+        authMode: 'none' as 'none' | 'basic' | 'cookie',
       };
+
+      // Derive the WP base URL from the file URL so we can hit wp-login.php on the same host.
+      let wpBaseUrl = '';
+      try {
+        const u = new URL(checkUrl);
+        wpBaseUrl = `${u.protocol}//${u.host}`;
+      } catch (_e) { /* ignore */ }
+
+      // /_pda/ URLs (Prevent Direct Access plugin) require a frontend WP login session;
+      // Basic auth alone won't unlock them. Pre-fetch a session cookie when we see /_pda/.
+      const isPdaUrl = /\/_pda\//.test(checkUrl);
+      let sessionCookie: string | null = null;
+      if (isPdaUrl && wpBaseUrl && username && cleanPassword) {
+        sessionCookie = await getCachedWpCookies(wpBaseUrl, username, cleanPassword);
+        if (!sessionCookie) {
+          result.loginBlocked = true;
+        }
+      }
 
       try {
         const headers: Record<string, string> = {
@@ -695,9 +733,13 @@ serve(async (req) => {
           'Accept': '*/*',
           'Range': 'bytes=0-2047',
         };
-        // Use Basic auth so DLP-protected files behind login still resolve
-        if (username && cleanPassword) {
+        if (sessionCookie) {
+          // Cookie auth wins for /_pda/ URLs; do NOT mix with Basic auth.
+          headers['Cookie'] = sessionCookie;
+          result.authMode = 'cookie';
+        } else if (username && cleanPassword) {
           headers['Authorization'] = `Basic ${btoa(`${username}:${cleanPassword}`)}`;
+          result.authMode = 'basic';
         }
 
         const resp = await fetch(checkUrl, {
@@ -736,6 +778,62 @@ serve(async (req) => {
         // Definition of OK: 2xx + (PDF magic OR content-type pdf) + not redirected to .htm
         const ctIsPdf = result.contentType.includes('application/pdf') || result.contentType.includes('application/octet-stream');
         result.ok = resp.status >= 200 && resp.status < 300 && (result.isPdf || ctIsPdf) && !result.redirectedToHtm && !result.isHtml;
+
+        // If we got bounced to HTML (likely the wp-login page) and we haven't tried cookie auth yet,
+        // refresh the cookie and retry once. This catches /_pda/ URLs we didn't pre-detect plus
+        // expired-cookie cases.
+        if (!result.ok && result.isHtml && result.authMode !== 'cookie' && wpBaseUrl && username && cleanPassword) {
+          // Force-refresh cookies (drop the cache entry).
+          wpCookieCache.delete(`${wpBaseUrl}|${username}`);
+          const fresh = await getCachedWpCookies(wpBaseUrl, username, cleanPassword);
+          if (fresh) {
+            const retryController = new AbortController();
+            const retryTimer = setTimeout(() => retryController.abort(), timeoutMs);
+            try {
+              const retryResp = await fetch(checkUrl, {
+                method: 'GET',
+                redirect: 'follow',
+                signal: retryController.signal,
+                headers: {
+                  'User-Agent': 'Mozilla/5.0 (Lovable URL Audit)',
+                  'Accept': '*/*',
+                  'Range': 'bytes=0-2047',
+                  'Cookie': fresh,
+                },
+              });
+              clearTimeout(retryTimer);
+              result.authMode = 'cookie';
+              result.status = retryResp.status;
+              result.finalUrl = retryResp.url || checkUrl;
+              result.contentType = (retryResp.headers.get('content-type') || '').toLowerCase();
+              const cl2 = retryResp.headers.get('content-length');
+              result.contentLength = cl2 ? parseInt(cl2, 10) : 0;
+              const lowerFinal2 = result.finalUrl.toLowerCase().split('?')[0];
+              result.redirectedToHtm = /\.html?$/.test(lowerFinal2);
+              result.isHtml = result.contentType.includes('text/html');
+              try {
+                const buf2 = await retryResp.arrayBuffer();
+                const bytes2 = new Uint8Array(buf2).slice(0, 8);
+                const magic2 = String.fromCharCode(...bytes2);
+                result.magic = magic2;
+                if (magic2.startsWith('%PDF-')) {
+                  result.isPdf = true;
+                  result.isHtml = false;
+                } else if (magic2.includes('<!DOC') || magic2.includes('<html') || magic2.includes('<HTML')) {
+                  result.isHtml = true;
+                }
+              } catch (_e) { /* ignore */ }
+              const ctIsPdf2 = result.contentType.includes('application/pdf') || result.contentType.includes('application/octet-stream');
+              result.ok = retryResp.status >= 200 && retryResp.status < 300 && (result.isPdf || ctIsPdf2) && !result.redirectedToHtm && !result.isHtml;
+              if (!result.ok && result.isHtml) result.loginBlocked = true;
+            } catch (re: any) {
+              clearTimeout(retryTimer);
+              result.error = re?.name === 'AbortError' ? 'timeout' : (re?.message || 'retry fetch failed');
+            }
+          } else {
+            result.loginBlocked = true;
+          }
+        }
       } catch (e: any) {
         clearTimeout(timer);
         result.error = e?.name === 'AbortError' ? 'timeout' : (e?.message || 'fetch failed');
