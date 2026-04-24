@@ -478,6 +478,202 @@ serve(async (req) => {
       }
     }
 
+    // Handle fetch DLP documents filtered by a single doc_categories ID, with resolved file URLs
+    if (action === 'fetch-dlp-by-category') {
+      const categoryId = body.categoryId;
+      if (!url || !username || !password || !categoryId) {
+        return new Response(
+          JSON.stringify({ error: 'Missing required fields: url, username, password, categoryId' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const baseUrlCat = url.replace(/\/$/, '');
+
+      try {
+        const allDocs: any[] = [];
+        let page = 1;
+        let totalPages = 1;
+
+        while (page <= totalPages) {
+          const pageUrl = `${baseUrlCat}/wp-json/wp/v2/dlp_document?per_page=100&page=${page}&doc_categories=${categoryId}&_fields=id,title,link,status,content,meta`;
+          console.log(`[fetch-dlp-by-category] page ${page}: ${pageUrl}`);
+          const pageResponse = await wpFetch(pageUrl, username, cleanPassword);
+          if (!pageResponse.ok) {
+            const errorText = await pageResponse.text();
+            console.error('[fetch-dlp-by-category] failed:', pageResponse.status, errorText);
+            return new Response(JSON.stringify({ error: 'Failed to fetch DLP documents by category', details: errorText }), {
+              status: pageResponse.status,
+              headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+            });
+          }
+          if (page === 1) {
+            const tp = pageResponse.headers.get('X-WP-TotalPages');
+            totalPages = tp ? parseInt(tp, 10) : 1;
+            const ti = pageResponse.headers.get('X-WP-Total');
+            console.log(`[fetch-dlp-by-category] total: ${ti || '?'}, pages: ${totalPages}`);
+          }
+          const results = await pageResponse.json();
+          allDocs.push(...results);
+          page++;
+        }
+
+        // Collect attached media IDs
+        const mediaIds = new Set<number>();
+        for (const doc of allDocs) {
+          const m = doc?.meta?._dlp_attached_file_id;
+          if (m && Number(m) > 0) mediaIds.add(Number(m));
+        }
+
+        // Batch fetch media (chunks of 50)
+        const mediaMap: Record<number, { source_url: string; mime_type: string }> = {};
+        const idArr = Array.from(mediaIds);
+        for (let i = 0; i < idArr.length; i += 50) {
+          const chunk = idArr.slice(i, i + 50);
+          if (chunk.length === 0) continue;
+          const mediaUrl = `${baseUrlCat}/wp-json/wp/v2/media?include=${chunk.join(',')}&per_page=${chunk.length}&_fields=id,source_url,mime_type`;
+          try {
+            const mr = await wpFetch(mediaUrl, username, cleanPassword);
+            if (mr.ok) {
+              const items = await mr.json();
+              for (const m of items) {
+                mediaMap[m.id] = { source_url: m.source_url || '', mime_type: m.mime_type || '' };
+              }
+            } else {
+              console.warn(`[fetch-dlp-by-category] media chunk failed: ${mr.status}`);
+            }
+          } catch (e: any) {
+            console.warn(`[fetch-dlp-by-category] media chunk error: ${e.message}`);
+          }
+        }
+
+        // Build response: try meta first, then scrape content for a download URL as fallback
+        const docs = allDocs.map((doc) => {
+          const mid = doc?.meta?._dlp_attached_file_id ? Number(doc.meta._dlp_attached_file_id) : 0;
+          let fileUrl = mid && mediaMap[mid] ? mediaMap[mid].source_url : '';
+          let mimeType = mid && mediaMap[mid] ? mediaMap[mid].mime_type : '';
+
+          if (!fileUrl) {
+            // Fallback: scrape href from rendered content
+            const rendered = doc?.content?.rendered || '';
+            // Look for a link to a pdf/file or to ?dlp-listing-action=download
+            const m1 = rendered.match(/href="([^"]+\.pdf[^"]*)"/i);
+            const m2 = !m1 ? rendered.match(/href="([^"]*dlp-listing-action=download[^"]*)"/i) : null;
+            const m3 = !m1 && !m2 ? rendered.match(/href="([^"]*\/wp-content\/uploads\/[^"]+)"/i) : null;
+            fileUrl = (m1 && m1[1]) || (m2 && m2[1]) || (m3 && m3[1]) || '';
+            if (fileUrl) {
+              fileUrl = fileUrl.replace(/&amp;/g, '&');
+            }
+          }
+
+          return {
+            id: doc.id,
+            title: doc?.title?.rendered || '',
+            link: doc.link || '',
+            status: doc.status || '',
+            mediaId: mid,
+            fileUrl,
+            mimeType,
+          };
+        });
+
+        return new Response(JSON.stringify({ documents: docs, total: docs.length }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      } catch (error: any) {
+        console.error('[fetch-dlp-by-category] error:', error);
+        return new Response(JSON.stringify({ error: 'Fetch failed', details: error.message }), {
+          status: 500,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+        });
+      }
+    }
+
+    // Probe a document URL to verify it returns a real PDF.
+    // Auth-aware: if a DLP-protected URL needs login, we send the WP credentials.
+    if (action === 'check-document-url') {
+      const checkUrl: string = body.checkUrl;
+      if (!checkUrl) {
+        return new Response(
+          JSON.stringify({ error: 'Missing required field: checkUrl' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      const controller = new AbortController();
+      const timeoutMs = 12000;
+      const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+      const result = {
+        ok: false as boolean,
+        status: 0 as number,
+        finalUrl: '' as string,
+        contentType: '' as string,
+        contentLength: 0 as number,
+        isPdf: false as boolean,
+        isHtml: false as boolean,
+        redirectedToHtm: false as boolean,
+        error: '' as string,
+        magic: '' as string,
+      };
+
+      try {
+        const headers: Record<string, string> = {
+          'User-Agent': 'Mozilla/5.0 (Lovable URL Audit)',
+          'Accept': '*/*',
+          'Range': 'bytes=0-2047',
+        };
+        // Use Basic auth so DLP-protected files behind login still resolve
+        if (username && cleanPassword) {
+          headers['Authorization'] = `Basic ${btoa(`${username}:${cleanPassword}`)}`;
+        }
+
+        const resp = await fetch(checkUrl, {
+          method: 'GET',
+          redirect: 'follow',
+          signal: controller.signal,
+          headers,
+        });
+        clearTimeout(timer);
+
+        result.status = resp.status;
+        result.finalUrl = resp.url || checkUrl;
+        result.contentType = (resp.headers.get('content-type') || '').toLowerCase();
+        const cl = resp.headers.get('content-length');
+        result.contentLength = cl ? parseInt(cl, 10) : 0;
+
+        const lowerFinal = result.finalUrl.toLowerCase().split('?')[0];
+        result.redirectedToHtm = /\.html?$/.test(lowerFinal);
+        result.isHtml = result.contentType.includes('text/html');
+
+        // Read first chunk to check magic bytes
+        try {
+          const buf = await resp.arrayBuffer();
+          const bytes = new Uint8Array(buf).slice(0, 8);
+          const magic = String.fromCharCode(...bytes);
+          result.magic = magic;
+          if (magic.startsWith('%PDF-')) {
+            result.isPdf = true;
+          } else if (magic.includes('<!DOC') || magic.includes('<html') || magic.includes('<HTML')) {
+            result.isHtml = true;
+          }
+        } catch (_e) {
+          // ignore body read failures
+        }
+
+        // Definition of OK: 2xx + (PDF magic OR content-type pdf) + not redirected to .htm
+        const ctIsPdf = result.contentType.includes('application/pdf') || result.contentType.includes('application/octet-stream');
+        result.ok = resp.status >= 200 && resp.status < 300 && (result.isPdf || ctIsPdf) && !result.redirectedToHtm && !result.isHtml;
+      } catch (e: any) {
+        clearTimeout(timer);
+        result.error = e?.name === 'AbortError' ? 'timeout' : (e?.message || 'fetch failed');
+      }
+
+      return new Response(JSON.stringify(result), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
+      });
+    }
+
     // Handle fetch single DLP document detail with resolved terms
     if (action === 'fetch-dlp-detail') {
       const docId = body.documentId;
