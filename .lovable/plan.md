@@ -1,74 +1,30 @@
-## Document URL Audit — feature plan
+# Fix bogus File URLs from page scrape (Font Awesome CSS, etc.)
 
-A new tool, accessible from the home page, that finds Document Library Pro documents whose file URL is broken (e.g. redirects to a `.htm` page instead of returning a real PDF).
+## The bug
 
-### User flow
+In `supabase/functions/wordpress-proxy/index.ts`, the `fetch-dlp-by-category` action falls back to fetching the document's public WordPress page and scraping it for a download link via `scrapeFileUrl()`.
 
-1. Click **"Document URL Audit"** card on `/` (home).
-2. Page loads: fetch all `doc_categories` from WordPress (with `count` so user can see how many docs are in each).
-3. User picks one category from a dropdown.
-4. Click **Start Audit**.
-5. Page fetches every DLP document in that category, then checks each one's file URL.
-6. Live progress log + final results table listing only documents with issues, with WP edit links.
+That helper uses regexes that only look for `href="..."`, so they match **any** tag — including `<link rel="stylesheet" href="...">` in the page `<head>`. The page loads Font Awesome from `/wp-content/uploads/font-awesome/v6.7.2/css/svg-with-js.css`, which matches Priority 1 (`/wp-content/uploads/...\.[ext]`) and gets returned as the document's File URL.
 
-### Result classification per document
+It also matches anything ending in `.css`, `.js`, `.png`, `.svg`, `.woff`, etc. — none of which are documents.
 
-| Status | Meaning |
-|---|---|
-| OK | URL responds 200 and content-type is `application/pdf` (or first bytes are `%PDF-`) |
-| Missing URL | DLP document has no attached file / no resolvable link |
-| Wrong type | URL responds 200 but content-type is `text/html` (or body starts with `<!DOCTYPE`/`<html`) — typically a "not found" or login page |
-| Redirect to .htm | Final URL after redirects ends in `.htm`/`.html` |
-| HTTP error | Non-2xx status (404, 403, 500, etc.) — show status code |
-| Timeout / network | Fetch failed |
+## Fix
 
-Only documents NOT classified `OK` are shown in the issues table.
+Tighten `scrapeFileUrl` so it only returns plausible document links:
 
-### Backend changes (`supabase/functions/wordpress-proxy/index.ts`)
+1. **Strip `<head>` before scraping.** Remove everything up to `</head>` so stylesheet/script/font links in the head can never match.
+2. **Only match anchor tags (`<a ... href="...">`)**, not `<link>` or `<script>`. Use a regex anchored on `<a` with `href` as an attribute.
+3. **Whitelist document extensions only.** Replace the catch-all "any file under /wp-content/uploads" priority with an explicit allow-list: `pdf, doc, docx, xls, xlsx, ppt, pptx, zip, csv, rtf, txt, odt`. Drop the generic Priority 4.
+4. **Reject obvious non-documents.** Even within anchors, skip URLs whose path ends in `.css`, `.js`, `.png`, `.jpg`, `.jpeg`, `.gif`, `.svg`, `.webp`, `.woff`, `.woff2`, `.ttf`, `.otf`, `.ico`, `.map`.
+5. Keep the DLP `dlp-listing-action=download` priority (those are real download links).
+6. Apply the same hardening when scraping `doc.content.rendered` (post body).
 
-Add three new actions:
+## What the user will see
 
-1. **`fetch-doc-categories`** — return the full `doc_categories` taxonomy with `id`, `name`, `slug`, `parent`, `count`. (The existing `fetch-taxonomy` action already does this; we'll reuse it directly from the frontend rather than add a new action.)
+Re-running the audit will no longer report Font Awesome (or other theme assets) as the File URL. Documents whose page truly has no document link will correctly show "No file URL" instead of a false-positive CSS path.
 
-2. **`fetch-dlp-by-category`** — paginated fetch of `dlp_document` filtered by a single `doc_categories` ID. Returns `id`, `title`, `link`, `status`, `_dlp_attached_file_id` (meta), and the attached media's `source_url`. Two-step:
-   - `GET /wp/v2/dlp_document?doc_categories={id}&per_page=100&page=N&_fields=id,title,link,status,meta`
-   - For each doc, if `meta._dlp_attached_file_id` exists, batch-fetch `/wp/v2/media?include=id1,id2,...&_fields=id,source_url,mime_type` to resolve the real file URL.
-   - Fall back to scraping the file URL from the document's rendered content if meta is not exposed via REST (DLP sometimes hides it).
+## Files to edit
 
-3. **`check-document-url`** — server-side URL probe (avoids CORS). Input: a URL. Behavior:
-   - `fetch(url, { redirect: 'follow' })` with a 10s timeout and `Range: bytes=0-1023` to avoid downloading the full file.
-   - Inspect `response.url` (final URL after redirects), `response.status`, `Content-Type` header, and the first ~8 bytes of the body for the `%PDF-` magic number.
-   - Return `{ ok, status, finalUrl, contentType, isPdf, isHtml, redirectedToHtm, error }`.
-   - Run on the server because the browser cannot read cross-origin response headers reliably and may be blocked by CORS.
+- `supabase/functions/wordpress-proxy/index.ts` — rewrite `scrapeFileUrl` inside the `fetch-dlp-by-category` handler (around lines 550–566) and re-deploy the function.
 
-### Frontend changes
-
-**New page**: `src/pages/DocumentUrlAudit.tsx`
-- Mirrors the look of `WpDuplicateAudit.tsx` (back button, log panel, results table).
-- Top: category `<Select>` populated via existing `fetchWordPressTaxonomies('doc_categories')`.
-- Buttons: **Start Audit**, **Stop**, **Export CSV** (issues only).
-- Progress log with timestamped entries.
-- Concurrency: probe URLs in batches of 5 in parallel (via `Promise.all`) with a small delay between batches to avoid hammering the server.
-- Issues table columns: # · Doc ID · Title (linked to public link) · File URL (linked) · Issue · HTTP status · Final URL · WP edit link.
-
-**New util**: `src/utils/dlpAuditUtils.ts`
-- `fetchDocCategoriesWithCount(creds)` — wraps `fetch-taxonomy`.
-- `fetchDlpByCategory(creds, categoryId)` — calls new edge action.
-- `checkDocumentUrl(url)` — calls new edge action.
-
-**Routing**: add `/document-url-audit` to `src/App.tsx` (gated by `ProtectedRoute` like other admin tools).
-
-**Home page**: add a new card on `src/pages/Index.tsx` (next to the Duplicate Audit card) titled "Document URL Audit", linking to `/document-url-audit`.
-
-### Notes & constraints
-
-- Uses existing global WordPress credentials from `wordpress_settings` (already hydrated to `localStorage` by `AuthContext`).
-- No new database tables or migrations needed.
-- No new secrets needed.
-- Audit is read-only — never modifies WordPress data.
-- Large categories (hundreds of docs) may take a minute or two; the live log keeps the user informed.
-
-### Out of scope (for this iteration)
-
-- No bulk "fix" / re-link action — just identify issues. (Can be a follow-up that pipes selected broken docs into the existing upload-and-replace flow.)
-- No persistence of audit results — re-run when needed.
+No client-side changes needed.
