@@ -4,7 +4,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { FileText, FileSignature, BarChart3, Settings, Shield, HelpCircle, AlertTriangle, Copy, LinkIcon } from 'lucide-react';
+import { FileText, FileSignature, BarChart3, Settings, Shield, HelpCircle, AlertTriangle, Copy, Link2 } from 'lucide-react';
 import { hasOpenAIKey } from '@/utils/openaiClient';
 import { hasWordPressSettings } from '@/utils/settingsUtils';
 
@@ -149,7 +149,7 @@ const Index: React.FC = () => {
           <Card className="p-6 hover:shadow-md transition-shadow">
             <div className="flex flex-col items-center text-center">
               <div className="bg-amber-100 p-4 rounded-full mb-4">
-                <LinkIcon className="h-8 w-8 text-amber-600" />
+                <Link2 className="h-8 w-8 text-amber-600" />
               </div>
               <h2 className="text-xl font-semibold mb-2">Document URL Audit</h2>
               <p className="text-gray-600">
