@@ -18,17 +18,20 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ArrowLeft, Search, AlertTriangle, ExternalLink, Square, Download } from "lucide-react";
+import { ArrowLeft, Search, AlertTriangle, ExternalLink, Square, Download, Code2, Copy } from "lucide-react";
 import { getWordPressCredentials } from "@/utils/wordpressUtils";
 import {
   fetchDocCategories,
   fetchDlpByCategory,
   checkDocumentUrl,
   classifyIssue,
+  fetchDlpRaw,
   type DocCategory,
   type DlpDocSummary,
   type UrlCheckResult,
 } from "@/utils/dlpAuditUtils";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { toast } from "sonner";
 
 interface LogEntry {
   timestamp: Date;
@@ -70,6 +73,38 @@ const DocumentUrlAudit: React.FC = () => {
 
   const stopRef = useRef(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  const [inspectOpen, setInspectOpen] = useState(false);
+  const [inspectDocId, setInspectDocId] = useState<number | null>(null);
+  const [inspectLoading, setInspectLoading] = useState(false);
+  const [inspectError, setInspectError] = useState<string>("");
+  const [inspectJson, setInspectJson] = useState<any>(null);
+
+  const handleInspect = async (docId: number) => {
+    setInspectOpen(true);
+    setInspectDocId(docId);
+    setInspectLoading(true);
+    setInspectError("");
+    setInspectJson(null);
+    try {
+      const data = await fetchDlpRaw(docId);
+      setInspectJson(data);
+    } catch (err: any) {
+      setInspectError(err.message || "Failed to fetch raw JSON");
+    } finally {
+      setInspectLoading(false);
+    }
+  };
+
+  const handleCopyJson = async () => {
+    if (!inspectJson) return;
+    try {
+      await navigator.clipboard.writeText(JSON.stringify(inspectJson, null, 2));
+      toast.success("Copied raw JSON to clipboard");
+    } catch {
+      toast.error("Copy failed");
+    }
+  };
 
   const addLog = (message: string, type: LogEntry["type"] = "info") =>
     setLogs((prev) => [...prev, { timestamp: new Date(), message, type }]);
@@ -367,6 +402,7 @@ const DocumentUrlAudit: React.FC = () => {
                     <TableHead>Issue</TableHead>
                     <TableHead className="w-[160px]">Resolved From</TableHead>
                     <TableHead>File URL</TableHead>
+                    <TableHead className="w-[60px]">Inspect</TableHead>
                     <TableHead className="w-[60px]">Edit</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -428,6 +464,16 @@ const DocumentUrlAudit: React.FC = () => {
                         )}
                       </TableCell>
                       <TableCell>
+                        <button
+                          type="button"
+                          onClick={() => handleInspect(row.doc.id)}
+                          className="text-primary hover:text-primary/80"
+                          title="View raw dlp_document JSON"
+                        >
+                          <Code2 className="h-4 w-4" />
+                        </button>
+                      </TableCell>
+                      <TableCell>
                         <a
                           href={getWpEditUrl(row.doc.id)}
                           target="_blank"
@@ -449,6 +495,46 @@ const DocumentUrlAudit: React.FC = () => {
               All {scanned} documents resolved to a valid PDF. No issues found.
             </Card>
           )}
+
+          <Dialog open={inspectOpen} onOpenChange={setInspectOpen}>
+            <DialogContent className="max-w-4xl max-h-[85vh] flex flex-col">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Code2 className="h-5 w-5" />
+                  Raw dlp_document JSON
+                  {inspectDocId !== null && (
+                    <span className="font-mono text-sm text-muted-foreground">#{inspectDocId}</span>
+                  )}
+                </DialogTitle>
+                <DialogDescription>
+                  Full WordPress REST response (context=edit) including all <code>meta</code> keys.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="flex-1 min-h-0 overflow-hidden flex flex-col gap-2">
+                {inspectLoading && (
+                  <div className="text-sm text-muted-foreground animate-pulse">Loading…</div>
+                )}
+                {inspectError && (
+                  <div className="text-sm text-destructive">{inspectError}</div>
+                )}
+                {inspectJson && (
+                  <>
+                    <div className="flex justify-end">
+                      <Button variant="outline" size="sm" onClick={handleCopyJson}>
+                        <Copy className="h-3.5 w-3.5 mr-1.5" />
+                        Copy JSON
+                      </Button>
+                    </div>
+                    <ScrollArea className="flex-1 rounded border bg-muted/30">
+                      <pre className="p-3 font-mono text-xs whitespace-pre-wrap break-all">
+{JSON.stringify(inspectJson, null, 2)}
+                      </pre>
+                    </ScrollArea>
+                  </>
+                )}
+              </div>
+            </DialogContent>
+          </Dialog>
         </>
       )}
     </div>
