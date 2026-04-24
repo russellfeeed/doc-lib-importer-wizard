@@ -794,10 +794,16 @@ serve(async (req) => {
 
       // /_pda/ URLs (Prevent Direct Access plugin) require a frontend WP login session;
       // Basic auth alone won't unlock them. Pre-fetch a session cookie when we see /_pda/.
+      // Prefer dedicated audit credentials if configured (a real account password
+      // that can sign into wp-login.php). Falls back to the REST API creds, which
+      // usually fail at wp-login because they're Application Passwords.
+      const auditUser = Deno.env.get('WP_AUDIT_USERNAME') || username;
+      const auditPass = Deno.env.get('WP_AUDIT_PASSWORD') || cleanPassword;
+
       const isPdaUrl = /\/_pda\//.test(checkUrl);
       let sessionCookie: string | null = null;
-      if (isPdaUrl && wpBaseUrl && username && cleanPassword) {
-        const { cookies, error: loginErr } = await getCachedWpCookies(wpBaseUrl, username, cleanPassword);
+      if (isPdaUrl && wpBaseUrl && auditUser && auditPass) {
+        const { cookies, error: loginErr } = await getCachedWpCookies(wpBaseUrl, auditUser, auditPass);
         sessionCookie = cookies;
         if (!sessionCookie) {
           result.loginBlocked = true;
@@ -860,10 +866,10 @@ serve(async (req) => {
         // If we got bounced to HTML (likely the wp-login page) and we haven't tried cookie auth yet,
         // refresh the cookie and retry once. This catches /_pda/ URLs we didn't pre-detect plus
         // expired-cookie cases.
-        if (!result.ok && result.isHtml && result.authMode !== 'cookie' && wpBaseUrl && username && cleanPassword) {
+        if (!result.ok && result.isHtml && result.authMode !== 'cookie' && wpBaseUrl && auditUser && auditPass) {
           // Force-refresh cookies (drop the cache entry).
-          wpCookieCache.delete(`${wpBaseUrl}|${username}`);
-          const { cookies: fresh, error: freshErr } = await getCachedWpCookies(wpBaseUrl, username, cleanPassword);
+          wpCookieCache.delete(`${wpBaseUrl}|${auditUser}`);
+          const { cookies: fresh, error: freshErr } = await getCachedWpCookies(wpBaseUrl, auditUser, auditPass);
           if (fresh) {
             const retryController = new AbortController();
             const retryTimer = setTimeout(() => retryController.abort(), timeoutMs);
