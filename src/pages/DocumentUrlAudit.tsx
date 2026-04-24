@@ -510,7 +510,7 @@ const DocumentUrlAudit: React.FC = () => {
                   Full WordPress REST response (context=edit) including all <code>meta</code> keys.
                 </DialogDescription>
               </DialogHeader>
-              <div className="flex-1 min-h-0 overflow-hidden flex flex-col gap-2">
+              <div className="flex flex-col gap-2 min-h-0">
                 {inspectLoading && (
                   <div className="text-sm text-muted-foreground animate-pulse">Loading…</div>
                 )}
@@ -525,11 +525,11 @@ const DocumentUrlAudit: React.FC = () => {
                         Copy JSON
                       </Button>
                     </div>
-                    <ScrollArea className="flex-1 rounded border bg-muted/30">
+                    <div className="rounded border bg-muted/30 overflow-auto max-h-[60vh]">
                       <pre className="p-3 font-mono text-xs whitespace-pre-wrap break-all">
 {JSON.stringify(inspectJson, null, 2)}
                       </pre>
-                    </ScrollArea>
+                    </div>
                   </>
                 )}
               </div>
