@@ -112,3 +112,20 @@ export const classifyIssue = (r: UrlCheckResult, hasUrl: boolean): { label: stri
   if (r.status === 0) return { label: "No response", severity: "error" };
   return { label: `Unexpected (${r.status} ${r.contentType || "?"})`, severity: "warn" };
 };
+export const fetchDlpRaw = async (documentId: number): Promise<any> => {
+  const creds = getWordPressCredentials();
+  if (!creds) throw new Error("WordPress credentials not configured");
+
+  const { data, error } = await supabase.functions.invoke("wordpress-proxy", {
+    body: {
+      url: creds.url,
+      username: creds.username,
+      password: creds.password,
+      action: "fetch-dlp-raw",
+      documentId,
+    },
+  });
+
+  if (error) throw new Error(error.message || "Failed to fetch raw DLP document");
+  return data;
+};
