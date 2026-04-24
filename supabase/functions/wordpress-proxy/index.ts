@@ -547,21 +547,32 @@ serve(async (req) => {
           }
         }
 
-        // Helper: scrape a likely file URL from arbitrary HTML
+        // Helper: scrape a likely document file URL from arbitrary HTML.
+        // Only inspects <a href="..."> in the <body> (skips <head> stylesheets/scripts/fonts)
+        // and only matches real document extensions or DLP download actions.
+        const DOC_EXT_RE = /\.(?:pdf|docx?|xlsx?|pptx?|zip|csv|rtf|txt|odt)(?:[?#]|$)/i;
+        const NON_DOC_EXT_RE = /\.(?:css|js|mjs|map|png|jpe?g|gif|svg|webp|ico|woff2?|ttf|otf|eot|mp4|mp3|wav|webm)(?:[?#]|$)/i;
+        const decodeHref = (s: string) => s.replace(/&amp;/g, '&');
         const scrapeFileUrl = (html: string): string => {
           if (!html) return '';
-          // Priority 1: direct .pdf (or other doc) link in /wp-content/uploads
-          const m1 = html.match(/href=["']([^"']*\/wp-content\/uploads\/[^"']+\.[a-z0-9]{2,5}[^"']*)["']/i);
-          if (m1) return m1[1].replace(/&amp;/g, '&');
-          // Priority 2: any pdf/doc/xls/etc link
-          const m2 = html.match(/href=["']([^"']+\.(?:pdf|docx?|xlsx?|pptx?|zip|csv)[^"']*)["']/i);
-          if (m2) return m2[1].replace(/&amp;/g, '&');
-          // Priority 3: DLP download action
-          const m3 = html.match(/href=["']([^"']*dlp-listing-action=download[^"']*)["']/i);
-          if (m3) return m3[1].replace(/&amp;/g, '&');
-          // Priority 4: any /wp-content/uploads link
-          const m4 = html.match(/href=["']([^"']*\/wp-content\/uploads\/[^"']+)["']/i);
-          if (m4) return m4[1].replace(/&amp;/g, '&');
+          // Strip <head>...</head> so theme assets (Font Awesome CSS, etc.) cannot match
+          const bodyOnly = html.replace(/<head[\s\S]*?<\/head>/i, '');
+          // Collect every <a ... href="..."> URL (anchors only — never <link>/<script>)
+          const anchorRe = /<a\b[^>]*?\bhref=["']([^"']+)["'][^>]*>/gi;
+          const hrefs: string[] = [];
+          let m: RegExpExecArray | null;
+          while ((m = anchorRe.exec(bodyOnly)) !== null) {
+            const url = decodeHref(m[1]).trim();
+            if (!url || url.startsWith('#') || url.startsWith('javascript:') || url.startsWith('mailto:')) continue;
+            if (NON_DOC_EXT_RE.test(url)) continue;
+            hrefs.push(url);
+          }
+          // Priority 1: anchor whose URL has a known document extension
+          const docHref = hrefs.find((u) => DOC_EXT_RE.test(u));
+          if (docHref) return docHref;
+          // Priority 2: DLP download action link
+          const dlpHref = hrefs.find((u) => /dlp-listing-action=download/i.test(u));
+          if (dlpHref) return dlpHref;
           return '';
         };
 
