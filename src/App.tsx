@@ -14,6 +14,7 @@ import WpDuplicateAudit from '@/pages/WpDuplicateAudit';
 import NotFound from '@/pages/NotFound';
 import Login from '@/pages/Login';
 import AcceptInvite from '@/pages/AcceptInvite';
+import SuperAdminSetup from '@/pages/SuperAdminSetup';
 import AdminUsers from '@/pages/admin/Users';
 import AppHeader from '@/components/AppHeader';
 import ProtectedRoute from '@/components/ProtectedRoute';
@@ -39,6 +40,7 @@ function App() {
             <Routes>
               <Route path="/login" element={<Login />} />
               <Route path="/accept-invite" element={<AcceptInvite />} />
+              <Route path="/setup" element={<SuperAdminSetup />} />
               <Route path="/" element={<ProtectedRoute><Index /></ProtectedRoute>} />
               <Route path="/documents" element={<ProtectedRoute><DocumentImporter /></ProtectedRoute>} />
               <Route path="/simple-documents" element={<ProtectedRoute><SimpleDocuments /></ProtectedRoute>} />
