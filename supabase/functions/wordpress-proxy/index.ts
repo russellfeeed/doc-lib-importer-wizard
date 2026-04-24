@@ -496,7 +496,7 @@ serve(async (req) => {
         let totalPages = 1;
 
         while (page <= totalPages) {
-          const pageUrl = `${baseUrlCat}/wp-json/wp/v2/dlp_document?per_page=100&page=${page}&doc_categories=${categoryId}&_fields=id,title,link,status,content,meta`;
+          const pageUrl = `${baseUrlCat}/wp-json/wp/v2/dlp_document?per_page=100&page=${page}&doc_categories=${categoryId}&_fields=id,title,link,status,content,meta,download_url,file_url,document_url`;
           console.log(`[fetch-dlp-by-category] page ${page}: ${pageUrl}`);
           const pageResponse = await wpFetch(pageUrl, username, cleanPassword);
           if (!pageResponse.ok) {
