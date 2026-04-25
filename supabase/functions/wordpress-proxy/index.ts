@@ -881,6 +881,82 @@ serve(async (req) => {
         const ctIsPdf = result.contentType.includes('application/pdf') || result.contentType.includes('application/octet-stream');
         result.ok = resp.status >= 200 && resp.status < 300 && (result.isPdf || ctIsPdf) && !result.redirectedToHtm && !result.isHtml;
 
+        // Transient-failure retry for /_pda/ URLs.
+        // Under burst load (multiple concurrent audit probes hitting the same WP host),
+        // PDA / Wordfence / PHP session locks sometimes return 404+HTML for files that
+        // actually exist. A short backoff + fresh cookie + single retry catches those
+        // false positives — same logic as a manual "Re-check" click.
+        const looksTransient =
+          isPdaUrl &&
+          !result.ok &&
+          !result.redirectedToHtm &&
+          (result.isHtml || result.status === 404 || result.status === 502 || result.status === 503 || result.status === 504);
+
+        if (looksTransient && wpBaseUrl && auditUser && auditPass) {
+          const jitter = 400 + Math.floor(Math.random() * 400); // 400-800ms
+          console.log(`[check-document-url] /_pda/ transient (status=${result.status} html=${result.isHtml}); retrying in ${jitter}ms — ${checkUrl}`);
+          await new Promise((r) => setTimeout(r, jitter));
+
+          // Force-refresh cookies — the cached one may have been invalidated by the burst.
+          wpCookieCache.delete(`${wpBaseUrl}|${auditUser}`);
+          const { cookies: fresh2, error: freshErr2 } = await getCachedWpCookies(wpBaseUrl, auditUser, auditPass);
+          if (fresh2) {
+            const retryController = new AbortController();
+            const retryTimer = setTimeout(() => retryController.abort(), timeoutMs);
+            try {
+              const retryResp = await fetch(checkUrl, {
+                method: 'GET',
+                redirect: 'follow',
+                signal: retryController.signal,
+                headers: {
+                  'User-Agent': 'Mozilla/5.0 (Lovable URL Audit)',
+                  'Accept': '*/*',
+                  'Cookie': fresh2,
+                },
+              });
+              clearTimeout(retryTimer);
+              result.authMode = 'cookie';
+              result.status = retryResp.status;
+              result.finalUrl = retryResp.url || checkUrl;
+              result.contentType = (retryResp.headers.get('content-type') || '').toLowerCase();
+              const clR = retryResp.headers.get('content-length');
+              result.contentLength = clR ? parseInt(clR, 10) : 0;
+              const lowerFinalR = result.finalUrl.toLowerCase().split('?')[0];
+              result.redirectedToHtm = /\.html?$/.test(lowerFinalR);
+              result.isHtml = result.contentType.includes('text/html');
+              result.isPdf = false;
+              try {
+                const bufR = await retryResp.arrayBuffer();
+                const headR = new Uint8Array(bufR).slice(0, 1024);
+                const headStrR = Array.from(headR).map((b) => String.fromCharCode(b)).join('');
+                result.magic = headStrR.slice(0, 16);
+                const pdfIdxR = headStrR.indexOf('%PDF-');
+                const htmlIdxR = headStrR.search(/<!DOCTYPE|<html|<HTML|<meta http-equiv=["']?refresh/i);
+                if (pdfIdxR >= 0 && (htmlIdxR < 0 || pdfIdxR < htmlIdxR)) {
+                  result.isPdf = true;
+                  result.isHtml = false;
+                } else if (htmlIdxR >= 0) {
+                  result.isHtml = true;
+                }
+              } catch (_e) { /* ignore */ }
+              const ctIsPdfR = result.contentType.includes('application/pdf') || result.contentType.includes('application/octet-stream');
+              result.ok = retryResp.status >= 200 && retryResp.status < 300 && (result.isPdf || ctIsPdfR) && !result.redirectedToHtm && !result.isHtml;
+              console.log(`[check-document-url] /_pda/ retry result status=${result.status} pdf=${result.isPdf} ok=${result.ok} — ${checkUrl}`);
+              if (result.ok) {
+                // Clear any stale error/loginBlocked flags from the first attempt.
+                result.error = '';
+                result.loginBlocked = false;
+              }
+            } catch (re: any) {
+              clearTimeout(retryTimer);
+              if (!result.error) result.error = re?.name === 'AbortError' ? 'timeout' : (re?.message || 'retry fetch failed');
+              console.log(`[check-document-url] /_pda/ retry threw — ${result.error}`);
+            }
+          } else if (freshErr2 && !result.error) {
+            result.error = freshErr2;
+          }
+        }
+
         // If we got bounced to HTML (likely the wp-login page) and we haven't tried cookie auth yet,
         // refresh the cookie and retry once. This catches /_pda/ URLs we didn't pre-detect plus
         // expired-cookie cases.
