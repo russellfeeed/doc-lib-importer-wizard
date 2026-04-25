@@ -1064,7 +1064,6 @@ serve(async (req) => {
 
     // Handle fetch single DLP document detail with resolved terms
     if (action === 'fetch-dlp-detail') {
-
     }
 
     // Handle media search — used by the URL Audit "Fix" modal to suggest a
@@ -1125,7 +1124,7 @@ serve(async (req) => {
       }
     }
 
-    // Re-open the fetch-dlp-detail block (we only inserted a stub above to anchor the patch).
+    // Handle fetch single DLP document detail with resolved terms (continued)
     if (action === 'fetch-dlp-detail') {
       const docId = body.documentId;
       if (!url || !username || !password || !docId) {
