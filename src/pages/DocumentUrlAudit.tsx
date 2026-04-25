@@ -18,7 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ArrowLeft, Search, AlertTriangle, ExternalLink, Square, Download, Code2, Copy, X, RotateCcw } from "lucide-react";
+import { ArrowLeft, Search, AlertTriangle, ExternalLink, Square, Download, Code2, Copy, X, RotateCcw, ClipboardCopy } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { getWordPressCredentials } from "@/utils/wordpressUtils";
 import {
@@ -349,6 +349,82 @@ const DocumentUrlAudit: React.FC = () => {
     URL.revokeObjectURL(url);
   };
 
+  const handleCopyTable = async () => {
+    if (issues.length === 0) return;
+
+    const escapeHtml = (s: string) =>
+      s
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+
+    const rows = issues.map((i) => ({
+      id: String(i.doc.id),
+      title: i.doc.title.replace(/<[^>]+>/g, "").trim(),
+      url: i.doc.fileUrl || i.doc.link || "",
+      issue: i.issue,
+    }));
+
+    // Plain-text fallback: tab-separated, pastes cleanly into Excel/Sheets/plain email.
+    const tsv = [
+      ["Doc ID", "Title", "URL", "Issue"].join("\t"),
+      ...rows.map((r) => [r.id, r.title, r.url, r.issue].join("\t")),
+    ].join("\n");
+
+    // Rich HTML: renders as a real table in Outlook, Gmail, Apple Mail, Word, etc.
+    const html =
+      `<table border="1" cellspacing="0" cellpadding="6" ` +
+      `style="border-collapse:collapse;font-family:Arial,sans-serif;font-size:13px;">` +
+      `<thead><tr style="background:#f3f4f6;">` +
+      `<th align="left">Doc ID</th>` +
+      `<th align="left">Title</th>` +
+      `<th align="left">URL</th>` +
+      `<th align="left">Issue</th>` +
+      `</tr></thead><tbody>` +
+      rows
+        .map(
+          (r) =>
+            `<tr>` +
+            `<td>${escapeHtml(r.id)}</td>` +
+            `<td>${escapeHtml(r.title)}</td>` +
+            `<td><a href="${escapeHtml(r.url)}">${escapeHtml(r.url)}</a></td>` +
+            `<td>${escapeHtml(r.issue)}</td>` +
+            `</tr>`,
+        )
+        .join("") +
+      `</tbody></table>`;
+
+    try {
+      if (typeof ClipboardItem !== "undefined" && navigator.clipboard?.write) {
+        await navigator.clipboard.write([
+          new ClipboardItem({
+            "text/html": new Blob([html], { type: "text/html" }),
+            "text/plain": new Blob([tsv], { type: "text/plain" }),
+          }),
+        ]);
+      } else {
+        await navigator.clipboard.writeText(tsv);
+      }
+      toast.success(`Copied ${rows.length} row${rows.length === 1 ? "" : "s"} to clipboard`);
+    } catch (e: any) {
+      // Final fallback: legacy execCommand path for older browsers / blocked Clipboard API.
+      try {
+        const ta = document.createElement("textarea");
+        ta.value = tsv;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+        toast.success(`Copied ${rows.length} row${rows.length === 1 ? "" : "s"} (plain text)`);
+      } catch {
+        toast.error("Copy failed: " + (e?.message || "clipboard unavailable"));
+      }
+    }
+  };
+
   const getWpEditUrl = (id: number) => {
     if (!credentials) return "#";
     const base = credentials.url.replace(/\/+$/, "");
@@ -436,10 +512,20 @@ const DocumentUrlAudit: React.FC = () => {
                   </Button>
                 )}
                 {!isRunning && hasRun && issues.length > 0 && (
-                  <Button variant="outline" onClick={handleExportCsv}>
-                    <Download className="h-4 w-4 mr-2" />
-                    Export CSV
-                  </Button>
+                  <>
+                    <Button
+                      variant="outline"
+                      onClick={handleCopyTable}
+                      title="Copy issues as a table (paste into email or spreadsheet)"
+                    >
+                      <ClipboardCopy className="h-4 w-4 mr-2" />
+                      Copy Table
+                    </Button>
+                    <Button variant="outline" onClick={handleExportCsv}>
+                      <Download className="h-4 w-4 mr-2" />
+                      Export CSV
+                    </Button>
+                  </>
                 )}
               </div>
             </div>
