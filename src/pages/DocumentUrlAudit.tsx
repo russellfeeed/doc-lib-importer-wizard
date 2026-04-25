@@ -702,6 +702,17 @@ const DocumentUrlAudit: React.FC = () => {
                             />
                             {retryingId === row.doc.id ? "Checking…" : "Re-check"}
                           </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="h-6 px-2 text-xs gap-1"
+                            onClick={() => handleOpenFix(row.doc)}
+                            title="Suggest a matching file from the WordPress Media Library"
+                          >
+                            <Wrench className="h-3 w-3" />
+                            Fix
+                          </Button>
                         </div>
                         {row.result.finalUrl && row.result.finalUrl !== row.doc.fileUrl && (
                           <div className="text-xs text-muted-foreground mt-1 truncate max-w-md" title={row.result.finalUrl}>
