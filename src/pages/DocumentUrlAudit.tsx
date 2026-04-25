@@ -18,7 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ArrowLeft, Search, AlertTriangle, ExternalLink, Square, Download, Code2, Copy, X, RotateCcw, ClipboardCopy } from "lucide-react";
+import { ArrowLeft, Search, AlertTriangle, ExternalLink, Square, Download, Code2, Copy, X, RotateCcw, ClipboardCopy, Wrench, FileText } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { getWordPressCredentials } from "@/utils/wordpressUtils";
 import {
@@ -27,9 +27,11 @@ import {
   checkDocumentUrl,
   classifyIssue,
   fetchDlpRaw,
+  searchWordPressMedia,
   type DocCategory,
   type DlpDocSummary,
   type UrlCheckResult,
+  type MediaCandidate,
 } from "@/utils/dlpAuditUtils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { toast } from "sonner";
