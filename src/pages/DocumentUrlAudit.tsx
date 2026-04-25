@@ -519,22 +519,20 @@ const DocumentUrlAudit: React.FC = () => {
                           >
                             {row.issue}
                           </span>
-                          {row.issue === "Timeout" && (
-                            <Button
-                              type="button"
-                              size="sm"
-                              variant="outline"
-                              className="h-6 px-2 text-xs gap-1"
-                              disabled={retryingId === row.doc.id}
-                              onClick={() => handleRetryRow(row.doc.id)}
-                              title="Re-check this URL"
-                            >
-                              <RotateCcw
-                                className={`h-3 w-3 ${retryingId === row.doc.id ? "animate-spin" : ""}`}
-                              />
-                              {retryingId === row.doc.id ? "Retrying…" : "Retry"}
-                            </Button>
-                          )}
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="h-6 px-2 text-xs gap-1"
+                            disabled={retryingId === row.doc.id}
+                            onClick={() => handleRetryRow(row.doc.id)}
+                            title="Re-check this URL"
+                          >
+                            <RotateCcw
+                              className={`h-3 w-3 ${retryingId === row.doc.id ? "animate-spin" : ""}`}
+                            />
+                            {retryingId === row.doc.id ? "Checking…" : "Re-check"}
+                          </Button>
                         </div>
                         {row.result.finalUrl && row.result.finalUrl !== row.doc.fileUrl && (
                           <div className="text-xs text-muted-foreground mt-1 truncate max-w-md" title={row.result.finalUrl}>
