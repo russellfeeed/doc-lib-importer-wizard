@@ -135,3 +135,34 @@ export const fetchDlpRaw = async (documentId: number): Promise<any> => {
   if (error) throw new Error(error.message || "Failed to fetch raw DLP document");
   return data;
 };
+
+export interface MediaCandidate {
+  id: number;
+  title: string;
+  sourceUrl: string;
+  mimeType: string;
+  date: string;
+}
+
+export const searchWordPressMedia = async (
+  searchTerm: string,
+  mimeType?: string,
+): Promise<MediaCandidate[]> => {
+  const creds = getWordPressCredentials();
+  if (!creds) throw new Error("WordPress credentials not configured");
+
+  const { data, error } = await supabase.functions.invoke("wordpress-proxy", {
+    body: {
+      url: creds.url,
+      username: creds.username,
+      password: creds.password,
+      action: "search-media",
+      searchTerm,
+      mimeType,
+      perPage: 15,
+    },
+  });
+
+  if (error) throw new Error(error.message || "Media search failed");
+  return (data?.results || []) as MediaCandidate[];
+};

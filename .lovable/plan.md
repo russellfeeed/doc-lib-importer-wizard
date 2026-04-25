@@ -1,69 +1,78 @@
-## Diagnosis: Yes, it's a timing/concurrency issue
+## Goal
 
-The logs prove it. Look at this timestamp cluster:
+For every row in the audit issues table, add a **Fix** button. Clicking it opens a modal that:
 
-```text
-1777145568243 — isolate boots
-1777145568244 — isolate boots
-1777145568245 — isolate boots   ← 8+ separate isolates
-1777145568314 — isolate boots
-1777145568315 — isolate boots
-1777145568379 — isolate boots
-...
-1777145568698 — loginToWp SUCCESS
-1777145568705 — loginToWp SUCCESS
-1777145568736 — loginToWp SUCCESS   ← 6 logins in 60ms
-1777145568845 — loginToWp SUCCESS
-...
-1777145568925 — /_pda/ probe → 404 HTML  ← false positive
-1777145568949 — /_pda/ probe → 200 PDF
-1777145569002 — /_pda/ probe → 404 HTML  ← false positive
+1. Searches the WordPress media library for files that likely match the document.
+2. Shows the matching media file's **Title** and **URL** (with a copy-to-clipboard button on the URL).
+3. Shows the **Doc ID** as a link that opens the Document Library Pro entry in WP admin (in a new tab).
+4. Includes a short instruction: "Open the Document Library entry using the Doc ID link, then paste the File URL into its File URL field."
+
+If multiple media files match, list them as candidates (best match first) so the user can pick which URL to copy.
+
+## How matching works
+
+The document title is the strongest signal (e.g. `"BS 1234 - Lorem Ipsum"`). The plan derives a search query from the document's title:
+
+- Strip HTML tags.
+- Use the leading "code/number" portion before the first ` - ` (e.g. `BS 1234`) as the primary query.
+- Fall back to the full title if the leading portion is too short.
+
+Then call WordPress REST: `GET /wp-json/wp/v2/media?search=<query>&per_page=10&_fields=id,title,source_url,mime_type,date`.
+
+Optionally bias toward PDFs by also filtering client-side on `mime_type === 'application/pdf'`, but still show non-PDF results below as fallback.
+
+The user can also override the search term in the modal (a small input pre-filled with the derived query) and re-search. This handles cases where the document title doesn't cleanly match the uploaded filename.
+
+## UI changes (`src/pages/DocumentUrlAudit.tsx`)
+
+- Add a **Fix** button (variant `outline`, small) next to the existing **Re-check** button in the Issue cell.
+- Add a new dialog (`fixOpen`, `fixDoc`, `fixQuery`, `fixLoading`, `fixResults`, `fixError` state).
+- The modal layout:
+  - Header: "Fix suggestion for #<docId> — <title>"
+  - **Doc ID link** (prominent): `#<docId>` linking to `${wpBase}/wp-admin/post.php?post=<docId>&action=edit` (target=_blank). Visually styled like a button/badge.
+  - Search input + "Search" button (pre-filled with derived query).
+  - Results list (table or card list) with columns: **Title**, **URL** (truncated, with a tooltip showing full URL), **Mime**, and a **Copy URL** icon button per row using `navigator.clipboard.writeText` + `toast.success("URL copied")`.
+  - Empty / loading / error states.
+  - Footer instruction text:
+    > "Open the Document Library Pro entry using the Doc ID link above, paste the copied File URL into the document's File URL field, and save."
+
+Reuse existing `Dialog`, `Button`, `Input`, `Table` components and `sonner` toast (already imported).
+
+## Backend changes (`supabase/functions/wordpress-proxy/index.ts`)
+
+Add a new action `search-media`:
+
+- Inputs: `url`, `username`, `password`, `searchTerm`, optional `mimeType`, optional `perPage` (default 10).
+- Calls `GET ${baseUrl}/wp-json/wp/v2/media?search=<term>&per_page=<n>&_fields=id,title,source_url,mime_type,date` via the existing `wpFetch` helper (handles Basic → URL-embedded → cookie auth fallback).
+- Returns a normalized JSON array: `[{ id, title, sourceUrl, mimeType, date }]`.
+- Includes CORS headers and validation (400 on missing fields).
+
+Add a thin client helper in `src/utils/dlpAuditUtils.ts`:
+
+```ts
+export interface MediaCandidate {
+  id: number;
+  title: string;
+  sourceUrl: string;
+  mimeType: string;
+  date: string;
+}
+
+export const searchWordPressMedia = async (
+  searchTerm: string,
+  mimeType?: string,
+): Promise<MediaCandidate[]> => { /* invokes wordpress-proxy with action: 'search-media' */ };
 ```
 
-Three things are happening at the same instant:
+## Edge cases
 
-1. The frontend fires **5 concurrent** probes (`CONCURRENCY = 5`).
-2. Each probe lands on a **separate Supabase edge isolate**, so the module-level `wpCookieCache` is useless — every isolate logs in fresh.
-3. WordPress receives a burst of 5+ `wp-login.php` POSTs followed immediately by 5+ `/_pda/` GETs. Under that load, the PDA plugin (and/or Wordfence/PHP session locks) sometimes returns a `404` HTML page instead of the file — even for URLs that exist.
+- Empty search term → disable "Search" button.
+- No results → show "No matching media found. Try a shorter or different query."
+- Network/auth error → show the error string in the modal.
+- Long titles or URLs → truncate with `title=` tooltip; copy always uses the full URL.
+- Clipboard API unavailable → fall back to `document.execCommand('copy')` (same pattern as existing `handleCopyTable`).
 
-When you click **Re-check** afterwards, the request runs alone, the server isn't under burst load, and it correctly returns the PDF. That's the smoking gun.
+## Out of scope
 
-## Fix
-
-Two changes, layered:
-
-### 1. Auto-retry transient 404/HTML responses on `/_pda/` URLs (edge function)
-
-In `supabase/functions/wordpress-proxy/index.ts`, inside the `check-document-url` action:
-
-- After the initial probe, if the URL is `/_pda/` AND the response was `404` or HTML (not a real PDF), wait 400–800ms with jitter and retry once with a fresh cookie.
-- If the retry succeeds, return the success result. If it still fails, return the failure (genuine missing file).
-- Log retries so we can see how often the false positives occur.
-
-This already partly exists for the `isHtml` cookie-refresh case, but it doesn't cover the `404 + HTML body` case that the logs show. Extend it to:
-- Trigger on `status === 404 && isHtml` for `/_pda/` URLs
-- Trigger on any non-OK HTML response for `/_pda/` URLs (regardless of auth mode)
-
-### 2. Lower frontend concurrency for `/_pda/` URLs (frontend)
-
-In `src/pages/DocumentUrlAudit.tsx`:
-
-- Drop `CONCURRENCY` from `5` to `2` — small enough to stop the burst, large enough to keep the audit reasonably fast.
-- Add a small inter-request delay (150ms) between probe dispatches so we don't hammer wp-login.php.
-
-This trades ~2× audit duration for dramatically fewer false positives, which the user has to manually re-check anyway.
-
-### 3. (Optional) Persist cookie across isolates
-
-The module-level `Map` cache doesn't help when each row lands on a fresh isolate. Move the cookie to the `wordpress_settings` table (or a dedicated `wp_session_cache` row) with a 25-minute TTL, so all isolates share one login.
-
-I'll mark this as optional — changes 1 + 2 should resolve the user-visible problem on their own, and persistence is a bigger change. Recommend deferring unless re-checks still occasionally false-positive after 1 + 2.
-
-## Files to edit
-
-- `supabase/functions/wordpress-proxy/index.ts` — add retry-on-transient-failure logic for `/_pda/` probes.
-- `src/pages/DocumentUrlAudit.tsx` — lower `CONCURRENCY` to 2, add small dispatch delay.
-
-## Expected outcome
-
-Running the audit will produce far fewer false positives. Any `/_pda/` URL that returns HTML/404 on the first try gets one automatic retry inside the edge function, mimicking the manual Re-check button. The remaining "issues" should be genuine missing files (like 35615).
+- Automatically updating the WP document's `_dlp_attached_file_id` (the user explicitly wants to do this manually in WP admin).
+- Any persistent record of suggested fixes.

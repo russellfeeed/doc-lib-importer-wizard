@@ -18,7 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { ArrowLeft, Search, AlertTriangle, ExternalLink, Square, Download, Code2, Copy, X, RotateCcw, ClipboardCopy } from "lucide-react";
+import { ArrowLeft, Search, AlertTriangle, ExternalLink, Square, Download, Code2, Copy, X, RotateCcw, ClipboardCopy, Wrench, FileText } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { getWordPressCredentials } from "@/utils/wordpressUtils";
 import {
@@ -27,9 +27,11 @@ import {
   checkDocumentUrl,
   classifyIssue,
   fetchDlpRaw,
+  searchWordPressMedia,
   type DocCategory,
   type DlpDocSummary,
   type UrlCheckResult,
+  type MediaCandidate,
 } from "@/utils/dlpAuditUtils";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { toast } from "sonner";
@@ -286,6 +288,76 @@ const DocumentUrlAudit: React.FC = () => {
   };
 
   const [retryingId, setRetryingId] = useState<number | null>(null);
+
+  // ---- "Fix" suggestion modal ----
+  const [fixOpen, setFixOpen] = useState(false);
+  const [fixDoc, setFixDoc] = useState<DlpDocSummary | null>(null);
+  const [fixQuery, setFixQuery] = useState("");
+  const [fixLoading, setFixLoading] = useState(false);
+  const [fixError, setFixError] = useState<string>("");
+  const [fixResults, setFixResults] = useState<MediaCandidate[]>([]);
+
+  // Derive a search-friendly query from a document title.
+  // Examples:
+  //   "BS 1234 - Specification for X"  -> "BS 1234"
+  //   "PD 5304:2019+A1"                -> "PD 5304:2019+A1"
+  const deriveQueryFromTitle = (rawTitle: string): string => {
+    const plain = (rawTitle || "").replace(/<[^>]+>/g, "").trim();
+    if (!plain) return "";
+    // Try splitting on " - " or " – " (en dash)
+    const split = plain.split(/\s[-–—]\s/);
+    const head = (split[0] || "").trim();
+    if (head && head.length >= 3 && head.length <= 40) return head;
+    return plain.length > 60 ? plain.slice(0, 60) : plain;
+  };
+
+  const runMediaSearch = async (q: string) => {
+    const term = q.trim();
+    if (!term) return;
+    setFixLoading(true);
+    setFixError("");
+    setFixResults([]);
+    try {
+      const results = await searchWordPressMedia(term, "application/pdf");
+      setFixResults(results);
+    } catch (e: any) {
+      setFixError(e?.message || "Search failed");
+    } finally {
+      setFixLoading(false);
+    }
+  };
+
+  const handleOpenFix = (doc: DlpDocSummary) => {
+    const q = deriveQueryFromTitle(doc.title);
+    setFixDoc(doc);
+    setFixQuery(q);
+    setFixOpen(true);
+    setFixResults([]);
+    setFixError("");
+    if (q) {
+      void runMediaSearch(q);
+    }
+  };
+
+  const handleCopyMediaUrl = async (url: string) => {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(url);
+      } else {
+        const ta = document.createElement("textarea");
+        ta.value = url;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+      }
+      toast.success("File URL copied");
+    } catch (e: any) {
+      toast.error("Copy failed: " + (e?.message || "clipboard unavailable"));
+    }
+  };
 
   const handleRetryRow = async (docId: number) => {
     const row = issues.find((i) => i.doc.id === docId);
@@ -630,6 +702,17 @@ const DocumentUrlAudit: React.FC = () => {
                             />
                             {retryingId === row.doc.id ? "Checking…" : "Re-check"}
                           </Button>
+                          <Button
+                            type="button"
+                            size="sm"
+                            variant="outline"
+                            className="h-6 px-2 text-xs gap-1"
+                            onClick={() => handleOpenFix(row.doc)}
+                            title="Suggest a matching file from the WordPress Media Library"
+                          >
+                            <Wrench className="h-3 w-3" />
+                            Fix
+                          </Button>
                         </div>
                         {row.result.finalUrl && row.result.finalUrl !== row.doc.fileUrl && (
                           <div className="text-xs text-muted-foreground mt-1 truncate max-w-md" title={row.result.finalUrl}>
@@ -745,6 +828,156 @@ const DocumentUrlAudit: React.FC = () => {
                   </>
                 )}
               </div>
+            </DialogContent>
+          </Dialog>
+
+          <Dialog open={fixOpen} onOpenChange={setFixOpen}>
+            <DialogContent className="max-w-3xl max-h-[85vh] flex flex-col">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Wrench className="h-5 w-5" />
+                  Fix suggestion
+                  {fixDoc && (
+                    <span className="font-mono text-sm text-muted-foreground">#{fixDoc.id}</span>
+                  )}
+                </DialogTitle>
+                <DialogDescription>
+                  {fixDoc ? (
+                    <span
+                      dangerouslySetInnerHTML={{ __html: fixDoc.title }}
+                    />
+                  ) : (
+                    "Searching the WordPress Media Library for a matching file."
+                  )}
+                </DialogDescription>
+              </DialogHeader>
+
+              {fixDoc && (
+                <div className="flex flex-col gap-4 min-h-0">
+                  {/* Doc ID link to WP edit page */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className="text-sm text-muted-foreground">Document Library entry:</span>
+                    <a
+                      href={getWpEditUrl(fixDoc.id)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1.5 rounded-md border border-primary/30 bg-primary/5 px-2.5 py-1 text-sm font-mono text-primary hover:bg-primary/10"
+                      title="Open in WP admin (Document Library Pro)"
+                    >
+                      <FileText className="h-3.5 w-3.5" />
+                      #{fixDoc.id}
+                      <ExternalLink className="h-3 w-3" />
+                    </a>
+                  </div>
+
+                  {/* Search input */}
+                  <div className="flex items-center gap-2">
+                    <div className="relative flex-1">
+                      <Search className="h-3.5 w-3.5 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                      <Input
+                        value={fixQuery}
+                        onChange={(e) => setFixQuery(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault();
+                            void runMediaSearch(fixQuery);
+                          }
+                        }}
+                        placeholder="Search media library (e.g. BS 1234)…"
+                        className="pl-8 h-9"
+                      />
+                    </div>
+                    <Button
+                      onClick={() => void runMediaSearch(fixQuery)}
+                      disabled={fixLoading || !fixQuery.trim()}
+                      size="sm"
+                    >
+                      <Search className="h-4 w-4 mr-1.5" />
+                      {fixLoading ? "Searching…" : "Search"}
+                    </Button>
+                  </div>
+
+                  {/* Results */}
+                  <div className="rounded border overflow-hidden">
+                    {fixLoading && (
+                      <div className="p-4 text-sm text-muted-foreground animate-pulse">
+                        Searching WordPress media library…
+                      </div>
+                    )}
+                    {fixError && !fixLoading && (
+                      <div className="p-4 text-sm text-destructive">{fixError}</div>
+                    )}
+                    {!fixLoading && !fixError && fixResults.length === 0 && (
+                      <div className="p-4 text-sm text-muted-foreground">
+                        No matching media found. Try a shorter or different query.
+                      </div>
+                    )}
+                    {!fixLoading && fixResults.length > 0 && (
+                      <div className="max-h-[40vh] overflow-auto">
+                        <Table>
+                          <TableHeader>
+                            <TableRow>
+                              <TableHead>Title</TableHead>
+                              <TableHead>File URL</TableHead>
+                              <TableHead className="w-[80px]">Type</TableHead>
+                              <TableHead className="w-[90px] text-right">Action</TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {fixResults.map((m) => (
+                              <TableRow key={m.id}>
+                                <TableCell>
+                                  <div className="font-medium text-sm truncate max-w-[220px]" title={m.title}>
+                                    {m.title || <span className="italic text-muted-foreground">untitled</span>}
+                                  </div>
+                                  <div className="text-xs text-muted-foreground font-mono">#{m.id}</div>
+                                </TableCell>
+                                <TableCell>
+                                  <a
+                                    href={m.sourceUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="text-xs text-primary hover:text-primary/80 truncate max-w-[260px] block"
+                                    title={m.sourceUrl}
+                                  >
+                                    {m.sourceUrl}
+                                  </a>
+                                </TableCell>
+                                <TableCell>
+                                  <span className="text-xs font-mono text-muted-foreground">
+                                    {m.mimeType.replace("application/", "")}
+                                  </span>
+                                </TableCell>
+                                <TableCell className="text-right">
+                                  <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-7 px-2 text-xs gap-1"
+                                    onClick={() => handleCopyMediaUrl(m.sourceUrl)}
+                                    disabled={!m.sourceUrl}
+                                  >
+                                    <Copy className="h-3 w-3" />
+                                    Copy URL
+                                  </Button>
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Instruction footer */}
+                  <div className="rounded-md bg-muted/40 border p-3 text-xs text-muted-foreground leading-relaxed">
+                    <strong className="text-foreground">How to apply this fix:</strong>{" "}
+                    Click the <span className="font-mono">#{fixDoc.id}</span> link above to open the
+                    Document Library Pro entry in WordPress, then paste the copied File URL into the
+                    document's <strong>File URL</strong> field and save.
+                  </div>
+                </div>
+              )}
             </DialogContent>
           </Dialog>
         </>
