@@ -289,6 +289,76 @@ const DocumentUrlAudit: React.FC = () => {
 
   const [retryingId, setRetryingId] = useState<number | null>(null);
 
+  // ---- "Fix" suggestion modal ----
+  const [fixOpen, setFixOpen] = useState(false);
+  const [fixDoc, setFixDoc] = useState<DlpDocSummary | null>(null);
+  const [fixQuery, setFixQuery] = useState("");
+  const [fixLoading, setFixLoading] = useState(false);
+  const [fixError, setFixError] = useState<string>("");
+  const [fixResults, setFixResults] = useState<MediaCandidate[]>([]);
+
+  // Derive a search-friendly query from a document title.
+  // Examples:
+  //   "BS 1234 - Specification for X"  -> "BS 1234"
+  //   "PD 5304:2019+A1"                -> "PD 5304:2019+A1"
+  const deriveQueryFromTitle = (rawTitle: string): string => {
+    const plain = (rawTitle || "").replace(/<[^>]+>/g, "").trim();
+    if (!plain) return "";
+    // Try splitting on " - " or " – " (en dash)
+    const split = plain.split(/\s[-–—]\s/);
+    const head = (split[0] || "").trim();
+    if (head && head.length >= 3 && head.length <= 40) return head;
+    return plain.length > 60 ? plain.slice(0, 60) : plain;
+  };
+
+  const runMediaSearch = async (q: string) => {
+    const term = q.trim();
+    if (!term) return;
+    setFixLoading(true);
+    setFixError("");
+    setFixResults([]);
+    try {
+      const results = await searchWordPressMedia(term, "application/pdf");
+      setFixResults(results);
+    } catch (e: any) {
+      setFixError(e?.message || "Search failed");
+    } finally {
+      setFixLoading(false);
+    }
+  };
+
+  const handleOpenFix = (doc: DlpDocSummary) => {
+    const q = deriveQueryFromTitle(doc.title);
+    setFixDoc(doc);
+    setFixQuery(q);
+    setFixOpen(true);
+    setFixResults([]);
+    setFixError("");
+    if (q) {
+      void runMediaSearch(q);
+    }
+  };
+
+  const handleCopyMediaUrl = async (url: string) => {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(url);
+      } else {
+        const ta = document.createElement("textarea");
+        ta.value = url;
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand("copy");
+        document.body.removeChild(ta);
+      }
+      toast.success("File URL copied");
+    } catch (e: any) {
+      toast.error("Copy failed: " + (e?.message || "clipboard unavailable"));
+    }
+  };
+
   const handleRetryRow = async (docId: number) => {
     const row = issues.find((i) => i.doc.id === docId);
     if (!row || !row.doc.fileUrl) return;
