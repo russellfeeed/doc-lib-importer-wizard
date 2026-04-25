@@ -55,7 +55,13 @@ const typeColors: Record<string, string> = {
   detail: "text-muted-foreground/70",
 };
 
-const CONCURRENCY = 5;
+// Concurrency is intentionally low: WordPress + the PDA plugin start returning
+// transient 404/HTML responses for valid files when more than ~2 audit probes
+// hit the host at once (each probe also POSTs to wp-login.php). The edge function
+// has its own auto-retry-with-backoff for those, but keeping the burst small at
+// the source dramatically reduces false positives.
+const CONCURRENCY = 2;
+const INTER_BATCH_DELAY_MS = 250;
 
 const DocumentUrlAudit: React.FC = () => {
   const credentials = getWordPressCredentials();
@@ -265,6 +271,11 @@ const DocumentUrlAudit: React.FC = () => {
       setScanned(localScanned);
       setOkCount(localOk);
       setIssues([...localIssues]);
+
+      // Brief pause between batches so we don't sustain a burst against wp-login.php.
+      if (i + CONCURRENCY < docs.length) {
+        await new Promise((r) => setTimeout(r, INTER_BATCH_DELAY_MS));
+      }
     }
 
     addLog(
