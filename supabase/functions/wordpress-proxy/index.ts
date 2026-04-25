@@ -1064,6 +1064,69 @@ serve(async (req) => {
 
     // Handle fetch single DLP document detail with resolved terms
     if (action === 'fetch-dlp-detail') {
+
+    }
+
+    // Handle media search — used by the URL Audit "Fix" modal to suggest a
+    // matching file from the WordPress Media Library.
+    if (action === 'search-media') {
+      const searchTerm: string = (body.searchTerm || '').toString().trim();
+      const perPage: number = Math.min(Math.max(Number(body.perPage) || 10, 1), 50);
+      const mimeFilter: string | undefined = body.mimeType ? String(body.mimeType) : undefined;
+      if (!url || !username || !password || !searchTerm) {
+        return new Response(
+          JSON.stringify({ error: 'Missing required fields: url, username, password, searchTerm' }),
+          { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      const baseUrlMedia = url.replace(/\/$/, '');
+      try {
+        const params = new URLSearchParams({
+          search: searchTerm,
+          per_page: String(perPage),
+          _fields: 'id,title,source_url,mime_type,date',
+          orderby: 'relevance',
+          order: 'desc',
+        });
+        const mediaUrl = `${baseUrlMedia}/wp-json/wp/v2/media?${params.toString()}`;
+        console.log(`[search-media] ${mediaUrl}`);
+        const resp = await wpFetch(mediaUrl, username, cleanPassword);
+        if (!resp.ok) {
+          const errText = await resp.text();
+          console.warn(`[search-media] failed ${resp.status}: ${errText.slice(0, 200)}`);
+          return new Response(
+            JSON.stringify({ error: 'Media search failed', status: resp.status, details: errText }),
+            { status: resp.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+        const items = await resp.json();
+        const normalized = (Array.isArray(items) ? items : []).map((m: any) => ({
+          id: m.id,
+          title: (m.title?.rendered || '').replace(/<[^>]+>/g, '').trim(),
+          sourceUrl: m.source_url || '',
+          mimeType: m.mime_type || '',
+          date: m.date || '',
+        }));
+        const filtered = mimeFilter
+          ? normalized.filter((m) => m.mimeType === mimeFilter)
+          : normalized;
+        // If a mime filter was requested but yielded nothing, fall back to all results
+        // so the user still sees candidates.
+        const results = filtered.length > 0 ? filtered : normalized;
+        return new Response(JSON.stringify({ results }), {
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      } catch (error) {
+        console.error('[search-media] error:', error);
+        return new Response(
+          JSON.stringify({ error: 'Media search failed', details: (error as Error).message }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+    }
+
+    // Re-open the fetch-dlp-detail block (we only inserted a stub above to anchor the patch).
+    if (action === 'fetch-dlp-detail') {
       const docId = body.documentId;
       if (!url || !username || !password || !docId) {
         return new Response(
