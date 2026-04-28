@@ -34,6 +34,8 @@ export interface UrlCheckResult {
   magic?: string;
   loginBlocked?: boolean;
   authMode?: "none" | "basic" | "cookie";
+  expiredNotice?: boolean;
+  expiredMatch?: string;
 }
 
 export const fetchDocCategories = async (): Promise<DocCategory[]> => {
@@ -110,6 +112,10 @@ export const classifyIssue = (
 ): { label: string; severity: "ok" | "warn" | "error" | "protected" } => {
   if (!hasUrl) return { label: "No file URL", severity: "error" };
   if (r.error) return { label: r.error === "timeout" ? "Timeout" : `Network error: ${r.error}`, severity: "error" };
+  if (r.expiredNotice) {
+    const suffix = r.expiredMatch ? ` ("${r.expiredMatch}")` : "";
+    return { label: `PDF expired — needs update${suffix}`, severity: "error" };
+  }
   if (r.ok) return { label: "OK", severity: "ok" };
   if (r.loginBlocked) return { label: "Protected (WP login required)", severity: "protected" };
   if (r.redirectedToHtm) return { label: `Redirected to .htm (${r.finalUrl})`, severity: "error" };

@@ -15,6 +15,81 @@ const WP_COOKIE_TTL_MS = 25 * 60 * 1000; // 25 minutes
 // was re-rendered with an error); success is a 302 redirect AND a
 // `wordpress_logged_in_<hash>` cookie. We only accept a session when that cookie
 // is present — `wordpress_test_cookie` alone does NOT count.
+
+// Phrases that indicate a PDF is a placeholder / expired notice rather than a
+// real document. Matching is case-insensitive. Keep these specific enough to
+// avoid false positives against legitimate content.
+const EXPIRY_PHRASES: string[] = [
+  'has now expired',
+  'log on the NSI member area',
+  'log on to the NSI member area',
+  'obtain the latest version',
+];
+
+// Maximum PDF size we'll inspect for expiry text. Larger PDFs are skipped to
+// keep the audit fast and memory-bounded.
+const PDF_TEXT_SCAN_MAX_BYTES = 5 * 1024 * 1024;
+
+// Best-effort PDF text extraction for expiry-phrase detection.
+// Walks the raw bytes, decodes them as latin-1, and additionally tries to
+// inflate any FlateDecode `stream`/`endstream` blocks (the most common text
+// encoding in PDFs). Returns the concatenation so a regex sweep can match
+// either uncompressed or compressed text. NOT a general-purpose PDF parser —
+// image-only / OCR'd PDFs will yield no usable text.
+async function extractPdfText(bytes: Uint8Array): Promise<string> {
+  const latin1 = (b: Uint8Array) => {
+    let s = '';
+    // Build in chunks to avoid call-stack issues for large arrays.
+    const CHUNK = 0x8000;
+    for (let i = 0; i < b.length; i += CHUNK) {
+      s += String.fromCharCode.apply(null, Array.from(b.subarray(i, i + CHUNK)) as number[]);
+    }
+    return s;
+  };
+
+  const raw = latin1(bytes);
+  const parts: string[] = [raw];
+
+  // Find stream...endstream blocks and try to inflate them.
+  const re = /stream[\r\n]+([\s\S]*?)[\r\n]+endstream/g;
+  let m: RegExpExecArray | null;
+  let inflatedCount = 0;
+  // Hard cap on streams scanned to keep the work bounded.
+  const MAX_STREAMS = 200;
+  while ((m = re.exec(raw)) !== null && inflatedCount < MAX_STREAMS) {
+    const start = m.index + m[0].indexOf(m[1]);
+    const end = start + m[1].length;
+    const slice = bytes.subarray(start, end);
+    inflatedCount++;
+    // Try zlib (deflate with header) first, then raw deflate.
+    for (const fmt of ['deflate', 'deflate-raw'] as const) {
+      try {
+        const ds = new DecompressionStream(fmt);
+        const writer = ds.writable.getWriter();
+        writer.write(slice);
+        writer.close();
+        const out = new Uint8Array(await new Response(ds.readable).arrayBuffer());
+        if (out.length > 0) {
+          parts.push(latin1(out));
+          break;
+        }
+      } catch (_e) {
+        // try next format / skip this stream
+      }
+    }
+  }
+
+  return parts.join('\n');
+}
+
+function findExpiryMatch(text: string): string | null {
+  const lower = text.toLowerCase();
+  for (const phrase of EXPIRY_PHRASES) {
+    if (lower.includes(phrase.toLowerCase())) return phrase;
+  }
+  return null;
+}
+
 async function loginToWp(
   baseUrl: string,
   username: string,
@@ -783,6 +858,8 @@ serve(async (req) => {
         magic: '' as string,
         loginBlocked: false as boolean,
         authMode: 'none' as 'none' | 'basic' | 'cookie',
+        expiredNotice: false as boolean,
+        expiredMatch: '' as string,
       };
 
       // Derive the WP base URL from the file URL so we can hit wp-login.php on the same host.
@@ -851,7 +928,8 @@ serve(async (req) => {
         // (a common PHP-emits-PDF gotcha) doesn't trip us up.
         try {
           const buf = await resp.arrayBuffer();
-          const head = new Uint8Array(buf).slice(0, 1024);
+          const fullBytes = new Uint8Array(buf);
+          const head = fullBytes.slice(0, 1024);
           // Decode as latin-1 so binary bytes don't blow up; we only need ASCII signatures.
           const headStr = Array.from(head).map((b) => String.fromCharCode(b)).join('');
           result.magic = headStr.slice(0, 16);
@@ -873,6 +951,28 @@ serve(async (req) => {
               `magic="${result.magic}" hex="${hex}" url=${checkUrl}`,
             );
           }
+
+          // Expiry-phrase scan: if the response is a PDF and small enough, peek
+          // at the text content to catch "expired" placeholder PDFs that load
+          // fine but tell the user to fetch a fresh copy from the member area.
+          if (result.isPdf && fullBytes.length > 0 && fullBytes.length <= PDF_TEXT_SCAN_MAX_BYTES) {
+            try {
+              const pdfText = await extractPdfText(fullBytes);
+              const match = findExpiryMatch(pdfText);
+              if (match) {
+                result.expiredNotice = true;
+                result.expiredMatch = match;
+                console.log(
+                  `[check-document-url] expired-notice detected phrase="${match}" ` +
+                  `size=${fullBytes.length} url=${checkUrl}`,
+                );
+              }
+            } catch (e) {
+              console.log(`[check-document-url] pdf-text-scan failed: ${(e as Error).message} — ${checkUrl}`);
+            }
+          } else if (result.isPdf && fullBytes.length > PDF_TEXT_SCAN_MAX_BYTES) {
+            console.log(`[check-document-url] pdf-text-scan skipped (size=${fullBytes.length} > ${PDF_TEXT_SCAN_MAX_BYTES}) — ${checkUrl}`);
+          }
         } catch (_e) {
           // ignore body read failures
         }
@@ -880,6 +980,9 @@ serve(async (req) => {
         // Definition of OK: 2xx + (PDF magic OR content-type pdf) + not redirected to .htm
         const ctIsPdf = result.contentType.includes('application/pdf') || result.contentType.includes('application/octet-stream');
         result.ok = resp.status >= 200 && resp.status < 300 && (result.isPdf || ctIsPdf) && !result.redirectedToHtm && !result.isHtml;
+
+        // An expired-notice PDF loads cleanly but is not a usable file.
+        if (result.expiredNotice) result.ok = false;
 
         // Transient-failure retry for /_pda/ URLs.
         // Under burst load (multiple concurrent audit probes hitting the same WP host),

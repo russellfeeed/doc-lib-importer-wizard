@@ -1,78 +1,68 @@
 ## Goal
 
-For every row in the audit issues table, add a **Fix** button. Clicking it opens a modal that:
+Extend the Document URL Audit so that when a PDF is successfully fetched, we also inspect its contents for an "expired" notice (e.g., "has now expired. Please log on the NSI member area..."). If detected, flag the document as expired so a human can update it.
 
-1. Searches the WordPress media library for files that likely match the document.
-2. Shows the matching media file's **Title** and **URL** (with a copy-to-clipboard button on the URL).
-3. Shows the **Doc ID** as a link that opens the Document Library Pro entry in WP admin (in a new tab).
-4. Includes a short instruction: "Open the Document Library entry using the Doc ID link, then paste the File URL into its File URL field."
+## Approach
 
-If multiple media files match, list them as candidates (best match first) so the user can pick which URL to copy.
+The current check (`check-document-url` action in `supabase/functions/wordpress-proxy/index.ts`) only reads the first ~1KB of the response and validates the `%PDF-` magic bytes. We'll extend it to:
 
-## How matching works
+1. Read the **full PDF body** (capped at a safe size, e.g. 5 MB, to prevent runaway downloads).
+2. Extract readable text from the PDF.
+3. Match against a list of known expiry phrases.
+4. Return a new `expiredNotice` flag plus the matched phrase.
 
-The document title is the strongest signal (e.g. `"BS 1234 - Lorem Ipsum"`). The plan derives a search query from the document's title:
+For text extraction, we'll use a lightweight approach native to Deno (no extra deps):
+- Decompress any FlateDecode streams found in the PDF using Deno's built-in `DecompressionStream("deflate")`.
+- Concatenate decompressed stream contents and the raw PDF bytes (as latin-1 text).
+- Run a case-insensitive regex over the combined text for the configured phrases.
 
-- Strip HTML tags.
-- Use the leading "code/number" portion before the first ` - ` (e.g. `BS 1234`) as the primary query.
-- Fall back to the full title if the leading portion is too short.
+This catches both:
+- PDFs with uncompressed text streams (phrase appears directly in raw bytes).
+- PDFs with FlateDecode-compressed text (most common case).
 
-Then call WordPress REST: `GET /wp-json/wp/v2/media?search=<query>&per_page=10&_fields=id,title,source_url,mime_type,date`.
+It will NOT catch image-only/scanned PDFs — that would require OCR, which is out of scope. We'll log a note when we couldn't extract any text from a PDF so the user is aware.
 
-Optionally bias toward PDFs by also filtering client-side on `mime_type === 'application/pdf'`, but still show non-PDF results below as fallback.
+### Phrases to detect (initial list)
 
-The user can also override the search term in the modal (a small input pre-filled with the derived query) and re-search. This handles cases where the document title doesn't cleanly match the uploaded filename.
+- `has now expired`
+- `Please log on the NSI member area`
+- `obtain the latest version`
 
-## UI changes (`src/pages/DocumentUrlAudit.tsx`)
+Match if **any** phrase appears. Easy to extend later.
 
-- Add a **Fix** button (variant `outline`, small) next to the existing **Re-check** button in the Issue cell.
-- Add a new dialog (`fixOpen`, `fixDoc`, `fixQuery`, `fixLoading`, `fixResults`, `fixError` state).
-- The modal layout:
-  - Header: "Fix suggestion for #<docId> — <title>"
-  - **Doc ID link** (prominent): `#<docId>` linking to `${wpBase}/wp-admin/post.php?post=<docId>&action=edit` (target=_blank). Visually styled like a button/badge.
-  - Search input + "Search" button (pre-filled with derived query).
-  - Results list (table or card list) with columns: **Title**, **URL** (truncated, with a tooltip showing full URL), **Mime**, and a **Copy URL** icon button per row using `navigator.clipboard.writeText` + `toast.success("URL copied")`.
-  - Empty / loading / error states.
-  - Footer instruction text:
-    > "Open the Document Library Pro entry using the Doc ID link above, paste the copied File URL into the document's File URL field, and save."
+## Changes
 
-Reuse existing `Dialog`, `Button`, `Input`, `Table` components and `sonner` toast (already imported).
+### 1. `supabase/functions/wordpress-proxy/index.ts`
+- Add helper `extractPdfText(bytes: Uint8Array): Promise<string>` that:
+  - Walks the PDF byte stream looking for `stream` ... `endstream` blocks.
+  - For each block, attempts `DecompressionStream("deflate")`; if it fails, uses raw bytes.
+  - Returns concatenated latin-1 decoded text plus the raw bytes as fallback text.
+- Add `EXPIRY_PHRASES` constant array.
+- In `check-document-url`, after we've read the response body:
+  - If `result.isPdf` and body size <= 5 MB, run `extractPdfText` and test phrases.
+  - Set `result.expiredNotice = true` and `result.expiredMatch = "<phrase>"` when matched.
+  - When matched, set `result.ok = false` so it shows up as an issue.
+- Log the detection for debugging.
 
-## Backend changes (`supabase/functions/wordpress-proxy/index.ts`)
+### 2. `src/utils/dlpAuditUtils.ts`
+- Add `expiredNotice?: boolean` and `expiredMatch?: string` to `UrlCheckResult`.
+- Update `classifyIssue`:
+  - If `r.expiredNotice` → `{ label: "PDF expired — needs update" + (match ? \` (\${match})\` : ""), severity: "error" }`. This branch runs **before** the `r.ok` branch so an otherwise-valid PDF is still flagged.
 
-Add a new action `search-media`:
+### 3. `src/pages/DocumentUrlAudit.tsx`
+- No structural changes required — the new issue type flows through existing rendering.
+- Optional: in the Fix modal, when `expiredNotice` is true, show a hint like "This PDF loads but contains an expiry notice — replace with a fresh copy from WP media library." (small UX win, low effort).
 
-- Inputs: `url`, `username`, `password`, `searchTerm`, optional `mimeType`, optional `perPage` (default 10).
-- Calls `GET ${baseUrl}/wp-json/wp/v2/media?search=<term>&per_page=<n>&_fields=id,title,source_url,mime_type,date` via the existing `wpFetch` helper (handles Basic → URL-embedded → cookie auth fallback).
-- Returns a normalized JSON array: `[{ id, title, sourceUrl, mimeType, date }]`.
-- Includes CORS headers and validation (400 on missing fields).
+### 4. Deploy `wordpress-proxy` edge function after edits.
 
-Add a thin client helper in `src/utils/dlpAuditUtils.ts`:
+## Edge cases & safeguards
 
-```ts
-export interface MediaCandidate {
-  id: number;
-  title: string;
-  sourceUrl: string;
-  mimeType: string;
-  date: string;
-}
-
-export const searchWordPressMedia = async (
-  searchTerm: string,
-  mimeType?: string,
-): Promise<MediaCandidate[]> => { /* invokes wordpress-proxy with action: 'search-media' */ };
-```
-
-## Edge cases
-
-- Empty search term → disable "Search" button.
-- No results → show "No matching media found. Try a shorter or different query."
-- Network/auth error → show the error string in the modal.
-- Long titles or URLs → truncate with `title=` tooltip; copy always uses the full URL.
-- Clipboard API unavailable → fall back to `document.execCommand('copy')` (same pattern as existing `handleCopyTable`).
+- **Large PDFs**: cap inspection at 5 MB; skip text scan beyond that and log a warning. Most NSI standard PDFs are well under this.
+- **Encrypted PDFs**: decompression will yield gibberish; phrase won't match → treated as OK (no false positives).
+- **Performance**: text scan runs only on successful PDF responses, adds a few ms per doc. Concurrency stays at 2.
+- **False positives**: phrases are specific enough ("NSI member area") that legitimate PDFs are unlikely to trigger. List is centralized for easy tuning.
 
 ## Out of scope
 
-- Automatically updating the WP document's `_dlp_attached_file_id` (the user explicitly wants to do this manually in WP admin).
-- Any persistent record of suggested fixes.
+- OCR for image-only PDFs.
+- Configurable phrase list in the UI (can be added later if needed).
