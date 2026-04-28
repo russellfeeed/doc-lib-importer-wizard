@@ -50,33 +50,36 @@ async function extractPdfText(bytes: Uint8Array): Promise<string> {
   const raw = latin1(bytes);
   const parts: string[] = [raw];
 
-  // Find stream...endstream blocks and try to inflate them.
+  // Find stream...endstream blocks and try to inflate them. We only attempt
+  // decompression on slices that *look* like zlib (first byte 0x78) to avoid
+  // wasting time — and crashing — on JPEG/CCITT/raw image streams.
   const re = /stream[\r\n]+([\s\S]*?)[\r\n]+endstream/g;
   let m: RegExpExecArray | null;
   let inflatedCount = 0;
-  // Hard cap on streams scanned to keep the work bounded.
   const MAX_STREAMS = 200;
+
+  const tryInflate = async (slice: Uint8Array, fmt: 'deflate' | 'deflate-raw'): Promise<Uint8Array | null> => {
+    try {
+      const blob = new Blob([slice]);
+      const stream = blob.stream().pipeThrough(new DecompressionStream(fmt));
+      const buf = await new Response(stream).arrayBuffer();
+      return new Uint8Array(buf);
+    } catch (_e) {
+      return null;
+    }
+  };
+
   while ((m = re.exec(raw)) !== null && inflatedCount < MAX_STREAMS) {
     const start = m.index + m[0].indexOf(m[1]);
     const end = start + m[1].length;
     const slice = bytes.subarray(start, end);
+    if (slice.length < 2) continue;
     inflatedCount++;
-    // Try zlib (deflate with header) first, then raw deflate.
-    for (const fmt of ['deflate', 'deflate-raw'] as const) {
-      try {
-        const ds = new DecompressionStream(fmt);
-        const writer = ds.writable.getWriter();
-        writer.write(slice);
-        writer.close();
-        const out = new Uint8Array(await new Response(ds.readable).arrayBuffer());
-        if (out.length > 0) {
-          parts.push(latin1(out));
-          break;
-        }
-      } catch (_e) {
-        // try next format / skip this stream
-      }
-    }
+    // zlib header sniff: first byte 0x78 with valid 2-byte checksum mod 31.
+    const looksZlib = slice[0] === 0x78 && ((slice[0] * 256 + slice[1]) % 31 === 0);
+    if (!looksZlib) continue;
+    const out = await tryInflate(slice, 'deflate');
+    if (out && out.length > 0) parts.push(latin1(out));
   }
 
   return parts.join('\n');
