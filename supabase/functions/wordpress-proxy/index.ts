@@ -928,7 +928,8 @@ serve(async (req) => {
         // (a common PHP-emits-PDF gotcha) doesn't trip us up.
         try {
           const buf = await resp.arrayBuffer();
-          const head = new Uint8Array(buf).slice(0, 1024);
+          const fullBytes = new Uint8Array(buf);
+          const head = fullBytes.slice(0, 1024);
           // Decode as latin-1 so binary bytes don't blow up; we only need ASCII signatures.
           const headStr = Array.from(head).map((b) => String.fromCharCode(b)).join('');
           result.magic = headStr.slice(0, 16);
@@ -950,6 +951,28 @@ serve(async (req) => {
               `magic="${result.magic}" hex="${hex}" url=${checkUrl}`,
             );
           }
+
+          // Expiry-phrase scan: if the response is a PDF and small enough, peek
+          // at the text content to catch "expired" placeholder PDFs that load
+          // fine but tell the user to fetch a fresh copy from the member area.
+          if (result.isPdf && fullBytes.length > 0 && fullBytes.length <= PDF_TEXT_SCAN_MAX_BYTES) {
+            try {
+              const pdfText = await extractPdfText(fullBytes);
+              const match = findExpiryMatch(pdfText);
+              if (match) {
+                result.expiredNotice = true;
+                result.expiredMatch = match;
+                console.log(
+                  `[check-document-url] expired-notice detected phrase="${match}" ` +
+                  `size=${fullBytes.length} url=${checkUrl}`,
+                );
+              }
+            } catch (e) {
+              console.log(`[check-document-url] pdf-text-scan failed: ${(e as Error).message} — ${checkUrl}`);
+            }
+          } else if (result.isPdf && fullBytes.length > PDF_TEXT_SCAN_MAX_BYTES) {
+            console.log(`[check-document-url] pdf-text-scan skipped (size=${fullBytes.length} > ${PDF_TEXT_SCAN_MAX_BYTES}) — ${checkUrl}`);
+          }
         } catch (_e) {
           // ignore body read failures
         }
@@ -957,6 +980,9 @@ serve(async (req) => {
         // Definition of OK: 2xx + (PDF magic OR content-type pdf) + not redirected to .htm
         const ctIsPdf = result.contentType.includes('application/pdf') || result.contentType.includes('application/octet-stream');
         result.ok = resp.status >= 200 && resp.status < 300 && (result.isPdf || ctIsPdf) && !result.redirectedToHtm && !result.isHtml;
+
+        // An expired-notice PDF loads cleanly but is not a usable file.
+        if (result.expiredNotice) result.ok = false;
 
         // Transient-failure retry for /_pda/ URLs.
         // Under burst load (multiple concurrent audit probes hitting the same WP host),
