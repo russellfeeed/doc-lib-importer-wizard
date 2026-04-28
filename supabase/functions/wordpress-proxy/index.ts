@@ -858,6 +858,8 @@ serve(async (req) => {
         magic: '' as string,
         loginBlocked: false as boolean,
         authMode: 'none' as 'none' | 'basic' | 'cookie',
+        expiredNotice: false as boolean,
+        expiredMatch: '' as string,
       };
 
       // Derive the WP base URL from the file URL so we can hit wp-login.php on the same host.
